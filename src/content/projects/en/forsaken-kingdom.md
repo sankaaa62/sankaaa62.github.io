@@ -12,6 +12,10 @@ links:
 order: 3
 ---
 
-Full technical ownership of the entire codebase: all game systems designed
-from scratch against the GDD — real-time combat, stats, effects, skills;
-meta, squad and camp management, progression, builds.
+Dark fantasy roguelite auto-battler / RPG for PC (Steam, in development).
+
+- Sole programmer on the project: full technical ownership of the entire
+  codebase
+- Designing all game systems from scratch against the GDD
+- Real-time combat, stats, effects, skills
+- Meta layer, squad and camp management, progression, builds
