@@ -16,8 +16,11 @@ const projects = (await getCollection('projects', (p) => p.id.startsWith(`${loca
 const desc = locale === 'ru'
   ? 'Портфолио Senior Unity-разработчика: мобильные и PC игры, мультиплеер, ECS/DOTS.'
   : 'Senior Unity Developer portfolio: mobile & PC games, multiplayer, ECS/DOTS.';
+const title = locale === 'ru'
+  ? 'Александр Кандаков — Senior Unity Developer'
+  : 'Aleksandr Kandakov — Senior Unity Developer';
 ---
-<Base locale={locale} title="Aleksandr Kandakov — Senior Unity Developer" description={desc} path="/">
+<Base locale={locale} title={title} description={desc} path="/">
   <Hero locale={locale} />
   <Metrics locale={locale} />
   <section id="projects" class="section container">
