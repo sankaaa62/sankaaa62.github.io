@@ -9,7 +9,7 @@ Built with [Astro 7](https://astro.build), a dark game-style theme, and full **E
 
 - `src/content/projects/en/*.md`, `src/content/projects/ru/*.md` — featured project case studies (one Markdown file per locale per project, matched by filename/slug).
 - `src/content/prototypes/prototypes.json` — metadata for the prototype grid (id, title, genre per locale, year, whether a video clip exists).
-- `public/media/prototypes/<id>/` — prototype media: `icon.webp` (or `.png`) and optional `clip.webm` per prototype, plus a `poster.jpg` fallback frame.
+- `public/media/prototypes/<id>/` — prototype media: `icon.webp` and optional `clip.webm` per prototype, plus a `poster.jpg` fallback frame.
 - `src/components/` — Astro components: `Hero`, `FeaturedCard`, `ProjectPage`, `PrototypeGrid`, `Skills`, `Metrics`, `Contact`, `MiniGame`, `HomePage`.
 - `src/layouts/Base.astro` — shared HTML shell (meta tags, favicon, fonts).
 - `scripts/` — content/media tooling (see below).
@@ -20,7 +20,7 @@ Built with [Astro 7](https://astro.build), a dark game-style theme, and full **E
 npm run dev        # start local dev server
 npm run build      # production build to dist/
 npm run preview    # preview the production build
-npm run validate    # validate content collections (scripts/validate-content.mjs)
+npm run validate   # validate content collections (scripts/validate-content.mjs)
 ```
 
 `npx astro check` runs the TypeScript/Astro type checker.
