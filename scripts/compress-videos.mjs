@@ -14,7 +14,7 @@ for (const slug of readdirSync(STAGING, { withFileTypes: true }).filter(d => d.i
   copyFileSync(icon, join(out, 'icon.png'));
   if (existsSync(video)) {
     execSync(`ffmpeg -y -i "${video}" -t 12 -an -vf "scale=480:-2,fps=24" -c:v libvpx-vp9 -crf 40 -b:v 0 "${join(out, 'clip.webm')}"`, { stdio: 'inherit' });
-    execSync(`ffmpeg -y -i "${join(out, 'clip.webm')}" -frames:v 1 -q:v 4 "${join(out, 'poster.jpg')}"`, { stdio: 'inherit' });
+    execSync(`ffmpeg -y -ss 2 -i "${join(out, 'clip.webm')}" -frames:v 1 -q:v 4 "${join(out, 'poster.jpg')}"`, { stdio: 'inherit' });
     console.log(`${slug}: clip ${(statSync(join(out, 'clip.webm')).size / 1e6).toFixed(1)} MB`);
   } else console.log(`${slug}: только иконка`);
 }
