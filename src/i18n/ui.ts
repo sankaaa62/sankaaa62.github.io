@@ -13,7 +13,7 @@ export const ui = {
     'hero.cv': 'Download CV',
     'about.title': 'About me',
     'metrics.years': 'years in gamedev',
-    'metrics.installs': 'installs on the biggest title',
+    'metrics.installs': 'installs on our biggest title',
     'metrics.protos': 'prototypes shipped by my team',
     'metrics.team': 'grew a team',
     'featured.title': 'Projects',
