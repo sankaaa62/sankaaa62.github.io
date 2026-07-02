@@ -27,7 +27,11 @@ const prototypes = defineCollection({
     genre: z.object({ en: z.string(), ru: z.string() }),
     year: z.number(),
     clip: z.boolean().default(false),
+    clipFull: z.boolean().default(false),
     shots: z.number().default(0),
+    link: z.url().optional(),
+    badge: z.object({ en: z.string(), ru: z.string() }).optional(),
+    pin: z.boolean().default(false),
   }),
 });
 

@@ -13,8 +13,9 @@ for (const slug of readdirSync(STAGING, { withFileTypes: true }).filter(d => d.i
   mkdirSync(out, { recursive: true });
   execSync(`ffmpeg -y -i "${icon}" -vf "scale=320:320:force_original_aspect_ratio=increase,crop=320:320" -quality 82 "${join(out, 'icon.webp')}"`, { stdio: 'inherit' });
   if (existsSync(video)) {
-    execSync(`ffmpeg -y -i "${video}" -t 12 -an -vf "scale=480:-2,fps=24" -c:v libvpx-vp9 -crf 40 -b:v 0 "${join(out, 'clip.webm')}"`, { stdio: 'inherit' });
+    execSync(`ffmpeg -y -i "${video}" -t 20 -an -vf "scale=480:-2,fps=24" -c:v libvpx-vp9 -crf 40 -b:v 0 "${join(out, 'clip.webm')}"`, { stdio: 'inherit' });
+    execSync(`ffmpeg -y -i "${video}" -t 60 -an -vf "scale=640:-2,fps=24" -c:v libvpx-vp9 -crf 40 -b:v 0 "${join(out, 'clip-full.webm')}"`, { stdio: 'inherit' });
     execSync(`ffmpeg -y -ss 2 -i "${join(out, 'clip.webm')}" -frames:v 1 -q:v 4 "${join(out, 'poster.jpg')}"`, { stdio: 'inherit' });
-    console.log(`${slug}: clip ${(statSync(join(out, 'clip.webm')).size / 1e6).toFixed(1)} MB`);
+    console.log(`${slug}: clip ${(statSync(join(out, 'clip.webm')).size / 1e6).toFixed(1)} MB, clip-full ${(statSync(join(out, 'clip-full.webm')).size / 1e6).toFixed(1)} MB`);
   } else console.log(`${slug}: только иконка`);
 }

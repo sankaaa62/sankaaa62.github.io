@@ -8,7 +8,8 @@
     },
     "year": 2020,
     "clip": true,
-    "shots": 0
+    "shots": 0,
+    "clipFull": true
   },
   {
     "id": "elonspaceadventure",
@@ -19,7 +20,8 @@
     },
     "year": 2020,
     "clip": true,
-    "shots": 0
+    "shots": 0,
+    "clipFull": true
   },
   {
     "id": "growit",
@@ -30,7 +32,8 @@
     },
     "year": 2020,
     "clip": true,
-    "shots": 3
+    "shots": 3,
+    "clipFull": true
   },
   {
     "id": "urbankings",
@@ -41,7 +44,8 @@
     },
     "year": 2020,
     "clip": true,
-    "shots": 0
+    "shots": 0,
+    "clipFull": true
   },
   {
     "id": "soulsrock",
@@ -52,7 +56,8 @@
     },
     "year": 2020,
     "clip": true,
-    "shots": 6
+    "shots": 6,
+    "clipFull": true
   },
   {
     "id": "beapresident",
@@ -63,7 +68,8 @@
     },
     "year": 2020,
     "clip": true,
-    "shots": 5
+    "shots": 5,
+    "clipFull": true
   },
   {
     "id": "skeeballleague",
@@ -85,7 +91,8 @@
     },
     "year": 2021,
     "clip": true,
-    "shots": 3
+    "shots": 3,
+    "clipFull": true
   },
   {
     "id": "nunchakufighter",
@@ -96,7 +103,8 @@
     },
     "year": 2021,
     "clip": true,
-    "shots": 5
+    "shots": 5,
+    "clipFull": true
   },
   {
     "id": "hyper-hockey",
@@ -107,7 +115,8 @@
     },
     "year": 2021,
     "clip": true,
-    "shots": 6
+    "shots": 6,
+    "clipFull": true
   },
   {
     "id": "agentstretch",
@@ -118,7 +127,8 @@
     },
     "year": 2021,
     "clip": true,
-    "shots": 5
+    "shots": 5,
+    "clipFull": true
   },
   {
     "id": "sloth-sadventure",
@@ -129,7 +139,8 @@
     },
     "year": 2021,
     "clip": true,
-    "shots": 4
+    "shots": 4,
+    "clipFull": true
   },
   {
     "id": "octopusadventure",
@@ -140,7 +151,8 @@
     },
     "year": 2021,
     "clip": true,
-    "shots": 6
+    "shots": 6,
+    "clipFull": true
   },
   {
     "id": "carhook3d",
@@ -151,7 +163,8 @@
     },
     "year": 2021,
     "clip": true,
-    "shots": 6
+    "shots": 6,
+    "clipFull": true
   },
   {
     "id": "craftwar",
@@ -162,7 +175,8 @@
     },
     "year": 2021,
     "clip": true,
-    "shots": 5
+    "shots": 5,
+    "clipFull": true
   },
   {
     "id": "toothpickrun",
@@ -173,7 +187,8 @@
     },
     "year": 2021,
     "clip": true,
-    "shots": 6
+    "shots": 6,
+    "clipFull": true
   },
   {
     "id": "blackandwhite",
@@ -184,7 +199,8 @@
     },
     "year": 2021,
     "clip": true,
-    "shots": 5
+    "shots": 5,
+    "clipFull": true
   },
   {
     "id": "barbershop",
@@ -195,7 +211,8 @@
     },
     "year": 2021,
     "clip": true,
-    "shots": 6
+    "shots": 6,
+    "clipFull": true
   },
   {
     "id": "tuningrace",
@@ -206,7 +223,8 @@
     },
     "year": 2022,
     "clip": true,
-    "shots": 5
+    "shots": 5,
+    "clipFull": true
   },
   {
     "id": "evoride",
@@ -217,7 +235,8 @@
     },
     "year": 2022,
     "clip": true,
-    "shots": 6
+    "shots": 6,
+    "clipFull": true
   },
   {
     "id": "almightyrun",
@@ -228,7 +247,8 @@
     },
     "year": 2022,
     "clip": true,
-    "shots": 4
+    "shots": 4,
+    "clipFull": true
   },
   {
     "id": "tiedyeworkshop",
@@ -239,7 +259,8 @@
     },
     "year": 2022,
     "clip": true,
-    "shots": 6
+    "shots": 6,
+    "clipFull": true
   },
   {
     "id": "personalityrun",
@@ -250,7 +271,8 @@
     },
     "year": 2022,
     "clip": true,
-    "shots": 5
+    "shots": 5,
+    "clipFull": true
   },
   {
     "id": "factoryuniverse",
@@ -261,7 +283,8 @@
     },
     "year": 2022,
     "clip": true,
-    "shots": 5
+    "shots": 5,
+    "clipFull": true
   },
   {
     "id": "idalpetsalon",
@@ -272,7 +295,8 @@
     },
     "year": 2022,
     "clip": true,
-    "shots": 6
+    "shots": 6,
+    "clipFull": true
   },
   {
     "id": "wordtour",
@@ -283,29 +307,26 @@
     },
     "year": 2022,
     "clip": true,
-    "shots": 5
+    "shots": 5,
+    "clipFull": true
   },
   {
     "id": "junkyard-recycling",
-    "title": "Junkyard Recycling",
+    "title": "Car Junk Resurrection",
     "genre": {
       "en": "Simulation / Tycoon",
       "ru": "Симулятор / Тайкун"
     },
     "year": 2022,
     "clip": true,
-    "shots": 0
-  },
-  {
-    "id": "kickmaster",
-    "title": "Kick Master",
-    "genre": {
-      "en": "Sports / Action",
-      "ru": "Спорт / Экшен"
+    "clipFull": true,
+    "shots": 6,
+    "link": "https://play.google.com/store/apps/details?id=com.zakgodfrey.carjunkresurrection",
+    "badge": {
+      "en": "1M+ installs",
+      "ru": "1M+ установок"
     },
-    "year": 2022,
-    "clip": false,
-    "shots": 0
+    "pin": true
   },
   {
     "id": "survive-the-assault",
@@ -316,7 +337,8 @@
     },
     "year": 2023,
     "clip": true,
-    "shots": 0
+    "shots": 0,
+    "clipFull": true
   },
   {
     "id": "specialforcesswat",
@@ -327,6 +349,7 @@
     },
     "year": 2023,
     "clip": true,
-    "shots": 0
+    "shots": 0,
+    "clipFull": true
   }
 ]

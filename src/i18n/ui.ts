@@ -30,6 +30,7 @@ export const ui = {
     'gallery.prev': 'Previous screenshot',
     'gallery.next': 'Next screenshot',
     'gallery.screenshot': 'screenshot',
+    'prototypes.store': 'View on Google Play',
   },
   ru: {
     'nav.about': 'Обо мне',
@@ -59,6 +60,7 @@ export const ui = {
     'gallery.prev': 'Предыдущий скриншот',
     'gallery.next': 'Следующий скриншот',
     'gallery.screenshot': 'скриншот',
+    'prototypes.store': 'Открыть в Google Play',
   },
 } as const;
 
