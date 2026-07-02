@@ -13,7 +13,7 @@ const projects = defineCollection({
     platforms: z.array(z.string()),
     metrics: z.array(z.string()).default([]),
     stack: z.array(z.string()),
-    links: z.array(z.object({ label: z.string(), url: z.string().url() })).default([]),
+    links: z.array(z.object({ label: z.string(), url: z.url() })).default([]),
     youtube: z.string().optional(),
     order: z.number(),
   }),
