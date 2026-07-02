@@ -10,13 +10,17 @@ permissions:
   pages: write
   id-token: write
 
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Validate content
-        run: node scripts/validate-content.mjs || true
+        run: node scripts/validate-content.mjs || true  # TODO(Task 5): remove `|| true` once content lands
       - uses: withastro/action@v6
         with:
           node-version: 22
