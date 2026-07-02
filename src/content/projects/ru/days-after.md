@@ -10,7 +10,7 @@ stack: ["Unity", "C#", "Addressables", "Mobile UI"]
 links:
   - { label: "Google Play", url: "https://play.google.com/store/apps/details?id=games.alternativa.projectv.test" }
   - { label: "App Store", url: "https://apps.apple.com/us/app/days-after-zombie-survival/id1498731586" }
-youtube: "Xk3vyGjj524"
+youtube: "73g8uRqtGjA"
 order: 1
 ---
 
