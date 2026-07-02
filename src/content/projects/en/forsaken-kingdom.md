@@ -9,6 +9,7 @@ metrics: ["Full technical ownership"]
 stack: ["Unity", "C#", "Real-time combat", "Meta systems"]
 links:
   - { label: "Steam", url: "https://store.steampowered.com/app/4418240/Forsaken_Kingdom/" }
+company: "Quantum Gear Studios"
 order: 3
 ---
 

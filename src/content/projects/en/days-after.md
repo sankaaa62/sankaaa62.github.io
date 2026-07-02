@@ -12,6 +12,7 @@ links:
   - { label: "Google Play", url: "https://play.google.com/store/apps/details?id=games.alternativa.projectv.test" }
   - { label: "App Store", url: "https://apps.apple.com/us/app/days-after-zombie-survival/id1498731586" }
 youtube: "73g8uRqtGjA"
+company: "Reaction Games"
 order: 1
 ---
 

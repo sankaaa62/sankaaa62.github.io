@@ -11,6 +11,8 @@ links:
   - { label: "Website", url: "https://lastwish.fun" }
   - { label: "Steam", url: "https://store.steampowered.com/app/2484100/" }
   - { label: "VK Play", url: "https://vkplay.ru/play/game/lastwish/" }
+company: "Black Games"
+trailer: "/media/projects/last-wish/trailer.webm"
 order: 5
 ---
 

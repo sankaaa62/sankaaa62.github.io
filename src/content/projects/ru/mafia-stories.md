@@ -9,6 +9,7 @@ metrics: ["Команда из 3 человек", "2 контентных рел
 stack: ["Unity", "C#", "Рефакторинг", "Инженерная культура"]
 links:
   - { label: "Google Play", url: "https://play.google.com/store/apps/details?id=com.TapTap.MafiaStoriesIdleTycoon" }
+company: "Taptap Studio"
 order: 4
 ---
 

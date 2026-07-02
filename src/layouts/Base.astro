@@ -26,7 +26,13 @@ const otherLocale: Locale = locale === 'en' ? 'ru' : 'en';
 </head>
 <body>
   <header class="container" style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;padding-top:20px;padding-bottom:20px;">
-    <a href={localePath(locale, '/')} class="mono" style="color:var(--text);font-weight:700;">~/kandakov</a>
+    <a href={localePath(locale, '/')} class="brand mono" aria-label="Kandakov">
+      <svg class="brand-mark" width="32" height="32" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <rect width="64" height="64" rx="12" fill="#0e0f13"/>
+        <text x="32" y="42" font-family="monospace" font-size="30" font-weight="bold" fill="#ff5c1a" text-anchor="middle">AK</text>
+      </svg>
+      <span class="brand-name">Kandakov</span>
+    </a>
     <nav style="display:flex;flex-wrap:wrap;gap:14px;row-gap:6px;align-items:center;font-size:.95rem;">
       <a href={localePath(locale, '/#about')}>{t(locale, 'nav.about')}</a>
       <a href={localePath(locale, '/#projects')}>{t(locale, 'nav.projects')}</a>

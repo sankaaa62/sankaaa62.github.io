@@ -15,6 +15,8 @@ const projects = defineCollection({
     stack: z.array(z.string()),
     links: z.array(z.object({ label: z.string(), url: z.url() })).default([]),
     youtube: z.string().optional(),
+    company: z.string(),
+    trailer: z.string().optional(),
     order: z.number(),
   }),
 });
@@ -27,7 +29,11 @@ const prototypes = defineCollection({
     genre: z.object({ en: z.string(), ru: z.string() }),
     year: z.number(),
     clip: z.boolean().default(false),
+    clipFull: z.boolean().default(false),
     shots: z.number().default(0),
+    link: z.url().optional(),
+    badge: z.object({ en: z.string(), ru: z.string() }).optional(),
+    pin: z.boolean().default(false),
   }),
 });
 

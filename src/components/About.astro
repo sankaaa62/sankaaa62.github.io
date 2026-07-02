@@ -2,6 +2,12 @@
 import { t, type Locale } from '../i18n/ui';
 const { locale } = Astro.props as { locale: Locale };
 
+const name: Record<Locale, string> = {
+  en: 'Aleksandr Kandakov',
+  ru: 'Александр Кандаков',
+};
+const subtitle = 'Senior Unity Developer · Mobile & PC';
+
 const paragraphs: Record<Locale, string[]> = {
   en: [
     'Unity / C# developer with 6+ years in gamedev — from hyper-casual games to mid-core multiplayer projects. Platforms: mobile and PC. Open to remote work. I started as the first developer at a startup: over 3+ years I grew the dev team from scratch, led a team of up to 8 programmers, built out the processes, and shipped 200+ prototypes plus releases with millions of installs.',
@@ -18,20 +24,84 @@ const text = paragraphs[locale];
 ---
 <section id="about" class="section container">
   <h2>{t(locale, 'about.title')}</h2>
-  <div style="display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start;">
-    <div class="reveal" style="flex:0 0 240px;">
+  <div class="about-grid">
+    <div class="reveal about-photo">
       <!-- TODO: replace with <img src="/media/me.webp"> when photo provided -->
-      <div
-        aria-hidden="true"
-        style="width:240px;height:240px;border-radius:24px;background:var(--surface-2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;"
-      >
-        <span class="mono" style="font-size:64px;font-weight:700;color:var(--accent);">AK</span>
+      <div class="about-photo-placeholder" aria-hidden="true">
+        <span class="mono about-photo-initials">AK</span>
       </div>
     </div>
-    <div class="reveal" style="flex:1 1 380px;min-width:0;">
+    <div class="reveal about-content">
+      <p class="about-name">{name[locale]}</p>
+      <p class="mono about-subtitle">{subtitle}</p>
       {text.map((p) => (
-        <p style="color:var(--text);line-height:1.7;">{p}</p>
+        <p class="about-paragraph">{p}</p>
       ))}
     </div>
   </div>
 </section>
+
+<style>
+  .about-grid {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 32px;
+    align-items: start;
+  }
+
+  .about-photo-placeholder {
+    width: 240px;
+    height: 240px;
+    border-radius: 24px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .about-photo-initials {
+    font-size: 64px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .about-content {
+    min-width: 0;
+  }
+
+  .about-name {
+    font-weight: 800;
+    font-size: 1.6rem;
+    margin: 0 0 6px;
+    color: var(--text);
+  }
+
+  .about-subtitle {
+    color: var(--accent);
+    font-size: .95rem;
+    margin: 0 0 20px;
+  }
+
+  .about-paragraph {
+    color: var(--text);
+    line-height: 1.7;
+    margin-bottom: .9em;
+    max-width: 62ch;
+  }
+
+  .about-paragraph:last-child {
+    margin-bottom: 0;
+  }
+
+  @media (max-width: 720px) {
+    .about-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .about-photo {
+      max-width: 240px;
+      margin: 0 auto;
+    }
+  }
+</style>
