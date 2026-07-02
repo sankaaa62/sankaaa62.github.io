@@ -25,3 +25,5 @@ pnpm-debug.log*
 
 # media harvesting staging (Task 5)
 media-staging/
+
+.claude/
