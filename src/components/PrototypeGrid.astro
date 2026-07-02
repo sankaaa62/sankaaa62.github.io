@@ -9,7 +9,10 @@ const protos = (await getCollection('prototypes')).sort((a, b) => b.data.year - 
   <p style="color:var(--muted);">{t(locale, 'prototypes.sub')}</p>
   <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;">
     {protos.map((p) => (
-      <div class="proto-card reveal" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;">
+      <div class="proto-card reveal" role="button" tabindex="0"
+        data-id={p.data.id} data-title={p.data.title} data-genre={p.data.genre[locale]}
+        data-year={p.data.year} data-clip={p.data.clip ? '1' : '0'} data-shots={p.data.shots}
+        style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;cursor:pointer;">
         <div style="position:relative;aspect-ratio:1;">
           <img src={`/media/prototypes/${p.data.id}/icon.webp`} alt={p.data.title} loading="lazy"
                style="width:100%;height:100%;object-fit:cover;" />
@@ -29,6 +32,117 @@ const protos = (await getCollection('prototypes')).sort((a, b) => b.data.year - 
     ))}
   </div>
 </section>
+
+<dialog id="proto-modal">
+  <button type="button" class="pm-close" aria-label={t(locale, 'gallery.close')}>✕</button>
+  <div class="pm-body">
+    <h3 class="pm-title"></h3>
+    <div class="mono pm-meta" style="color:var(--muted);"></div>
+    <video class="pm-video" controls autoplay muted loop playsinline style="display:none;"></video>
+    <div class="pm-shots"></div>
+    <img class="pm-icon" alt="" style="display:none;" />
+  </div>
+</dialog>
+
+<style>
+  #proto-modal {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    padding: 0;
+    width: min(720px, 92vw);
+    max-width: 720px;
+    max-height: 90vh;
+    position: fixed;
+    inset: 0;
+    margin: auto;
+  }
+  #proto-modal[open] {
+    display: flex;
+    flex-direction: column;
+  }
+  #proto-modal::backdrop {
+    background: rgba(4, 5, 8, .88);
+  }
+  .pm-body {
+    padding: 24px;
+    overflow-y: auto;
+  }
+  .pm-title {
+    margin: 0 0 4px;
+  }
+  .pm-meta {
+    font-size: .8rem;
+    margin-bottom: 16px;
+  }
+  .pm-video {
+    display: block;
+    width: 100%;
+    max-height: 50vh;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: #000;
+  }
+  .pm-shots {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 10px;
+    margin-top: 16px;
+  }
+  .pm-shots img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16/9;
+    object-fit: cover;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+  }
+  .pm-icon {
+    display: block;
+    width: 100%;
+    max-width: 320px;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    margin: 0 auto;
+  }
+  .pm-close {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 1.4rem;
+    cursor: pointer;
+    transition: transform .15s, border-color .15s, box-shadow .15s;
+  }
+  .pm-close:hover, .pm-close:focus-visible {
+    transform: translateY(-2px);
+    border-color: var(--accent);
+    box-shadow: 0 0 14px rgba(255,92,26,.3);
+    outline: none;
+  }
+
+  @media (max-width: 640px) {
+    #proto-modal {
+      width: 100vw;
+      max-width: 100vw;
+      height: 100%;
+      max-height: 100%;
+      border-radius: 0;
+    }
+  }
+</style>
+
 <script>
   if (matchMedia('(hover: hover) and (pointer: fine)').matches) {
     document.querySelectorAll('.proto-card').forEach((card) => {
@@ -50,6 +164,99 @@ const protos = (await getCollection('prototypes')).sort((a, b) => b.data.year - 
         const y = (ev.clientY - r.top) / r.height - 0.5;
         el.style.transform = `perspective(600px) rotateY(${x * 6}deg) rotateX(${-y * 6}deg) scale(1.03)`;
       });
+    });
+  }
+
+  const modal = document.querySelector<HTMLDialogElement>('#proto-modal');
+  if (modal) {
+    const closeBtn = modal.querySelector<HTMLButtonElement>('.pm-close');
+    const titleEl = modal.querySelector<HTMLElement>('.pm-title');
+    const metaEl = modal.querySelector<HTMLElement>('.pm-meta');
+    const videoEl = modal.querySelector<HTMLVideoElement>('.pm-video');
+    const shotsEl = modal.querySelector<HTMLElement>('.pm-shots');
+    const iconEl = modal.querySelector<HTMLImageElement>('.pm-icon');
+    let previousOverflow = '';
+
+    const openModal = (card: HTMLElement) => {
+      const id = card.dataset.id ?? '';
+      const title = card.dataset.title ?? '';
+      const genre = card.dataset.genre ?? '';
+      const year = card.dataset.year ?? '';
+      const hasClip = card.dataset.clip === '1';
+      const shots = Number(card.dataset.shots ?? '0');
+
+      if (titleEl) titleEl.textContent = title;
+      if (metaEl) metaEl.textContent = `${genre} · ${year}`;
+
+      if (videoEl) {
+        if (hasClip) {
+          videoEl.poster = `/media/prototypes/${id}/poster.jpg`;
+          videoEl.src = `/media/prototypes/${id}/clip.webm`;
+          videoEl.style.display = 'block';
+        } else {
+          videoEl.style.display = 'none';
+          videoEl.removeAttribute('src');
+          videoEl.load();
+        }
+      }
+
+      if (shotsEl) {
+        shotsEl.innerHTML = '';
+        if (shots > 0) {
+          for (let i = 1; i <= shots; i++) {
+            const img = document.createElement('img');
+            img.src = `/media/prototypes/${id}/shots/${i}.webp`;
+            img.alt = `${title} — screenshot ${i}`;
+            img.loading = 'lazy';
+            shotsEl.appendChild(img);
+          }
+        }
+      }
+
+      if (iconEl) {
+        if (!hasClip && shots === 0) {
+          iconEl.src = `/media/prototypes/${id}/icon.webp`;
+          iconEl.alt = title;
+          iconEl.style.display = 'block';
+        } else {
+          iconEl.style.display = 'none';
+          iconEl.src = '';
+        }
+      }
+
+      if (!modal!.open) {
+        previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        modal!.showModal();
+      }
+      if (hasClip && videoEl) {
+        videoEl.play().catch(() => {});
+      }
+    };
+
+    document.querySelectorAll<HTMLElement>('.proto-card').forEach((card) => {
+      card.addEventListener('click', () => openModal(card));
+      card.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          openModal(card);
+        }
+      });
+    });
+
+    closeBtn?.addEventListener('click', () => modal.close());
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.close();
+    });
+
+    modal.addEventListener('close', () => {
+      if (videoEl) {
+        videoEl.pause();
+        videoEl.removeAttribute('src');
+        videoEl.load();
+      }
+      document.body.style.overflow = previousOverflow;
     });
   }
 </script>
