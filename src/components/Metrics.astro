@@ -1,0 +1,20 @@
+---
+import { t, type Locale } from '../i18n/ui';
+const { locale } = Astro.props as { locale: Locale };
+const items = [
+  { value: 6, suffix: '+', label: t(locale, 'metrics.years') },
+  { value: 10, suffix: 'M+', label: t(locale, 'metrics.installs') },
+  { value: 800, suffix: 'K+', label: t(locale, 'metrics.loc') },
+  { value: 8, suffix: '', prefix: '0→', label: t(locale, 'metrics.team') },
+];
+---
+<div class="container" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;">
+  {items.map((m) => (
+    <div class="reveal" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;">
+      <div class="mono" style="font-size:2rem;font-weight:800;color:var(--accent-2);">
+        {m.prefix ?? ''}<span class="counter" data-target={m.value}>0</span>{m.suffix}
+      </div>
+      <div style="color:var(--muted);font-size:.9rem;">{m.label}</div>
+    </div>
+  ))}
+</div>

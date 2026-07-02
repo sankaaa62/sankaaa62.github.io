@@ -1,0 +1,7 @@
+---
+import { t, type Locale } from '../i18n/ui';
+const { locale } = Astro.props as { locale: Locale };
+---
+<section id="prototypes" class="section container">
+  <h2>{t(locale, 'prototypes.title')}</h2>
+</section>
