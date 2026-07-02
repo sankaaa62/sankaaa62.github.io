@@ -34,6 +34,12 @@ if (!existsSync(protoPath)) {
         if (!existsSync(join(dir, 'icon.webp'))) errors.push(`prototype ${p.id}: нет icon.webp`);
         if (p.clip) for (const f of ['clip.webm', 'poster.jpg'])
           if (!existsSync(join(dir, f))) errors.push(`prototype ${p.id}: clip=true, но нет ${f}`);
+        if (p.shots > 0) {
+          for (let i = 1; i <= p.shots; i++) {
+            const f = join(dir, 'shots', `${i}.webp`);
+            if (!existsSync(f)) errors.push(`prototype ${p.id}: shots=${p.shots}, но нет shots/${i}.webp`);
+          }
+        }
       }
     }
   }

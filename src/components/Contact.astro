@@ -1,5 +1,6 @@
 ---
 import { t, type Locale } from '../i18n/ui';
+import SocialIcons from './SocialIcons.astro';
 const { locale } = Astro.props as { locale: Locale };
 ---
 <section id="contact" class="section container" style="text-align:center;">
@@ -9,4 +10,7 @@ const { locale } = Astro.props as { locale: Locale };
     <a href="https://t.me/sankaaa62">@sankaaa62</a> ·
     <a href="https://www.linkedin.com/in/sankaaa62/">linkedin.com/in/sankaaa62</a>
   </p>
+  <div style="display:flex;justify-content:center;margin-top:14px;">
+    <SocialIcons />
+  </div>
 </section>

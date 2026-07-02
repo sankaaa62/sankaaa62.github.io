@@ -3,6 +3,7 @@ export type Locale = (typeof locales)[number];
 
 export const ui = {
   en: {
+    'nav.about': 'About',
     'nav.projects': 'Projects',
     'nav.prototypes': 'Prototypes',
     'nav.skills': 'Skills',
@@ -10,6 +11,7 @@ export const ui = {
     'hero.title': 'Senior Unity Developer',
     'hero.sub': 'Mobile & PC · Multiplayer · ECS/DOTS · Gameplay systems',
     'hero.cv': 'Download CV',
+    'about.title': 'About me',
     'metrics.years': 'years in gamedev',
     'metrics.installs': 'installs across projects',
     'metrics.loc': 'lines of code',
@@ -24,8 +26,13 @@ export const ui = {
     'project.links': 'Links',
     'project.back': '← All projects',
     'footer.game': 'press start',
+    'gallery.close': 'Close',
+    'gallery.prev': 'Previous screenshot',
+    'gallery.next': 'Next screenshot',
+    'gallery.screenshot': 'screenshot',
   },
   ru: {
+    'nav.about': 'Обо мне',
     'nav.projects': 'Проекты',
     'nav.prototypes': 'Прототипы',
     'nav.skills': 'Навыки',
@@ -33,6 +40,7 @@ export const ui = {
     'hero.title': 'Senior Unity Developer',
     'hero.sub': 'Мобильные и PC · Мультиплеер · ECS/DOTS · Геймплейные системы',
     'hero.cv': 'Скачать CV',
+    'about.title': 'Обо мне',
     'metrics.years': 'лет в геймдеве',
     'metrics.installs': 'установок суммарно',
     'metrics.loc': 'строк кода',
@@ -47,6 +55,10 @@ export const ui = {
     'project.links': 'Ссылки',
     'project.back': '← Все проекты',
     'footer.game': 'press start',
+    'gallery.close': 'Закрыть',
+    'gallery.prev': 'Предыдущий скриншот',
+    'gallery.next': 'Следующий скриншот',
+    'gallery.screenshot': 'скриншот',
   },
 } as const;
 

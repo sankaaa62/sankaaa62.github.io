@@ -1,0 +1,37 @@
+---
+import { t, type Locale } from '../i18n/ui';
+const { locale } = Astro.props as { locale: Locale };
+
+const paragraphs: Record<Locale, string[]> = {
+  en: [
+    'Unity / C# developer with 6+ years in gamedev — from hyper-casual games to mid-core multiplayer projects. Platforms: mobile and PC. Open to remote work. I started as the first developer at a startup: over 3+ years I grew the dev team from scratch, led a team of up to 8 programmers, built out the processes, and shipped 200+ prototypes plus releases with millions of installs.',
+    'After a restructuring, I led the technical side of "Last Wish", an interactive 3D visual novel for PC: released on Steam and VK Play, finalist of the "Start Game" accelerator (VK). At Reaction Games I spent 2+ years as one of the developers of Dead Impact, a mobile co-op action-RPG built on ECS/DOTS, from tech launch to a global self-published release (500K+ installs).',
+    'At Taptap Studio, in a lead role, I stabilized a mobile idle tycoon and pulled it out of tech debt, and moved the team to agentic development (Claude Code, Codex) with strict review. Right now I work on live ops for Days After, a major survival hit (10M+ installs), and part-time as the sole developer of Forsaken Kingdom, a roguelite auto-battler for Steam.',
+  ],
+  ru: [
+    'Unity / C# разработчик, 6+ лет в геймдеве — от гиперказуальных игр до мидкорных мультиплеерных проектов. Платформы: Mobile и PC. Открыт к удалённой работе. Начинал первым разработчиком в стартапе: за 3+ года вырастил отдел разработки с нуля и руководил командой до 8 программистов, выстроил процессы, выпустил 200+ прототипов и релизы с миллионами установок.',
+    'После реструктуризации вёл техническую часть интерактивной 3D-новеллы под ПК «Последнее желание»: релиз в Steam и VK Play, финалист акселератора «Start Game». В Reaction Games 2+ года был одним из разработчиков Dead Impact — мобильной кооперативной action-RPG на ECS/DOTS, от tech launch до глобального самиздат-релиза (500K+ установок).',
+    'В Taptap Studio на lead-позиции стабилизировал и вывел из техдолга мобильный idle-тайкун, перевёл команду на агентскую разработку (Claude Code, Codex) со строгим ревью. Сейчас работаю над лайвопсом крупного survival-хита Days After (10M+ установок) и парт-тайм — единственный разработчик roguelite-автобатлера Forsaken Kingdom под Steam.',
+  ],
+};
+const text = paragraphs[locale];
+---
+<section id="about" class="section container">
+  <h2>{t(locale, 'about.title')}</h2>
+  <div style="display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start;">
+    <div class="reveal" style="flex:0 0 240px;">
+      <!-- TODO: replace with <img src="/media/me.webp"> when photo provided -->
+      <div
+        aria-hidden="true"
+        style="width:240px;height:240px;border-radius:24px;background:var(--surface-2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;"
+      >
+        <span class="mono" style="font-size:64px;font-weight:700;color:var(--accent);">AK</span>
+      </div>
+    </div>
+    <div class="reveal" style="flex:1 1 380px;min-width:0;">
+      {text.map((p) => (
+        <p style="color:var(--text);line-height:1.7;">{p}</p>
+      ))}
+    </div>
+  </div>
+</section>

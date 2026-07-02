@@ -5,14 +5,19 @@ role: "Unity Developer"
 period: "2026 — present"
 genre: "Survival RPG"
 platforms: ["Android", "iOS"]
-metrics: ["10M+ installs", "Live ops"]
+metrics: ["10M+ installs", "Live-ops"]
 stack: ["Unity", "C#", "Addressables", "Mobile UI"]
 links:
+  - { label: "Website", url: "https://days-after.com" }
   - { label: "Google Play", url: "https://play.google.com/store/apps/details?id=games.alternativa.projectv.test" }
   - { label: "App Store", url: "https://apps.apple.com/us/app/days-after-zombie-survival/id1498731586" }
 youtube: "73g8uRqtGjA"
 order: 1
 ---
 
-Product development on a live title with millions of players: new features,
-mobile UI, game content pipeline on Addressables, live-ops support.
+Mobile survival action-RPG with 10M+ installs. Developed by Reaction Games,
+published in partnership with MY.GAMES. Currently on live-ops.
+
+- Product development in C#/Unity3D: maintenance and new features
+- Mobile UI
+- Game content pipeline (AssetBundles/Addressables)

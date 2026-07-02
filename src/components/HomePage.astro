@@ -3,6 +3,7 @@ import { getCollection } from 'astro:content';
 import Base from '../layouts/Base.astro';
 import Hero from './Hero.astro';
 import Metrics from './Metrics.astro';
+import About from './About.astro';
 import FeaturedCard from './FeaturedCard.astro';
 import PrototypeGrid from './PrototypeGrid.astro';
 import Skills from './Skills.astro';
@@ -23,6 +24,7 @@ const title = locale === 'ru'
 <Base locale={locale} title={title} description={desc} path="/">
   <Hero locale={locale} />
   <Metrics locale={locale} />
+  <About locale={locale} />
   <section id="projects" class="section container">
     <h2>{t(locale, 'featured.title')}</h2>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;">

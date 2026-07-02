@@ -5,15 +5,22 @@ role: "Lead Unity Developer"
 period: "2026"
 genre: "Idle Tycoon (F2P)"
 platforms: ["Android"]
-metrics: ["Team of 3", "2 content releases"]
+metrics: ["Team of 3", "2 content releases", "~2x faster feature delivery"]
 stack: ["Unity", "C#", "Refactoring", "Engineering culture"]
 links:
   - { label: "Google Play", url: "https://play.google.com/store/apps/details?id=com.TapTap.MafiaStoriesIdleTycoon" }
 order: 4
 ---
 
-Took over the project in an unstable state: staged refactor, stabilized core
-systems, shipped two content releases in parallel. Led a team of programmers;
-built engineering culture from scratch — code style, git workflow, reviews,
-tests, release planning. Introduced agentic development (Claude Code, Codex)
-with strict review.
+Mobile idle tycoon (F2P, Android).
+
+- Took over the project in an unstable state (built on top of another
+  codebase, with unreviewed AI-generated design changes) — ran a staged
+  refactor, stabilized core systems, and shipped two content releases
+  in parallel
+- Led a team of 3 (later 2) programmers; built engineering culture,
+  code style, git workflow, reviews, tests, release planning
+- Introduced agentic development (Claude Code, Codex) with strict review,
+  keeping quality and control over the codebase
+- Sped up feature delivery roughly 2x — despite a smaller team and heavy
+  refactoring
