@@ -7,7 +7,9 @@ genre: "Co-op Action-RPG"
 platforms: ["Android", "iOS"]
 metrics: ["500K+ installs", "800K lines of code", "Team of 8"]
 stack: ["Unity", "ECS/DOTS", "Client-server", "Event Sourcing", "Jobs/Burst"]
-links: []
+links:
+  - { label: "Google Play", url: "https://play.google.com/store/apps/details?id=games.synthez.zombie.survival.multiplayer" }
+  - { label: "App Store", url: "https://apps.apple.com/us/app/dead-impact-survival-mmorpg/id6444281832" }
 order: 2
 ---
 
