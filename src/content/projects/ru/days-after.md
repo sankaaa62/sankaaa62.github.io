@@ -5,7 +5,7 @@ role: "Unity Developer"
 period: "2026 — н.в."
 genre: "Survival RPG"
 platforms: ["Android", "iOS"]
-metrics: ["10M+ установок", "Live ops"]
+metrics: ["10M+ установок", "Live-ops"]
 stack: ["Unity", "C#", "Addressables", "Mobile UI"]
 links:
   - { label: "Website", url: "https://days-after.com" }
