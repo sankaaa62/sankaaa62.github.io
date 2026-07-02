@@ -20,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Validate content
-        run: node scripts/validate-content.mjs || true  # TODO(Task 5): remove `|| true` once content lands
+        run: node scripts/validate-content.mjs
       - uses: withastro/action@v6
         with:
           node-version: 22

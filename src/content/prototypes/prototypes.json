@@ -1,1 +1,212 @@
-[]
+[
+  {
+    "id": "incrediblevertigo",
+    "title": "Incredible Vertigo",
+    "genre": { "en": "Idle / Casual", "ru": "Идлер / Казуальная" },
+    "year": 2020,
+    "clip": true
+  },
+  {
+    "id": "elonspaceadventure",
+    "title": "Elon Space Adventure",
+    "genre": { "en": "Arcade / Runner", "ru": "Аркада / Раннер" },
+    "year": 2020,
+    "clip": true
+  },
+  {
+    "id": "growit",
+    "title": "Flowers Lovers",
+    "genre": { "en": "Idle / Casual", "ru": "Идлер / Казуальная" },
+    "year": 2020,
+    "clip": true
+  },
+  {
+    "id": "urbankings",
+    "title": "Urban Kings",
+    "genre": { "en": "Arcade / Action", "ru": "Аркада / Экшен" },
+    "year": 2020,
+    "clip": true
+  },
+  {
+    "id": "soulsrock",
+    "title": "Souls Rock",
+    "genre": { "en": "Arcade / Battler", "ru": "Аркада / Баттлер" },
+    "year": 2020,
+    "clip": true
+  },
+  {
+    "id": "beapresident",
+    "title": "Be a President",
+    "genre": { "en": "Simulation", "ru": "Симулятор" },
+    "year": 2020,
+    "clip": true
+  },
+  {
+    "id": "skeeballleague",
+    "title": "Skee Ball League",
+    "genre": { "en": "Sports / Arcade", "ru": "Спорт / Аркада" },
+    "year": 2021,
+    "clip": false
+  },
+  {
+    "id": "partypong",
+    "title": "Party Pong",
+    "genre": { "en": "Sports / Arcade", "ru": "Спорт / Аркада" },
+    "year": 2021,
+    "clip": true
+  },
+  {
+    "id": "nunchakufighter",
+    "title": "Nunchaku Fighter",
+    "genre": { "en": "Action / Fighting", "ru": "Экшен / Файтинг" },
+    "year": 2021,
+    "clip": true
+  },
+  {
+    "id": "hyper-hockey",
+    "title": "Hyper Hockey",
+    "genre": { "en": "Sports / Arcade", "ru": "Спорт / Аркада" },
+    "year": 2021,
+    "clip": true
+  },
+  {
+    "id": "agentstretch",
+    "title": "Agent Stretch",
+    "genre": { "en": "Arcade / Action", "ru": "Аркада / Экшен" },
+    "year": 2021,
+    "clip": true
+  },
+  {
+    "id": "sloth-sadventure",
+    "title": "Sloth's Adventure",
+    "genre": { "en": "Arcade / Adventure", "ru": "Аркада / Приключение" },
+    "year": 2021,
+    "clip": true
+  },
+  {
+    "id": "octopusadventure",
+    "title": "Octopus Adventure",
+    "genre": { "en": "Arcade / Adventure", "ru": "Аркада / Приключение" },
+    "year": 2021,
+    "clip": true
+  },
+  {
+    "id": "carhook3d",
+    "title": "Car Hook 3D",
+    "genre": { "en": "Arcade / Physics", "ru": "Аркада / Физика" },
+    "year": 2021,
+    "clip": true
+  },
+  {
+    "id": "craftwar",
+    "title": "Craft War",
+    "genre": { "en": "Action / Strategy", "ru": "Экшен / Стратегия" },
+    "year": 2021,
+    "clip": true
+  },
+  {
+    "id": "toothpickrun",
+    "title": "Toothpick Run",
+    "genre": { "en": "Arcade / Runner", "ru": "Аркада / Раннер" },
+    "year": 2021,
+    "clip": true
+  },
+  {
+    "id": "blackandwhite",
+    "title": "Black and White",
+    "genre": { "en": "Puzzle", "ru": "Головоломка" },
+    "year": 2021,
+    "clip": true
+  },
+  {
+    "id": "barbershop",
+    "title": "Barber Shop",
+    "genre": { "en": "Simulation", "ru": "Симулятор" },
+    "year": 2021,
+    "clip": true
+  },
+  {
+    "id": "tuningrace",
+    "title": "Tuning Race",
+    "genre": { "en": "Racing / Simulation", "ru": "Гонки / Симулятор" },
+    "year": 2022,
+    "clip": true
+  },
+  {
+    "id": "evoride",
+    "title": "Evo Ride",
+    "genre": { "en": "Racing / Arcade", "ru": "Гонки / Аркада" },
+    "year": 2022,
+    "clip": true
+  },
+  {
+    "id": "almightyrun",
+    "title": "Almighty Run",
+    "genre": { "en": "Arcade / Runner", "ru": "Аркада / Раннер" },
+    "year": 2022,
+    "clip": true
+  },
+  {
+    "id": "tiedyeworkshop",
+    "title": "Tie-Dye Workshop",
+    "genre": { "en": "Simulation / Casual", "ru": "Симулятор / Казуальная" },
+    "year": 2022,
+    "clip": true
+  },
+  {
+    "id": "personalityrun",
+    "title": "Personality Run",
+    "genre": { "en": "Arcade / Runner", "ru": "Аркада / Раннер" },
+    "year": 2022,
+    "clip": true
+  },
+  {
+    "id": "factoryuniverse",
+    "title": "Factory Universe",
+    "genre": { "en": "Idle / Tycoon", "ru": "Идлер / Тайкун" },
+    "year": 2022,
+    "clip": true
+  },
+  {
+    "id": "idalpetsalon",
+    "title": "Ideal Pet Salon",
+    "genre": { "en": "Simulation", "ru": "Симулятор" },
+    "year": 2022,
+    "clip": true
+  },
+  {
+    "id": "wordtour",
+    "title": "Word Tour",
+    "genre": { "en": "Puzzle / Word", "ru": "Головоломка / Слова" },
+    "year": 2022,
+    "clip": true
+  },
+  {
+    "id": "junkyard-recycling",
+    "title": "Junkyard Recycling",
+    "genre": { "en": "Simulation / Tycoon", "ru": "Симулятор / Тайкун" },
+    "year": 2022,
+    "clip": true
+  },
+  {
+    "id": "kickmaster",
+    "title": "Kick Master",
+    "genre": { "en": "Sports / Action", "ru": "Спорт / Экшен" },
+    "year": 2022,
+    "clip": false
+  },
+  {
+    "id": "survive-the-assault",
+    "title": "Survive the Assault",
+    "genre": { "en": "Action / Shooter", "ru": "Экшен / Шутер" },
+    "year": 2023,
+    "clip": true
+  },
+  {
+    "id": "specialforcesswat",
+    "title": "Special Forces SWAT",
+    "genre": { "en": "Action / Shooter", "ru": "Экшен / Шутер" },
+    "year": 2023,
+    "clip": true
+  }
+]
