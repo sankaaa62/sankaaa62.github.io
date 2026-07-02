@@ -176,8 +176,10 @@ const protos = (await getCollection('prototypes')).sort((a, b) => b.data.year - 
     const shotsEl = modal.querySelector<HTMLElement>('.pm-shots');
     const iconEl = modal.querySelector<HTMLImageElement>('.pm-icon');
     let previousOverflow = '';
+    let lastCard: HTMLElement | null = null;
 
     const openModal = (card: HTMLElement) => {
+      lastCard = card;
       const id = card.dataset.id ?? '';
       const title = card.dataset.title ?? '';
       const genre = card.dataset.genre ?? '';
@@ -257,6 +259,12 @@ const protos = (await getCollection('prototypes')).sort((a, b) => b.data.year - 
         videoEl.load();
       }
       document.body.style.overflow = previousOverflow;
+      if (lastCard) {
+        const v = lastCard.querySelector('video');
+        if (v) { v.style.opacity = '0'; v.pause(); }
+        lastCard.style.transform = '';
+        lastCard = null;
+      }
     });
   }
 </script>
