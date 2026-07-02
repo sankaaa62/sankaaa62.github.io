@@ -1,7 +1,52 @@
 ---
+import { getCollection } from 'astro:content';
 import { t, type Locale } from '../i18n/ui';
 const { locale } = Astro.props as { locale: Locale };
+const protos = (await getCollection('prototypes')).sort((a, b) => b.data.year - a.data.year);
 ---
 <section id="prototypes" class="section container">
   <h2>{t(locale, 'prototypes.title')}</h2>
+  <p style="color:var(--muted);">{t(locale, 'prototypes.sub')}</p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;">
+    {protos.map((p) => (
+      <div class="proto-card reveal" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;">
+        <div style="position:relative;aspect-ratio:1;">
+          <img src={`/media/prototypes/${p.data.id}/icon.png`} alt={p.data.title} loading="lazy"
+               style="width:100%;height:100%;object-fit:cover;" />
+          {p.data.clip && (
+            <video muted loop playsinline preload="none"
+              poster={`/media/prototypes/${p.data.id}/poster.jpg`}
+              style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .25s;">
+              <source src={`/media/prototypes/${p.data.id}/clip.webm`} type="video/webm" />
+            </video>
+          )}
+        </div>
+        <div style="padding:10px 12px;">
+          <div style="font-weight:700;font-size:.92rem;">{p.data.title}</div>
+          <div class="mono" style="color:var(--muted);font-size:.75rem;">{p.data.genre[locale]} · {p.data.year}</div>
+        </div>
+      </div>
+    ))}
+  </div>
 </section>
+<script>
+  document.querySelectorAll('.proto-card').forEach((card) => {
+    const el = card as HTMLElement;
+    const video = el.querySelector('video');
+    el.addEventListener('pointerenter', () => {
+      if (video) { video.style.opacity = '1'; video.play().catch(() => {}); }
+    });
+    el.addEventListener('pointerleave', () => {
+      if (video) { video.style.opacity = '0'; video.pause(); }
+      el.style.transform = '';
+    });
+    el.addEventListener('pointermove', (e) => {
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      const ev = e as PointerEvent;
+      const r = el.getBoundingClientRect();
+      const x = (ev.clientX - r.left) / r.width - 0.5;
+      const y = (ev.clientY - r.top) / r.height - 0.5;
+      el.style.transform = `perspective(600px) rotateY(${x * 6}deg) rotateX(${-y * 6}deg) scale(1.03)`;
+    });
+  });
+</script>
