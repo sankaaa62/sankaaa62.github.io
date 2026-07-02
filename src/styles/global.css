@@ -44,6 +44,9 @@ img, video { max-width: 100%; display: block; }
 }
 .btn:hover { text-decoration: none; filter: brightness(1.1); }
 .btn.ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
+article :where(p, ul, ol) { margin: 0 0 1em; }
+article :where(ul, ol) { padding-left: 1.4em; }
+article li { margin-bottom: .35em; }
 /* прячем .reveal только когда JS точно есть (html.js ставится инлайн-скриптом в Base.astro) */
 html.js .reveal { opacity: 0; transform: translateY(24px); transition: opacity .6s, transform .6s; }
 html.js .reveal.visible { opacity: 1; transform: none; }
