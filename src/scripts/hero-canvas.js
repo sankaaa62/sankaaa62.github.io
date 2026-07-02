@@ -12,13 +12,14 @@ if (canvas && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
     }));
   };
   resize();
-  addEventListener('resize', resize);
+  let resizeTimer;
+  addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(resize, 120); });
   canvas.parentElement.addEventListener('pointermove', (e) => {
     const r = canvas.getBoundingClientRect();
     mouse.x = e.clientX - r.left; mouse.y = e.clientY - r.top;
   });
   canvas.parentElement.addEventListener('pointerleave', () => { mouse.x = -1e4; mouse.y = -1e4; });
-  (function tick() {
+  const tick = () => {
     ctx.clearRect(0, 0, w, h);
     for (const p of particles) {
       const dx = mouse.x - p.x, dy = mouse.y - p.y, d2 = dx * dx + dy * dy;
@@ -36,6 +37,11 @@ if (canvas && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
         ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
       }
     }
-    requestAnimationFrame(tick);
-  })();
+  };
+  let running = false, rafId;
+  const loop = () => { tick(); rafId = requestAnimationFrame(loop); };
+  new IntersectionObserver(([entry]) => {
+    if (entry.isIntersecting && !running) { running = true; loop(); }
+    else if (!entry.isIntersecting && running) { running = false; cancelAnimationFrame(rafId); }
+  }).observe(canvas);
 }
