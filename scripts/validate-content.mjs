@@ -31,7 +31,7 @@ if (!existsSync(protoPath)) {
       for (const p of list) {
         for (const k of ['id', 'title', 'genre', 'year']) if (p[k] == null) errors.push(`prototype ${p.id ?? '?'}: нет поля ${k}`);
         const dir = join('public/media/prototypes', p.id ?? '');
-        if (!existsSync(join(dir, 'icon.png'))) errors.push(`prototype ${p.id}: нет icon.png`);
+        if (!existsSync(join(dir, 'icon.webp'))) errors.push(`prototype ${p.id}: нет icon.webp`);
         if (p.clip) for (const f of ['clip.webm', 'poster.jpg'])
           if (!existsSync(join(dir, f))) errors.push(`prototype ${p.id}: clip=true, но нет ${f}`);
       }

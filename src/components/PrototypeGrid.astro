@@ -11,7 +11,7 @@ const protos = (await getCollection('prototypes')).sort((a, b) => b.data.year - 
     {protos.map((p) => (
       <div class="proto-card reveal" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;">
         <div style="position:relative;aspect-ratio:1;">
-          <img src={`/media/prototypes/${p.data.id}/icon.png`} alt={p.data.title} loading="lazy"
+          <img src={`/media/prototypes/${p.data.id}/icon.webp`} alt={p.data.title} loading="lazy"
                style="width:100%;height:100%;object-fit:cover;" />
           {p.data.clip && (
             <video muted loop playsinline preload="none"
@@ -30,23 +30,26 @@ const protos = (await getCollection('prototypes')).sort((a, b) => b.data.year - 
   </div>
 </section>
 <script>
-  document.querySelectorAll('.proto-card').forEach((card) => {
-    const el = card as HTMLElement;
-    const video = el.querySelector('video');
-    el.addEventListener('pointerenter', () => {
-      if (video) { video.style.opacity = '1'; video.play().catch(() => {}); }
+  if (matchMedia('(hover: hover) and (pointer: fine)').matches) {
+    document.querySelectorAll('.proto-card').forEach((card) => {
+      const el = card as HTMLElement;
+      el.style.transition = 'opacity .6s, transform .15s ease-out';
+      const video = el.querySelector('video');
+      el.addEventListener('pointerenter', () => {
+        if (video) { video.style.opacity = '1'; video.play().catch(() => {}); }
+      });
+      el.addEventListener('pointerleave', () => {
+        if (video) { video.style.opacity = '0'; video.pause(); }
+        el.style.transform = '';
+      });
+      el.addEventListener('pointermove', (e) => {
+        if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        const ev = e as PointerEvent;
+        const r = el.getBoundingClientRect();
+        const x = (ev.clientX - r.left) / r.width - 0.5;
+        const y = (ev.clientY - r.top) / r.height - 0.5;
+        el.style.transform = `perspective(600px) rotateY(${x * 6}deg) rotateX(${-y * 6}deg) scale(1.03)`;
+      });
     });
-    el.addEventListener('pointerleave', () => {
-      if (video) { video.style.opacity = '0'; video.pause(); }
-      el.style.transform = '';
-    });
-    el.addEventListener('pointermove', (e) => {
-      if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-      const ev = e as PointerEvent;
-      const r = el.getBoundingClientRect();
-      const x = (ev.clientX - r.left) / r.width - 0.5;
-      const y = (ev.clientY - r.top) / r.height - 0.5;
-      el.style.transform = `perspective(600px) rotateY(${x * 6}deg) rotateX(${-y * 6}deg) scale(1.03)`;
-    });
-  });
+  }
 </script>

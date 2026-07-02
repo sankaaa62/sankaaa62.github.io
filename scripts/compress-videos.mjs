@@ -1,4 +1,4 @@
-import { readdirSync, existsSync, mkdirSync, copyFileSync, statSync } from 'node:fs';
+import { readdirSync, existsSync, mkdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { execSync } from 'node:child_process';
 
@@ -11,7 +11,7 @@ for (const slug of readdirSync(STAGING, { withFileTypes: true }).filter(d => d.i
   if (!existsSync(icon)) { console.log(`skip ${slug}: нет chosen-icon.png`); continue; }
   const out = join(PUB, slug);
   mkdirSync(out, { recursive: true });
-  copyFileSync(icon, join(out, 'icon.png'));
+  execSync(`ffmpeg -y -i "${icon}" -vf "scale=320:320:force_original_aspect_ratio=increase,crop=320:320" -quality 82 "${join(out, 'icon.webp')}"`, { stdio: 'inherit' });
   if (existsSync(video)) {
     execSync(`ffmpeg -y -i "${video}" -t 12 -an -vf "scale=480:-2,fps=24" -c:v libvpx-vp9 -crf 40 -b:v 0 "${join(out, 'clip.webm')}"`, { stdio: 'inherit' });
     execSync(`ffmpeg -y -ss 2 -i "${join(out, 'clip.webm')}" -frames:v 1 -q:v 4 "${join(out, 'poster.jpg')}"`, { stdio: 'inherit' });
