@@ -1,5 +1,6 @@
 ---
 import { t, type Locale } from '../i18n/ui';
+import SocialIcons from './SocialIcons.astro';
 const { locale } = Astro.props as { locale: Locale };
 ---
 <section style="position:relative;overflow:hidden;">
@@ -8,10 +9,9 @@ const { locale } = Astro.props as { locale: Locale };
     <p class="mono" style="color:var(--accent);margin:0;">Aleksandr Kandakov</p>
     <h1>{t(locale, 'hero.title')}</h1>
     <p style="color:var(--muted);font-size:1.15rem;max-width:640px;">{t(locale, 'hero.sub')}</p>
-    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:24px;">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:24px;">
       <a class="btn" href={locale === 'ru' ? '/cv/Kandakov_CV_ru.pdf' : '/cv/Kandakov_CV_en.pdf'} download>{t(locale, 'hero.cv')}</a>
-      <a class="btn ghost" href="https://www.linkedin.com/in/sankaaa62/">LinkedIn</a>
-      <a class="btn ghost" href="https://t.me/sankaaa62">Telegram</a>
+      <SocialIcons />
     </div>
   </div>
 </section>
