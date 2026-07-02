@@ -15,6 +15,8 @@ const projects = defineCollection({
     stack: z.array(z.string()),
     links: z.array(z.object({ label: z.string(), url: z.url() })).default([]),
     youtube: z.string().optional(),
+    company: z.string(),
+    trailer: z.string().optional(),
     order: z.number(),
   }),
 });

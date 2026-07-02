@@ -11,6 +11,7 @@ links:
   - { label: "Website", url: "https://deadimpact.com" }
   - { label: "Google Play", url: "https://play.google.com/store/apps/details?id=games.synthez.zombie.survival.multiplayer" }
   - { label: "App Store", url: "https://apps.apple.com/us/app/dead-impact-survival-mmorpg/id6444281832" }
+company: "Reaction Games"
 order: 2
 ---
 
