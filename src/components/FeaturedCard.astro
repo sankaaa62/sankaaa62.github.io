@@ -1,0 +1,22 @@
+---
+import { localePath, type Locale } from '../i18n/ui';
+const { locale, project } = Astro.props as { locale: Locale; project: any };
+const slug = project.id.split('/')[1];
+const d = project.data;
+---
+<a class="reveal" href={localePath(locale, `/projects/${slug}/`)}
+   style="display:grid;grid-template-columns:1fr;gap:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;color:var(--text);text-decoration:none;">
+  {d.youtube
+    ? <img src={`https://i.ytimg.com/vi/${d.youtube}/hqdefault.jpg`} alt={d.title} loading="lazy" style="width:100%;aspect-ratio:16/9;object-fit:cover;" />
+    : <div style="aspect-ratio:16/9;background:var(--surface-2);display:grid;place-items:center;" class="mono">{d.title}</div>}
+  <div style="padding:18px 20px;">
+    <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline;">
+      <h3 style="margin:0;">{d.title}</h3>
+      <span class="tag">{d.genre}</span>
+    </div>
+    <p style="color:var(--muted);margin:.5em 0;">{d.tagline}</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      {d.metrics.map((m: string) => <span class="mono" style="color:var(--ok);font-size:.85rem;">{m}</span>)}
+    </div>
+  </div>
+</a>

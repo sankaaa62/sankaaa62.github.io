@@ -1,0 +1,40 @@
+---
+import '@fontsource-variable/inter';
+import '@fontsource-variable/jetbrains-mono';
+import '../styles/global.css';
+import { t, localePath, type Locale } from '../i18n/ui';
+
+interface Props { locale: Locale; title: string; description: string; path: string }
+const { locale, title, description, path } = Astro.props;
+const otherLocale: Locale = locale === 'en' ? 'ru' : 'en';
+---
+<!doctype html>
+<html lang={locale}>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{title}</title>
+  <meta name="description" content={description} />
+  <meta property="og:title" content={title} />
+  <meta property="og:description" content={description} />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content={new URL('/media/og.jpg', Astro.site)} />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="alternate" hreflang="en" href={new URL(path, Astro.site)} />
+  <link rel="alternate" hreflang="ru" href={new URL(`/ru${path}`, Astro.site)} />
+  <script is:inline>document.documentElement.classList.add('js');</script>
+</head>
+<body>
+  <header class="container" style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;padding-top:20px;padding-bottom:20px;">
+    <a href={localePath(locale, '/')} class="mono" style="color:var(--text);font-weight:700;">~/kandakov</a>
+    <nav style="display:flex;flex-wrap:wrap;gap:14px;row-gap:6px;align-items:center;font-size:.95rem;">
+      <a href={localePath(locale, '/#projects')}>{t(locale, 'nav.projects')}</a>
+      <a href={localePath(locale, '/#prototypes')}>{t(locale, 'nav.prototypes')}</a>
+      <a href={localePath(locale, '/#skills')}>{t(locale, 'nav.skills')}</a>
+      <a href={localePath(locale, '/#contact')}>{t(locale, 'nav.contact')}</a>
+      <a href={localePath(otherLocale, path)} class="tag">{otherLocale.toUpperCase()}</a>
+    </nav>
+  </header>
+  <slot />
+</body>
+</html>

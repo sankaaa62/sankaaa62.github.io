@@ -1,0 +1,12 @@
+---
+import { t, type Locale } from '../i18n/ui';
+const { locale } = Astro.props as { locale: Locale };
+const skills = ['Unity', 'C#', 'Multiplayer', 'ECS', 'DOTS', 'Gameplay Programming', 'Client-Server',
+  'Jobs', 'Burst', 'Performance Optimization', 'Mobile Optimization', 'Addressables', 'URP',
+  'Clean Architecture', 'SOLID', 'DI', 'Unit Testing', 'Code Review', 'Git', 'CI/CD',
+  'Team Leadership', 'Mentoring', 'AI-assisted development', 'Claude Code', 'Codex'];
+---
+<section id="skills" class="section container">
+  <h2>{t(locale, 'skills.title')}</h2>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">{skills.map((s) => <span class="tag">{s}</span>)}</div>
+</section>

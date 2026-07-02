@@ -1,0 +1,19 @@
+---
+title: "Dead Impact"
+tagline: "Кооп зомби-экшен-RPG на ECS/DOTS — 500K+ установок, 800K строк кода"
+role: "Unity Developer"
+period: "2023 — 2026"
+genre: "Кооперативная Action-RPG"
+platforms: ["Android", "iOS"]
+metrics: ["500K+ установок", "800K строк кода", "Команда из 8 человек"]
+stack: ["Unity", "ECS/DOTS", "Клиент-сервер", "Event Sourcing", "Jobs/Burst"]
+links:
+  - { label: "Google Play", url: "https://play.google.com/store/apps/details?id=games.synthez.zombie.survival.multiplayer" }
+  - { label: "App Store", url: "https://apps.apple.com/us/app/dead-impact-survival-mmorpg/id6444281832" }
+order: 2
+---
+
+Геймплейные системы на крупной кодовой базе ECS/DOTS: параметры юнитов,
+прогрессия классов, статы, ранги локаций, адаптивная сложность, легендарное
+оружие, синхронизация эффектов. Клиент-серверная архитектура, Event Sourcing,
+профилирование производительности, юнит-тесты, миграции данных.

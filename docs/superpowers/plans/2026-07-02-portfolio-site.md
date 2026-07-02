@@ -340,7 +340,8 @@ node scripts/validate-content.mjs
 - [ ] **Шаг 3.3: Схемы коллекций `src/content.config.ts`**
 
 ```ts
-import { defineCollection, z } from 'astro:content';
+import { defineCollection } from 'astro:content';
+import { z } from 'astro/zod';
 import { glob, file } from 'astro/loaders';
 
 const projects = defineCollection({
