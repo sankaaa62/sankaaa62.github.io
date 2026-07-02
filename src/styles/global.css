@@ -1,0 +1,52 @@
+:root {
+  --bg: #0e0f13;
+  --surface: #171922;
+  --surface-2: #1f2230;
+  --border: #2a2d3a;
+  --text: #e8e6e1;
+  --muted: #9a97a3;
+  --accent: #ff5c1a;
+  --accent-2: #ffb01a;
+  --ok: #5dcaa5;
+  --font-sans: 'Inter Variable', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
+  --radius: 12px;
+  --container: 1100px;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3 { line-height: 1.15; margin: 0 0 .5em; font-weight: 800; }
+h1 { font-size: clamp(2.2rem, 6vw, 4rem); }
+h2 { font-size: clamp(1.6rem, 4vw, 2.4rem); }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+img, video { max-width: 100%; display: block; }
+.container { max-width: var(--container); margin: 0 auto; padding: 0 20px; }
+.section { padding: 72px 0; }
+.mono { font-family: var(--font-mono); }
+.tag {
+  display: inline-block; padding: 2px 10px; border: 1px solid var(--border);
+  border-radius: 999px; font-family: var(--font-mono); font-size: .78rem;
+  color: var(--muted); background: var(--surface);
+}
+.btn {
+  display: inline-block; padding: 12px 22px; border-radius: var(--radius);
+  background: var(--accent); color: #fff; font-weight: 700;
+}
+.btn:hover { text-decoration: none; filter: brightness(1.1); }
+.btn.ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
+/* прячем .reveal только когда JS точно есть (html.js ставится инлайн-скриптом в Base.astro) */
+html.js .reveal { opacity: 0; transform: translateY(24px); transition: opacity .6s, transform .6s; }
+html.js .reveal.visible { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  html.js .reveal { opacity: 1; transform: none; transition: none; }
+  html { scroll-behavior: auto; }
+}
