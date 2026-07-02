@@ -1,7 +1,63 @@
 ---
-import type { Locale } from '../i18n/ui';
+import { t, type Locale } from '../i18n/ui';
 const { locale } = Astro.props as { locale: Locale };
 ---
 <footer class="section container" style="text-align:center;border-top:1px solid var(--border);">
-  <p class="mono" style="color:var(--muted);font-size:.8rem;">© 2026 Aleksandr Kandakov · built with Astro</p>
+  <button id="mg-start" class="btn ghost mono">▶ {t(locale, 'footer.game')}</button>
+  <div id="mg-wrap" hidden style="margin-top:16px;">
+    <canvas id="mg" width="320" height="420" style="margin:0 auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);touch-action:none;"></canvas>
+    <div class="mono" style="color:var(--muted);font-size:.8rem;margin-top:8px;">← → / swipe</div>
+  </div>
+  <p class="mono" style="color:var(--muted);font-size:.8rem;margin-top:24px;">© 2026 Aleksandr Kandakov · built with Astro</p>
 </footer>
+<script>
+  const btn = document.getElementById('mg-start') as HTMLButtonElement;
+  const wrap = document.getElementById('mg-wrap') as HTMLDivElement;
+  btn.addEventListener('click', () => {
+    wrap.hidden = !wrap.hidden;
+    if (!wrap.hidden) startGame();
+  });
+  let running = false;
+  function startGame() {
+    if (running) return;
+    running = true;
+    const c = document.getElementById('mg') as HTMLCanvasElement;
+    const ctx = c.getContext('2d')!;
+    const player = { x: 144, w: 32, h: 32 };
+    let blocks: { x: number; y: number; s: number }[] = [], score = 0, speed = 2, alive = true, dir = 0;
+    addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') dir = -1;
+      if (e.key === 'ArrowRight') dir = 1;
+    });
+    addEventListener('keyup', () => (dir = 0));
+    c.addEventListener('pointermove', (e) => {
+      const r = c.getBoundingClientRect();
+      player.x = Math.max(0, Math.min(c.width - player.w, e.clientX - r.left - player.w / 2));
+    });
+    (function tick() {
+      if (!alive) {
+        ctx.fillStyle = '#e8e6e1'; ctx.font = '20px monospace'; ctx.textAlign = 'center';
+        ctx.fillText('GAME OVER · ' + score, c.width / 2, 200);
+        ctx.font = '13px monospace'; ctx.fillText('click to restart', c.width / 2, 230);
+        c.addEventListener('click', () => { blocks = []; score = 0; speed = 2; alive = true; }, { once: true });
+        requestAnimationFrame(tick); return;
+      }
+      player.x = Math.max(0, Math.min(c.width - player.w, player.x + dir * 5));
+      if (Math.random() < 0.04) blocks.push({ x: Math.random() * (c.width - 24), y: -24, s: 24 });
+      speed += 0.0008;
+      ctx.clearRect(0, 0, c.width, c.height);
+      ctx.fillStyle = '#ff5c1a';
+      ctx.fillRect(player.x, c.height - 48, player.w, player.h);
+      ctx.fillStyle = '#9a97a3';
+      for (const b of blocks) {
+        b.y += speed;
+        ctx.fillRect(b.x, b.y, b.s, b.s);
+        if (b.y + b.s > c.height - 48 && b.y < c.height - 16 && b.x + b.s > player.x && b.x < player.x + player.w) alive = false;
+      }
+      blocks = blocks.filter((b) => b.y < c.height || (score++, false));
+      ctx.fillStyle = '#ffb01a'; ctx.font = '14px monospace'; ctx.textAlign = 'left';
+      ctx.fillText('score: ' + score, 10, 20);
+      requestAnimationFrame(tick);
+    })();
+  }
+</script>
