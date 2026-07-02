@@ -24,6 +24,10 @@ export const ui = {
     'project.links': 'Links',
     'project.back': '← All projects',
     'footer.game': 'press start',
+    'gallery.close': 'Close',
+    'gallery.prev': 'Previous screenshot',
+    'gallery.next': 'Next screenshot',
+    'gallery.screenshot': 'screenshot',
   },
   ru: {
     'nav.projects': 'Проекты',
@@ -47,6 +51,10 @@ export const ui = {
     'project.links': 'Ссылки',
     'project.back': '← Все проекты',
     'footer.game': 'press start',
+    'gallery.close': 'Закрыть',
+    'gallery.prev': 'Предыдущий скриншот',
+    'gallery.next': 'Следующий скриншот',
+    'gallery.screenshot': 'скриншот',
   },
 } as const;
 

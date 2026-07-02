@@ -49,7 +49,7 @@ const shots = existsSync(shotsDir)
     <Content />
     {shots.length > 0 && (
       <div style="margin-top:24px;">
-        <Gallery images={shots} alt={d.title} />
+        <Gallery images={shots} alt={d.title} locale={locale} />
       </div>
     )}
     {d.links.length > 0 && (
