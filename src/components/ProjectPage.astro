@@ -4,11 +4,13 @@ import { render } from 'astro:content';
 import Base from '../layouts/Base.astro';
 import Gallery from './Gallery.astro';
 import { t, localePath, type Locale } from '../i18n/ui';
+import { platformBadges } from '../lib/platforms';
 
 const { locale, project } = Astro.props as { locale: Locale; project: any };
 const d = project.data;
 const { Content } = await render(project);
 const slug = project.id.split('/')[1];
+const badges = platformBadges(d.platforms, { pc: t(locale, 'platform.pc'), mobile: t(locale, 'platform.mobile') });
 
 const shotsDir = `public/media/projects/${slug}`;
 const shots = existsSync(shotsDir)
@@ -23,10 +25,12 @@ const shots = existsSync(shotsDir)
     <a href={localePath(locale, '/#projects')} class="mono">{t(locale, 'project.back')}</a>
     <h1 style="margin-top:.5em;">{d.title}</h1>
     <p style="color:var(--muted);font-size:1.1rem;">{d.tagline}</p>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 24px;">
-      <span class="tag">{d.genre}</span>
-      {d.platforms.map((p: string) => <span class="tag">{p}</span>)}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0 24px;">
+      <span class="tag tag-genre">{d.genre}</span>
       <span class="tag">{d.period}</span>
+      {badges.map((b) => (
+        <span class="platform-badge lg" set:html={b.svg + `<span>${b.label}</span>`} />
+      ))}
     </div>
     {d.youtube && (
       <div style="aspect-ratio:16/9;margin-bottom:24px;">

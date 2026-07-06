@@ -1,11 +1,11 @@
 ---
 title: "Last Wish"
 tagline: "Интерактивная 3D визуальная новелла для PC с удмуртским нарративом — тимлид"
-role: "Lead Unity Developer / Tech Lead"
+role: "Tech Lead"
 period: "2023"
 genre: "3D визуальная новелла"
 platforms: ["PC (Steam)", "VK Play"]
-metrics: ["Релиз на 2 площадках", "Финалист акселератора Start Game"]
+metrics: ["Steam + VK Play", "Финалист Start Game"]
 stack: ["Unity", "C#", "QTE", "Липсинк", "Ветвящиеся диалоги"]
 links:
   - { label: "Website", url: "https://lastwish.fun" }

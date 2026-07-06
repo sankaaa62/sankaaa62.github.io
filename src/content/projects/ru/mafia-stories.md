@@ -5,7 +5,7 @@ role: "Lead Unity Developer"
 period: "2026"
 genre: "Idle Tycoon (F2P)"
 platforms: ["Android"]
-metrics: ["Команда из 3 человек", "2 контентных релиза", "Фичи ~в 2 раза быстрее"]
+metrics: ["Рефакторинг и процессы", "AI-пайплайн разработки"]
 stack: ["Unity", "C#", "Рефакторинг", "Инженерная культура"]
 links:
   - { label: "Google Play", url: "https://play.google.com/store/apps/details?id=com.TapTap.MafiaStoriesIdleTycoon" }

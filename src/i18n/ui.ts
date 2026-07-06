@@ -33,6 +33,8 @@ export const ui = {
     'gallery.next': 'Next screenshot',
     'gallery.screenshot': 'screenshot',
     'prototypes.store': 'View on Google Play',
+    'platform.pc': 'PC',
+    'platform.mobile': 'Mobile',
   },
   ru: {
     'nav.about': 'Обо мне',
@@ -65,6 +67,8 @@ export const ui = {
     'gallery.next': 'Следующий скриншот',
     'gallery.screenshot': 'скриншот',
     'prototypes.store': 'Открыть в Google Play',
+    'platform.pc': 'PC',
+    'platform.mobile': 'Mobile',
   },
 } as const;
 

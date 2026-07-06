@@ -1,11 +1,11 @@
 ---
 title: "Forsaken Kingdom"
 tagline: "Тёмно-фэнтезийный roguelite авто-баттлер для PC — единственный программист"
-role: "Senior Unity Developer (единственный программист)"
+role: "Senior Unity Developer"
 period: "2026 — н.в."
 genre: "Roguelite авто-баттлер / RPG"
 platforms: ["PC (Steam)"]
-metrics: ["Полная техническая ответственность"]
+metrics: ["Инди · соло-разработка"]
 stack: ["Unity", "C#", "Бой в реальном времени", "Мета-системы"]
 links:
   - { label: "Steam", url: "https://store.steampowered.com/app/4418240/Forsaken_Kingdom/" }
