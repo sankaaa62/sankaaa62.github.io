@@ -53,7 +53,8 @@ html.js .reveal.visible { opacity: 1; transform: none; }
 /* M.1: stagger — задержка reveal-перехода по индексу карточки в сетке (style="--i:n") */
 html.js .reveal { transition-delay: calc(var(--i, 0) * 60ms); }
 @media (prefers-reduced-motion: reduce) {
-  html.js .reveal { opacity: 1; transform: none; transition: none; }
+  html.js .reveal { opacity: 1; transform: none; }
+  html.js .reveal:not(.lift) { transition: none; }
   html { scroll-behavior: auto; }
 }
 
@@ -77,6 +78,15 @@ h2.reveal.visible::after { width: 48px; }
   transform: translateY(-3px) scale(1.02);
   border-color: var(--accent);
   box-shadow: 0 6px 24px rgba(255,92,26,.15);
+}
+/* fix: .reveal:not(.lift) отключает transition под reduced-motion, но .lift
+   элементы (карточки FeaturedCard/Gallery) одновременно и .reveal — им нужно
+   сохранить свой hover-переход (интерактивная отдача), убрав только
+   декоративный reveal-эффект появления. Явно возвращаем .lift transition —
+   селектор должен совпадать по специфичности с `html.js .reveal` (0,2,1),
+   иначе тот его перебивает независимо от порядка источника. */
+@media (prefers-reduced-motion: reduce) {
+  html.js .reveal.lift { transition: transform .2s, border-color .2s, box-shadow .2s; }
 }
 
 /* --- iter4 (M.3): фон v3 — два слоя пятен (реальные div'ы, не псевдоэлементы),

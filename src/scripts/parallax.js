@@ -27,19 +27,37 @@ if (layers.length && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
     scrollProgress = docHeight > 0 ? (window.scrollY / docHeight) * 2 - 1 : 0;
   };
 
+  // fix: rAF-луп не должен крутиться вхолостую вечно — как только текущие и
+  // целевые позиции сошлись (лерп практически завершён), останавливаем rAF и
+  // лениво перезапускаем его при следующем pointermove/scroll. rafId + running
+  // защищают от повторного запуска (double-start) из разных обработчиков.
+  const CONVERGE_EPS = 0.001;
+  let running = false;
+
+  const ensureRunning = () => {
+    if (running) return;
+    running = true;
+    requestAnimationFrame(tick);
+  };
+
   window.addEventListener('pointermove', (e) => {
     pointerX = (e.clientX / window.innerWidth) * 2 - 1;
     pointerY = (e.clientY / window.innerHeight) * 2 - 1;
+    ensureRunning();
   }, { passive: true });
 
-  window.addEventListener('scroll', updateScrollProgress, { passive: true });
+  window.addEventListener('scroll', () => {
+    updateScrollProgress();
+    ensureRunning();
+  }, { passive: true });
   window.addEventListener('resize', updateScrollProgress, { passive: true });
   updateScrollProgress();
 
   const vw = () => window.innerWidth;
   const vh = () => window.innerHeight;
 
-  const tick = () => {
+  function tick() {
+    let allConverged = true;
     if (!document.hidden) {
       layers.forEach((layer, i) => {
         const depth = layer.depth;
@@ -48,10 +66,20 @@ if (layers.length && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
         current[i].x = lerp(current[i].x, target[i].x, LERP);
         current[i].y = lerp(current[i].y, target[i].y, LERP);
         layer.el.style.transform = `translate(${current[i].x.toFixed(2)}px, ${current[i].y.toFixed(2)}px)`;
+        if (Math.abs(current[i].x - target[i].x) >= CONVERGE_EPS || Math.abs(current[i].y - target[i].y) >= CONVERGE_EPS) {
+          allConverged = false;
+        }
       });
+    } else {
+      allConverged = false; // страница скрыта — не гоняем rAF, но и не считаем это сходимостью; просто ждём следующего кадра видимости
+    }
+
+    if (allConverged) {
+      running = false;
+      return;
     }
     requestAnimationFrame(tick);
-  };
+  }
 
-  requestAnimationFrame(tick);
+  ensureRunning();
 }
