@@ -168,10 +168,21 @@ class SkillCloud {
   if (!tags.length) return;
 
   const cloud = new SkillCloud(canvas, tags);
-  cloud.attachPointer();
+  // fix (review): доворот за курсором включаем только на hover-способных
+  // устройствах с точным поинтером — на тач-устройствах pointermove стреляет
+  // при скролле/свайпе и дёргает сферу неожиданно для пользователя, листающего
+  // страницу. На тач остаётся только чистое автовращение.
+  if (matchMedia('(hover: hover) and (pointer: fine)').matches) {
+    cloud.attachPointer();
+  }
 
   canvas.style.display = 'block';
   section.classList.add('cloud-on');
+  // fix (review): вместо дублирующего CSS-правила #skills.cloud-on .skills-static
+  // переиспользуем существующую утилиту .sr-only — список остаётся в DOM/для
+  // скринридеров, но визуально скрыт, т.к. canvas теперь показывает то же самое.
+  const staticList = section.querySelector('.skills-static');
+  if (staticList) staticList.classList.add('sr-only');
 
   let resizeTimer;
   addEventListener('resize', () => {

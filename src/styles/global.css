@@ -50,18 +50,11 @@ img, video { max-width: 100%; display: block; }
 .btn.ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
 /* Q.3: утилита для визуально скрытого, но доступного скринридерам контента —
    используется, когда интерактивный canvas (aria-hidden) подменяет статичный
-   список визуально, но список должен остаться в DOM для a11y. */
+   список визуально, но список должен остаться в DOM для a11y. skill-cloud.js
+   переключает этот класс на .skills-static при успешной инициализации сферы
+   (см. Q.2) — без JS и при prefers-reduced-motion класс не добавляется,
+   список виден как раньше. */
 .sr-only {
-  position: absolute; width: 1px; height: 1px;
-  padding: 0; margin: -1px; overflow: hidden;
-  clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
-}
-/* Q.2/Q.3: когда skill-cloud.js успешно инициализировал canvas-сферу, он
-   добавляет .cloud-on секции #skills — статичный список тегов уходит из
-   визуального потока (canvas его заменяет), но остаётся в DOM/для скринридеров
-   (.sr-only), а не display:none, чтобы не терять доступный контент. Без JS и
-   при prefers-reduced-motion класс не добавляется — список виден как раньше. */
-#skills.cloud-on .skills-static {
   position: absolute; width: 1px; height: 1px;
   padding: 0; margin: -1px; overflow: hidden;
   clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
