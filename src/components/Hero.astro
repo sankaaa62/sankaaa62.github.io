@@ -26,10 +26,9 @@ const wordSpans = words.map((word) => {
     <div class="hero-text">
       <p class="mono" style="color:var(--accent);margin:0;">{t(locale, 'hero.greeting')}</p>
       <h1 class="hero-name" aria-label={name[locale]}>
-        {wordSpans.map((letters, wi) => (
+        {wordSpans.map((letters) => (
           <span class="nowrap">
             {letters.map(({ ch, i }) => <span class="ltr" style={`--d:${i}`}>{ch}</span>)}
-            {wi < wordSpans.length - 1 && ' '}
           </span>
         ))}
       </h1>
@@ -67,6 +66,7 @@ const wordSpans = words.map((word) => {
   .hero-text { min-width: 0; }
 
   .hero-name .nowrap { white-space: nowrap; display: inline-block; }
+  .hero-name .nowrap:not(:last-child) { margin-right: .28em; }
 
   html.js .ltr {
     display: inline-block;
@@ -80,6 +80,10 @@ const wordSpans = words.map((word) => {
   }
   @media (prefers-reduced-motion: reduce) {
     html.js .ltr { opacity: 1; transform: none; animation: none; }
+  }
+
+  @media (min-width: 720px) {
+    .hero-type-line { min-width: 23ch; }
   }
 
   .hero-cursor {
