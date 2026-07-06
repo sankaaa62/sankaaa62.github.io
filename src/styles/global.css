@@ -7,16 +7,19 @@
   --muted: #9a97a3;
   --accent: #ff5c1a;
   --accent-2: #ffb01a;
+  --teal: #2dd4bf;
   --ok: #5dcaa5;
   --font-sans: 'Inter Variable', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
   --radius: 12px;
   --container: 1100px;
+  --header-h: 68px;
 }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 body {
   margin: 0;
+  padding-top: var(--header-h);
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-sans);
@@ -24,6 +27,7 @@ body {
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
 }
+section[id], footer { scroll-margin-top: calc(var(--header-h) + 8px); }
 h1, h2, h3 { line-height: 1.15; margin: 0 0 .5em; font-weight: 800; }
 h1 { font-size: clamp(2.2rem, 6vw, 4rem); }
 h2 { font-size: clamp(1.6rem, 4vw, 2.4rem); }
@@ -156,3 +160,46 @@ h1 { text-shadow: 0 0 24px rgba(255,92,26,.25); }
 @media (max-width: 420px) {
   .brand-name { display: none; }
 }
+
+/* --- iter4 (N.1): header v2 — fixed, blur-подложка, auto-hide --- */
+.site-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: rgba(14, 15, 19, .75);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid transparent;
+  transition: transform .25s, border-color .25s;
+}
+.site-header.is-scrolled { border-bottom-color: var(--border); }
+.site-header.is-hidden { transform: translateY(-100%); }
+.header-inner {
+  height: var(--header-h);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* N.2: scroll-spy underline на пунктах навигации (тил — интерактив/навигация) */
+.site-nav a {
+  position: relative;
+  color: var(--text);
+}
+.site-nav a:hover { text-decoration: none; }
+.site-nav a::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -4px;
+  height: 2px;
+  width: 0;
+  background: var(--teal);
+  transition: width .25s;
+}
+.site-nav a:hover::after { width: 100%; opacity: .5; }
+.site-nav a.active::after { width: 100%; opacity: 1; }
+.site-nav a.tag::after { content: none; }
