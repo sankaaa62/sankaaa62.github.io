@@ -3,14 +3,33 @@ import { t, type Locale } from '../i18n/ui';
 import SocialIcons from './SocialIcons.astro';
 const { locale } = Astro.props as { locale: Locale };
 ---
-<section id="contact" class="section container" style="text-align:center;">
+<section id="contact" class="section container" style="text-align:center;padding:96px 0;">
+  <p class="mono reveal" style="color:var(--accent);font-size:.9rem;margin:0 0 8px;">{t(locale, 'contact.kicker')}</p>
   <h2 class="reveal">{t(locale, 'contact.title')}</h2>
-  <p class="mono" style="font-size:1.1rem;">
-    <a href="mailto:kandakov.sasha@gmail.com">kandakov.sasha@gmail.com</a> ·
-    <a href="https://t.me/sankaaa62">@sankaaa62</a> ·
-    <a href="https://www.linkedin.com/in/sankaaa62/">linkedin.com/in/sankaaa62</a>
+  <p class="reveal" style="color:var(--muted);max-width:52ch;margin:16px auto 0;">
+    {t(locale, 'contact.copy')}
   </p>
-  <div style="display:flex;justify-content:center;margin-top:14px;">
+  <div class="reveal" style="margin-top:32px;">
+    <a class="btn-contact" href="mailto:kandakov.sasha@gmail.com">{t(locale, 'contact.cta')}</a>
+  </div>
+  <div class="reveal" style="display:flex;justify-content:center;margin-top:28px;">
     <SocialIcons />
   </div>
 </section>
+
+<style>
+  .btn-contact {
+    display: inline-block;
+    padding: 16px 34px;
+    font-size: 1.05rem;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    border-radius: var(--radius);
+    transition: background .2s, transform .2s;
+  }
+  .btn-contact:hover {
+    background: rgba(255,92,26,.08);
+    transform: translateY(-2px);
+    text-decoration: none;
+  }
+</style>
