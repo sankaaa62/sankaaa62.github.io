@@ -6,7 +6,7 @@ const { images, alt, locale } = Astro.props as { images: string[]; alt: string; 
 <div class="gallery">
   <div class="gallery-grid">
     {images.map((src, i) => (
-      <button type="button" class="gallery-item" data-index={i} aria-label={`${alt} — ${t(locale, 'gallery.screenshot')} ${i + 1}, open larger`}>
+      <button type="button" class="gallery-item lift reveal" style={`--i:${i}`} data-index={i} aria-label={`${alt} — ${t(locale, 'gallery.screenshot')} ${i + 1}, open larger`}>
         <img src={src} loading="lazy" alt={`${alt} — ${t(locale, 'gallery.screenshot')} ${i + 1}`} />
       </button>
     ))}
@@ -35,13 +35,10 @@ const { images, alt, locale } = Astro.props as { images: string[]; alt: string; 
     overflow: hidden;
     cursor: pointer;
     line-height: 0;
-    transition: transform .15s, border-color .15s, box-shadow .15s;
   }
-  .gallery-item:hover, .gallery-item:focus-visible {
-    transform: translateY(-3px);
-    border-color: var(--accent);
-    box-shadow: 0 8px 20px rgba(0,0,0,.35);
-    outline: none;
+  .gallery-item:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
   }
   .gallery-item img {
     display: block;

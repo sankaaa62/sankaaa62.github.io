@@ -1,28 +1,39 @@
 ---
 import { existsSync } from 'node:fs';
-import { localePath, type Locale } from '../i18n/ui';
-const { locale, project } = Astro.props as { locale: Locale; project: any };
+import { t, localePath, type Locale } from '../i18n/ui';
+import { platformBadges } from '../lib/platforms';
+const { locale, project, index } = Astro.props as { locale: Locale; project: any; index?: number };
 const slug = project.id.split('/')[1];
 const d = project.data;
 const coverShotPath = `public/media/projects/${slug}/shot-1.webp`;
 const hasCoverShot = !d.youtube && existsSync(coverShotPath);
+const badges = platformBadges(d.platforms, { pc: t(locale, 'platform.pc'), mobile: t(locale, 'platform.mobile') });
 ---
-<a class="reveal" href={localePath(locale, `/projects/${slug}/`)}
-   style="display:grid;grid-template-columns:1fr;gap:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;color:var(--text);text-decoration:none;">
-  {d.youtube
-    ? <img src={`https://i.ytimg.com/vi/${d.youtube}/hqdefault.jpg`} alt={d.title} loading="lazy" style="width:100%;aspect-ratio:16/9;object-fit:cover;" />
-    : hasCoverShot
-      ? <img src={`/media/projects/${slug}/shot-1.webp`} alt={d.title} loading="lazy" style="width:100%;aspect-ratio:16/9;object-fit:cover;" />
-      : <div style="aspect-ratio:16/9;background:var(--surface-2);display:grid;place-items:center;" class="mono">{d.title}</div>}
+<a class="reveal lift" href={localePath(locale, `/projects/${slug}/`)}
+   style={`display:grid;grid-template-columns:1fr;gap:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;color:var(--text);text-decoration:none;--i:${index ?? 0}`}>
+  <div style="position:relative;">
+    {d.youtube
+      ? <img src={`https://i.ytimg.com/vi/${d.youtube}/hqdefault.jpg`} alt={d.title} loading="lazy" style="width:100%;aspect-ratio:16/9;object-fit:cover;" />
+      : hasCoverShot
+        ? <img src={`/media/projects/${slug}/shot-1.webp`} alt={d.title} loading="lazy" style="width:100%;aspect-ratio:16/9;object-fit:cover;" />
+        : <div style="aspect-ratio:16/9;background:var(--surface-2);display:grid;place-items:center;" class="mono">{d.title}</div>}
+    {badges.length > 0 && (
+      <div class="platform-badges-cover">
+        {badges.map((b) => (
+          <span class="platform-badge" set:html={b.svg + `<span>${b.label}</span>`} />
+        ))}
+      </div>
+    )}
+  </div>
   <div style="padding:18px 20px;">
     <h3 style="margin:0;">{d.title}</h3>
     <div class="mono" style="color:var(--muted);font-size:.8rem;margin-top:4px;">{d.company} · {d.role}</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
-      <span class="tag">{d.genre}</span>
+      <span class="tag tag-genre">{d.genre}</span>
     </div>
     <p style="color:var(--muted);margin:.5em 0;">{d.tagline}</p>
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
-      {d.metrics.map((m: string) => <span class="mono" style="color:var(--ok);font-size:.85rem;">{m}</span>)}
+      {d.metrics.map((m: string) => <span class="mono" style="color:var(--ok);font-size:.8rem;opacity:.9;">{m}</span>)}
     </div>
   </div>
 </a>

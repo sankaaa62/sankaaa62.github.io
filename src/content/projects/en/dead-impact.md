@@ -5,7 +5,7 @@ role: "Unity Developer"
 period: "2023 — 2026"
 genre: "Co-op Action-RPG"
 platforms: ["Android", "iOS"]
-metrics: ["500K+ installs", "800K lines of code", "Team of 8"]
+metrics: ["500K+ installs", "ECS/DOTS · 800K LoC"]
 stack: ["Unity", "ECS/DOTS", "Client-server", "Event Sourcing", "Jobs/Burst"]
 links:
   - { label: "Website", url: "https://deadimpact.com" }

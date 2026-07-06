@@ -2,12 +2,6 @@
 import { t, type Locale } from '../i18n/ui';
 const { locale } = Astro.props as { locale: Locale };
 
-const name: Record<Locale, string> = {
-  en: 'Aleksandr Kandakov',
-  ru: 'Александр Кандаков',
-};
-const subtitle = 'Senior Unity Developer · Mobile & PC';
-
 const paragraphs: Record<Locale, string[]> = {
   en: [
     'Unity / C# developer with 6+ years in gamedev — from hyper-casual games to mid-core multiplayer projects. Platforms: mobile and PC. Open to remote work. I started as the first developer at a startup: over 3+ years I grew the dev team from scratch, led a team of up to 8 programmers, built out the processes, and shipped 200+ prototypes plus releases with millions of installs.',
@@ -15,93 +9,34 @@ const paragraphs: Record<Locale, string[]> = {
     'At Taptap Studio, in a lead role, I stabilized a mobile idle tycoon and pulled it out of tech debt, and moved the team to agentic development (Claude Code, Codex) with strict review. Right now I work on live ops for Days After, a major survival hit (10M+ installs), and part-time as the sole developer of Forsaken Kingdom, a roguelite auto-battler for Steam.',
   ],
   ru: [
-    'Unity / C# разработчик, 6+ лет в геймдеве — от гиперказуальных игр до мидкорных мультиплеерных проектов. Платформы: Mobile и PC. Открыт к удалённой работе. Начинал первым разработчиком в стартапе: за 3+ года вырастил отдел разработки с нуля и руководил командой до 8 программистов, выстроил процессы, выпустил 200+ прототипов и релизы с миллионами установок.',
-    'После реструктуризации вёл техническую часть интерактивной 3D-новеллы под ПК «Последнее желание»: релиз в Steam и VK Play, финалист акселератора «Start Game». В Reaction Games 2+ года был одним из разработчиков Dead Impact — мобильной кооперативной action-RPG на ECS/DOTS, от tech launch до глобального самиздат-релиза (500K+ установок).',
-    'В Taptap Studio на lead-позиции стабилизировал и вывел из техдолга мобильный idle-тайкун, перевёл команду на агентскую разработку (Claude Code, Codex) со строгим ревью. Сейчас работаю над лайвопсом крупного survival-хита Days After (10M+ установок) и парт-тайм — единственный разработчик roguelite-автобатлера Forsaken Kingdom под Steam.',
+    'Unity / C# разработчик, 6+ лет в геймдеве — от гиперказуальных игр до мидкорных мультиплеерных проектов. Платформы: Mobile и PC. Открыт к удаленной работе. Начинал первым разработчиком в стартапе: за 3+ года вырастил отдел разработки с нуля и руководил командой до 8 программистов, выстроил процессы, выпустил 200+ прототипов и релизы с миллионами установок.',
+    'После реструктуризации вел техническую часть интерактивной 3D-новеллы под ПК «Последнее желание»: релиз в Steam и VK Play, финалист акселератора «Start Game». В Reaction Games 2+ года был одним из разработчиков Dead Impact — мобильной кооперативной action-RPG на ECS/DOTS, от tech launch до глобального самиздат-релиза (500K+ установок).',
+    'В Taptap Studio на lead-позиции стабилизировал и вывел из техдолга мобильный idle-тайкун, перевел команду на агентскую разработку (Claude Code, Codex) со строгим ревью. Сейчас работаю над лайвопсом крупного survival-хита Days After (10M+ установок) и парт-тайм — единственный разработчик roguelite-автобатлера Forsaken Kingdom под Steam.',
   ],
 };
 const text = paragraphs[locale];
 ---
 <section id="about" class="section container">
-  <h2>{t(locale, 'about.title')}</h2>
-  <div class="about-grid">
-    <div class="reveal about-photo">
-      <!-- TODO: replace with <img src="/media/me.webp"> when photo provided -->
-      <div class="about-photo-placeholder" aria-hidden="true">
-        <span class="mono about-photo-initials">AK</span>
-      </div>
-    </div>
-    <div class="reveal about-content">
-      <p class="about-name">{name[locale]}</p>
-      <p class="mono about-subtitle">{subtitle}</p>
-      {text.map((p) => (
-        <p class="about-paragraph">{p}</p>
-      ))}
-    </div>
+  <h2 class="reveal">{t(locale, 'about.title')}</h2>
+  <div class="reveal about-content">
+    {text.map((p) => (
+      <p class="about-paragraph">{p}</p>
+    ))}
   </div>
 </section>
 
 <style>
-  .about-grid {
-    display: grid;
-    grid-template-columns: 240px 1fr;
-    gap: 32px;
-    align-items: start;
-  }
-
-  .about-photo-placeholder {
-    width: 240px;
-    height: 240px;
-    border-radius: 24px;
-    background: var(--surface-2);
-    border: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .about-photo-initials {
-    font-size: 64px;
-    font-weight: 700;
-    color: var(--accent);
-  }
-
   .about-content {
-    min-width: 0;
-  }
-
-  .about-name {
-    font-weight: 800;
-    font-size: 1.6rem;
-    margin: 0 0 6px;
-    color: var(--text);
-  }
-
-  .about-subtitle {
-    color: var(--accent);
-    font-size: .95rem;
-    margin: 0 0 20px;
+    max-width: 70ch;
   }
 
   .about-paragraph {
     color: var(--text);
     line-height: 1.7;
     margin-bottom: .9em;
-    max-width: 62ch;
   }
 
   .about-paragraph:last-child {
     margin-bottom: 0;
-  }
-
-  @media (max-width: 720px) {
-    .about-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .about-photo {
-      max-width: 240px;
-      margin: 0 auto;
-    }
   }
 </style>

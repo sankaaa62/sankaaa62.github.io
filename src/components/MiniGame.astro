@@ -1,15 +1,51 @@
 ---
+import SocialIcons from './SocialIcons.astro';
 import { t, type Locale } from '../i18n/ui';
 const { locale } = Astro.props as { locale: Locale };
 ---
-<footer class="section container" style="text-align:center;border-top:1px solid var(--border);">
-  <button id="mg-start" class="btn ghost mono">▶ {t(locale, 'footer.game')}</button>
+<footer class="section container footer-wrap" style="text-align:center;border-top:1px solid var(--border);position:relative;">
+  <p class="mono" style="font-size:.95rem;margin:0 0 12px;">Aleksandr Kandakov</p>
+  <div style="display:flex;justify-content:center;">
+    <SocialIcons />
+  </div>
+  <p class="mono" style="color:var(--muted);font-size:.8rem;margin-top:24px;">© 2026 Aleksandr Kandakov</p>
   <div id="mg-wrap" hidden style="margin-top:16px;">
     <canvas id="mg" width="320" height="420" style="margin:0 auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);touch-action:none;"></canvas>
     <div class="mono" style="color:var(--muted);font-size:.8rem;margin-top:8px;">← → / swipe</div>
   </div>
-  <p class="mono" style="color:var(--muted);font-size:.8rem;margin-top:24px;">© 2026 Aleksandr Kandakov · built with Astro</p>
+  <button id="mg-start" class="footer-easter-egg" aria-label={t(locale, 'footer.game')} title={t(locale, 'footer.game')}>
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M7 7h10a3 3 0 0 1 3 3v4a2 2 0 0 1-2 2h-1.2a1.5 1.5 0 0 1-1.34-.83L15 14h-6l-.46 1.17A1.5 1.5 0 0 1 7.2 16H6a2 2 0 0 1-2-2v-4a3 3 0 0 1 3-3zm1.5 3.25a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5zm-1.5 2a.75.75 0 1 0 1.5 0 .75.75 0 0 0-1.5 0zm2-2a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5zm7.5.75a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm-2 2a1 1 0 1 0 0 2 1 1 0 0 0 0-2z" fill="currentColor"/>
+    </svg>
+  </button>
 </footer>
+
+<style>
+  .footer-easter-egg {
+    position: absolute;
+    right: 20px;
+    bottom: 20px;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    opacity: .5;
+    cursor: pointer;
+    transition: opacity .2s, color .2s;
+  }
+  .footer-easter-egg:hover,
+  .footer-easter-egg:focus-visible {
+    opacity: 1;
+    color: var(--teal);
+  }
+  .footer-easter-egg svg {
+    width: 100%;
+    height: 100%;
+  }
+</style>
+
 <script>
   const btn = document.getElementById('mg-start') as HTMLButtonElement;
   const wrap = document.getElementById('mg-wrap') as HTMLDivElement;

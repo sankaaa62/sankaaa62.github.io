@@ -1,11 +1,11 @@
 ---
 title: "Forsaken Kingdom"
 tagline: "Dark fantasy roguelite auto-battler for PC — sole programmer"
-role: "Senior Unity Developer (sole programmer)"
+role: "Senior Unity Developer"
 period: "2026 — present"
 genre: "Roguelite Auto-battler / RPG"
 platforms: ["PC (Steam)"]
-metrics: ["Full technical ownership"]
+metrics: ["Indie · solo development"]
 stack: ["Unity", "C#", "Real-time combat", "Meta systems"]
 links:
   - { label: "Steam", url: "https://store.steampowered.com/app/4418240/Forsaken_Kingdom/" }

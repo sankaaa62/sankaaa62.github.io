@@ -5,7 +5,7 @@ role: "Lead Unity Developer"
 period: "2026"
 genre: "Idle Tycoon (F2P)"
 platforms: ["Android"]
-metrics: ["Team of 3", "2 content releases", "~2x faster feature delivery"]
+metrics: ["Refactoring & processes", "AI dev pipeline"]
 stack: ["Unity", "C#", "Refactoring", "Engineering culture"]
 links:
   - { label: "Google Play", url: "https://play.google.com/store/apps/details?id=com.TapTap.MafiaStoriesIdleTycoon" }

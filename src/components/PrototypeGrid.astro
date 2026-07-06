@@ -5,37 +5,43 @@ const { locale } = Astro.props as { locale: Locale };
 const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 1 : 0) - (a.data.pin ? 1 : 0) || b.data.year - a.data.year);
 ---
 <section id="prototypes" class="section container">
-  <h2>{t(locale, 'prototypes.title')}</h2>
+  <h2 class="reveal">{t(locale, 'prototypes.title')}</h2>
   <p style="color:var(--muted);">{t(locale, 'prototypes.sub')}</p>
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;">
-    {protos.map((p) => (
-      <div class="proto-card reveal" role="button" tabindex="0"
-        data-id={p.data.id} data-title={p.data.title} data-genre={p.data.genre[locale]}
-        data-year={p.data.year} data-clip={p.data.clip ? '1' : '0'} data-shots={p.data.shots}
-        data-clip-full={p.data.clipFull ? '1' : '0'}
-        data-link={p.data.link ?? ''}
-        data-badge={p.data.badge ? p.data.badge[locale] : ''}
-        style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;cursor:pointer;">
-        <div style="position:relative;aspect-ratio:1;">
-          <img src={`/media/prototypes/${p.data.id}/icon.webp`} alt={p.data.title} loading="lazy"
-               style="width:100%;height:100%;object-fit:cover;" />
-          {p.data.clip && (
-            <video muted loop playsinline preload="none"
-              poster={`/media/prototypes/${p.data.id}/poster.jpg`}
-              style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .25s;">
-              <source src={`/media/prototypes/${p.data.id}/clip.webm`} type="video/webm" />
-            </video>
-          )}
-          {p.data.badge && (
-            <span class="proto-badge mono">{p.data.badge[locale]}</span>
-          )}
+  <div class="proto-carousel">
+    <button type="button" class="proto-arrow proto-arrow--prev" aria-label="Previous" data-dir="-1">‹</button>
+    <div class="proto-fade proto-fade--left" aria-hidden="true"></div>
+    <div class="proto-track">
+      {protos.map((p, i) => (
+        <div class="proto-card reveal" role="button" tabindex="0"
+          data-id={p.data.id} data-title={p.data.title} data-genre={p.data.genre[locale]}
+          data-year={p.data.year} data-clip={p.data.clip ? '1' : '0'} data-shots={p.data.shots}
+          data-clip-full={p.data.clipFull ? '1' : '0'}
+          data-link={p.data.link ?? ''}
+          data-badge={p.data.badge ? p.data.badge[locale] : ''}
+          style={`--i:${i};background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;cursor:pointer;`}>
+          <div style="position:relative;aspect-ratio:1;">
+            <img src={`/media/prototypes/${p.data.id}/icon.webp`} alt={p.data.title} loading="lazy"
+                 style="width:100%;height:100%;object-fit:cover;" />
+            {p.data.clip && (
+              <video muted loop playsinline preload="none"
+                poster={`/media/prototypes/${p.data.id}/poster.jpg`}
+                style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .25s;">
+                <source src={`/media/prototypes/${p.data.id}/clip.webm`} type="video/webm" />
+              </video>
+            )}
+            {p.data.badge && (
+              <span class="proto-badge mono">{p.data.badge[locale]}</span>
+            )}
+          </div>
+          <div style="padding:10px 12px;">
+            <div style="font-weight:700;font-size:.92rem;">{p.data.title}</div>
+            <div class="mono" style="color:var(--muted);font-size:.75rem;">{p.data.genre[locale]} · {p.data.year}</div>
+          </div>
         </div>
-        <div style="padding:10px 12px;">
-          <div style="font-weight:700;font-size:.92rem;">{p.data.title}</div>
-          <div class="mono" style="color:var(--muted);font-size:.75rem;">{p.data.genre[locale]} · {p.data.year}</div>
-        </div>
-      </div>
-    ))}
+      ))}
+    </div>
+    <div class="proto-fade proto-fade--right" aria-hidden="true"></div>
+    <button type="button" class="proto-arrow proto-arrow--next" aria-label="Next" data-dir="1">›</button>
   </div>
 </section>
 
@@ -108,6 +114,90 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
     font-size: .85rem;
     padding: 8px 16px;
     text-decoration: none;
+  }
+  .proto-carousel {
+    position: relative;
+    margin-top: 4px;
+  }
+  .proto-track {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .proto-track::-webkit-scrollbar {
+    display: none;
+  }
+  .proto-track .proto-card {
+    flex: 0 0 200px;
+    scroll-snap-align: start;
+  }
+  .proto-track .proto-card:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .proto-fade {
+    position: absolute;
+    top: 0;
+    bottom: 2px;
+    width: 32px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .2s;
+    z-index: 1;
+  }
+  .proto-fade--left {
+    left: 0;
+    background: linear-gradient(to right, var(--bg), transparent);
+  }
+  .proto-fade--right {
+    right: 0;
+    background: linear-gradient(to left, var(--bg), transparent);
+  }
+  .proto-fade.is-visible {
+    opacity: 1;
+  }
+  .proto-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 1.4rem;
+    cursor: pointer;
+    transition: transform .15s, border-color .15s, box-shadow .15s, opacity .15s;
+  }
+  .proto-arrow--prev {
+    left: -6px;
+  }
+  .proto-arrow--next {
+    right: -6px;
+  }
+  .proto-arrow:hover, .proto-arrow:focus-visible {
+    transform: translateY(-50%) translateY(-2px);
+    border-color: var(--accent);
+    box-shadow: 0 0 14px rgba(255,92,26,.3);
+    outline: none;
+  }
+  .proto-arrow:disabled {
+    opacity: 0;
+    pointer-events: none;
+  }
+  @media (hover: none) {
+    .proto-arrow {
+      display: none;
+    }
   }
   .proto-badge {
     position: absolute;
@@ -190,6 +280,36 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
 </style>
 
 <script>
+  {
+    const track = document.querySelector<HTMLElement>('.proto-track');
+    const prevBtn = document.querySelector<HTMLButtonElement>('.proto-arrow--prev');
+    const nextBtn = document.querySelector<HTMLButtonElement>('.proto-arrow--next');
+    const fadeLeft = document.querySelector<HTMLElement>('.proto-fade--left');
+    const fadeRight = document.querySelector<HTMLElement>('.proto-fade--right');
+
+    if (track) {
+      const updateEdges = () => {
+        const maxScroll = track.scrollWidth - track.clientWidth;
+        const atStart = track.scrollLeft <= 2;
+        const atEnd = track.scrollLeft >= maxScroll - 2;
+        if (prevBtn) prevBtn.disabled = atStart || maxScroll <= 0;
+        if (nextBtn) nextBtn.disabled = atEnd || maxScroll <= 0;
+        fadeLeft?.classList.toggle('is-visible', !atStart && maxScroll > 0);
+        fadeRight?.classList.toggle('is-visible', !atEnd && maxScroll > 0);
+      };
+
+      updateEdges();
+      track.addEventListener('scroll', updateEdges, { passive: true });
+      window.addEventListener('resize', updateEdges);
+
+      const scrollByCards = (dir: number) => {
+        track.scrollBy({ left: dir * 636, behavior: 'smooth' });
+      };
+      prevBtn?.addEventListener('click', () => scrollByCards(-1));
+      nextBtn?.addEventListener('click', () => scrollByCards(1));
+    }
+  }
+
   if (matchMedia('(hover: hover) and (pointer: fine)').matches) {
     document.querySelectorAll('.proto-card').forEach((card) => {
       const el = card as HTMLElement;
