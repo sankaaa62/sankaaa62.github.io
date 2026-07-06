@@ -30,10 +30,10 @@
 
 **Files:** Hero.astro, About.astro, MiniGame.astro, ui.ts, public/media/me.webp (из SankaaaFace.jpg в корне: конвертировать 640px webp, исходник скопировать в media-staging и удалить из корня), новый src/scripts/hero-type.js.
 
-- [ ] O.1 Визитка: слева текст (моно-строка «Hi, my name is» / «Привет, меня зовут», имя «Aleksandr Kandakov» крупно с посимвольным появлением (CSS stagger по span'ам), строка typewriter с ротацией ролей [Senior Unity Developer, Team Lead, ECS/DOTS · Multiplayer, AI-driven development] — тиловый мигающий курсор; CTA-ряд: кнопка CV + SocialIcons), справа портрет: круглый, 220-260px, оранжевое кольцо + мягкий glow, лёгкий float-дрейф. На мобильном портрет сверху.
-- [ ] O.2 About: убрать имя/подзаголовок и фото-слот (портрет теперь в hero) — только h2 + 3 абзаца (+ вычитка). Grid упростить.
-- [ ] O.3 Футер: «Aleksandr Kandakov» + «© 2026» + SocialIcons, БЕЗ «built with Astro». Мини-игра: убрать кнопку «press start»; вместо неё маленькая иконка-джойстик (inline SVG 20px, muted, без подписи, aria-label="?") в углу футера — клик разворачивает игру как раньше. Логика игры не меняется.
-- [ ] O.4 Проверка (обе локали, мобильный, портрет живой, typewriter крутится, пасхалка работает), сборка, коммит.
+- [x] O.1 Визитка: слева текст (моно-строка «Hi, my name is» / «Привет, меня зовут», имя «Aleksandr Kandakov» крупно с посимвольным появлением (CSS stagger по span'ам), строка typewriter с ротацией ролей [Senior Unity Developer, Team Lead, ECS/DOTS · Multiplayer, AI-driven development] — тиловый мигающий курсор; CTA-ряд: кнопка CV + SocialIcons), справа портрет: круглый, 220-260px, оранжевое кольцо + мягкий glow, лёгкий float-дрейф. На мобильном портрет сверху.
+- [x] O.2 About: убрать имя/подзаголовок и фото-слот (портрет теперь в hero) — только h2 + 3 абзаца (+ вычитка). Grid упростить.
+- [x] O.3 Футер: «Aleksandr Kandakov» + «© 2026» + SocialIcons, БЕЗ «built with Astro». Мини-игра: убрать кнопку «press start»; вместо неё маленькая иконка-джойстик (inline SVG 20px, muted, без подписи, aria-label="?") в углу футера — клик разворачивает игру как раньше. Логика игры не меняется.
+- [x] O.4 Проверка (обе локали, мобильный, портрет живой, typewriter крутится, пасхалка работает), сборка, коммит.
 
 ### Задача P: Get In Touch
 
