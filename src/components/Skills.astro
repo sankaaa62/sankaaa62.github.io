@@ -1,12 +1,33 @@
 ---
 import { t, type Locale } from '../i18n/ui';
 const { locale } = Astro.props as { locale: Locale };
-const skills = ['Unity', 'C#', 'Multiplayer', 'ECS', 'DOTS', 'Gameplay Programming', 'Client-Server',
-  'Jobs', 'Burst', 'Performance Optimization', 'Mobile Optimization', 'Addressables', 'URP',
-  'Clean Architecture', 'SOLID', 'DI', 'Unit Testing', 'Code Review', 'Git', 'CI/CD',
-  'Team Leadership', 'Mentoring', 'AI-assisted development', 'Claude Code', 'Codex'];
+
+// Q.1: три уровня важности для облака тегов (и для статичного fallback-списка).
+// tier 1 — крупные/оранж (флагманские компетенции), tier 2 — средние, tier 3 — мелкие/muted.
+const tier1 = ['Unity', 'C#', 'ECS/DOTS', 'Multiplayer'];
+const tier2 = ['Team Leadership', 'Performance Optimization', 'Client-Server', 'Jobs/Burst',
+  'Clean Architecture', 'DI', 'Unit Testing', 'AI-assisted development'];
+const tier3 = ['Addressables', 'URP', 'SOLID', 'Code Review', 'Git', 'CI/CD', 'Mentoring',
+  'Agile', 'Mobile Optimization', 'Gameplay Programming', 'Claude Code', 'Codex'];
+
+const tags = [
+  ...tier1.map((text) => ({ text, tier: 1 })),
+  ...tier2.map((text) => ({ text, tier: 2 })),
+  ...tier3.map((text) => ({ text, tier: 3 })),
+];
+const skills = [...tier1, ...tier2, ...tier3];
 ---
 <section id="skills" class="section container">
   <h2 class="reveal">{t(locale, 'skills.title')}</h2>
-  <div style="display:flex;gap:8px;flex-wrap:wrap;">{skills.map((s) => <span class="tag">{s}</span>)}</div>
+  <canvas id="skills-canvas" aria-hidden="true" data-tags={JSON.stringify(tags)}></canvas>
+  <div class="skills-static" style="display:flex;gap:8px;flex-wrap:wrap;">{skills.map((s) => <span class="tag">{s}</span>)}</div>
 </section>
+<script src="../scripts/skill-cloud.js"></script>
+
+<style>
+  #skills-canvas {
+    display: none;
+    width: 100%;
+    height: 380px;
+  }
+</style>
