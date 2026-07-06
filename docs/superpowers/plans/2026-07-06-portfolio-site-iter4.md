@@ -54,11 +54,11 @@
 
 **Files:** FeaturedCard.astro, ProjectPage.astro, 10 md (role/metrics правки), global.css.
 
-- [ ] R.1 Платформы: бейджи с мини-иконками (inline SVG: монитор для PC/Steam, смартфон для Android/iOS) на обложке карточки (верхний правый угол, полупрозрачная тёмная подложка) — сразу видно PC+mobile.
-- [ ] R.2 Роль кратко: "Unity Developer", "Senior Unity Developer", "Lead Unity Developer", "Tech Lead" — без скобок/уточнений (в md, обе локали).
-- [ ] R.3 Метрики: максимум 2 на карточку. Пересмотр: days-after ["10M+ installs"] (+ "Live-ops" убрать? оставить 2: 10M+, Live-ops); dead-impact ["500K+ installs", "ECS/DOTS · 800K LoC"]; forsaken-kingdom ["Indie · solo development"/«Инди · соло-разработка»]; mafia-stories ["Refactoring & processes"/«Рефакторинг и процессы», "AI dev pipeline"/«AI-пайплайн разработки»]; last-wish ["Steam + VK Play", "Start Game finalist"]. RU зеркально.
-- [ ] R.4 Акценты: жанровый тег — фиолетовая рамка/текст; платформенные бейджи — тил; метрики зелёные как были. Проверить «один доминирующий акцент на блок».
-- [ ] R.5 Проверка (карточки собраны, не перегружены), сборка, коммит.
+- [x] R.1 Платформы: бейджи с мини-иконками (inline SVG: монитор для PC/Steam, смартфон для Android/iOS) на обложке карточки (верхний правый угол, полупрозрачная тёмная подложка) — сразу видно PC+mobile.
+- [x] R.2 Роль кратко: "Unity Developer", "Senior Unity Developer", "Lead Unity Developer", "Tech Lead" — без скобок/уточнений (в md, обе локали).
+- [x] R.3 Метрики: максимум 2 на карточку. Пересмотр: days-after ["10M+ installs"] (+ "Live-ops" убрать? оставить 2: 10M+, Live-ops); dead-impact ["500K+ installs", "ECS/DOTS · 800K LoC"]; forsaken-kingdom ["Indie · solo development"/«Инди · соло-разработка»]; mafia-stories ["Refactoring & processes"/«Рефакторинг и процессы», "AI dev pipeline"/«AI-пайплайн разработки»]; last-wish ["Steam + VK Play", "Start Game finalist"]. RU зеркально.
+- [x] R.4 Акценты: жанровый тег — фиолетовая рамка/текст; платформенные бейджи — тил; метрики зелёные как были. Проверить «один доминирующий акцент на блок».
+- [x] R.5 Проверка (карточки собраны, не перегружены), сборка, коммит.
 
 ### Задача S: Редакторский проход
 
