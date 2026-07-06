@@ -1,6 +1,6 @@
 ---
 title: "Days After"
-tagline: "Мобильная survival action-RPG, 10M+ установок, издаётся с MY.GAMES"
+tagline: "Мобильная survival action-RPG на 10M+ установок, издается с MY.GAMES"
 role: "Unity Developer"
 period: "2026 — н.в."
 genre: "Survival RPG"
@@ -17,7 +17,7 @@ order: 1
 ---
 
 Мобильный survival action-RPG с 10M+ установок. Разработка — Reaction Games,
-издание в партнёрстве с MY.GAMES. Сейчас на live-ops.
+издание в партнерстве с MY.GAMES. Сейчас на live-ops.
 
 - Продуктовая разработка на C#/Unity3D: поддержка и новый функционал
 - UI под мобильные платформы

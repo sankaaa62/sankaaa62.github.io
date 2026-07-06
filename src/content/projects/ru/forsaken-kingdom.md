@@ -1,6 +1,6 @@
 ---
 title: "Forsaken Kingdom"
-tagline: "Тёмно-фэнтезийный roguelite авто-баттлер для PC — единственный программист"
+tagline: "Темное фэнтези, roguelite авто-баттлер для PC — единственный программист"
 role: "Senior Unity Developer"
 period: "2026 — н.в."
 genre: "Roguelite авто-баттлер / RPG"
@@ -13,7 +13,7 @@ company: "Quantum Gear Studios"
 order: 3
 ---
 
-Тёмно-фэнтезийный roguelite-автобатлер / RPG под ПК (Steam, в разработке).
+Темное фэнтези, roguelite-автобатлер / RPG под ПК (Steam, в разработке).
 
 - Единственный программист проекта: полная техническая ответственность
   за всю кодовую базу

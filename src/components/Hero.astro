@@ -9,7 +9,7 @@ const name: Record<Locale, string> = {
 };
 const firstRole = 'Senior Unity Developer';
 // разбиваем имя на слова, слова на буквы: пробелы остаются обычными пробелами
-// между nowrap-обёртками, чтобы перенос строки был только по границе слова.
+// между nowrap-обертками, чтобы перенос строки был только по границе слова.
 const words = name[locale].split(' ');
 let letterCounter = 0;
 const wordSpans = words.map((word) => {

@@ -1,6 +1,6 @@
 // Q.1: интерактивное canvas-облако тегов навыков (vanilla, без библиотек).
 // Fibonacci-сфера + автовращение + доворот за курсором; глубина -> размер/альфа.
-// Полностью не инициализируется при prefers-reduced-motion (статичный список остаётся).
+// Полностью не инициализируется при prefers-reduced-motion (статичный список остается).
 
 /**
  * @typedef {{ text: string, tier: 1 | 2 | 3 }} SkillTag
@@ -25,7 +25,7 @@ class SkillCloud {
     this.ctx = canvas.getContext('2d');
     this.tags = tags;
     this.points = this._fibonacciSphere(tags.length);
-    this.rotX = 0.35; // лёгкий постоянный наклон по X
+    this.rotX = 0.35; // легкий постоянный наклон по X
     this.rotY = 0;
     this.autoSpeed = 0.15; // рад/с вокруг Y
     this.targetTiltX = 0.35;
@@ -170,8 +170,8 @@ class SkillCloud {
   const cloud = new SkillCloud(canvas, tags);
   // fix (review): доворот за курсором включаем только на hover-способных
   // устройствах с точным поинтером — на тач-устройствах pointermove стреляет
-  // при скролле/свайпе и дёргает сферу неожиданно для пользователя, листающего
-  // страницу. На тач остаётся только чистое автовращение.
+  // при скролле/свайпе и дергает сферу неожиданно для пользователя, листающего
+  // страницу. На тач остается только чистое автовращение.
   if (matchMedia('(hover: hover) and (pointer: fine)').matches) {
     cloud.attachPointer();
   }
@@ -179,7 +179,7 @@ class SkillCloud {
   canvas.style.display = 'block';
   section.classList.add('cloud-on');
   // fix (review): вместо дублирующего CSS-правила #skills.cloud-on .skills-static
-  // переиспользуем существующую утилиту .sr-only — список остаётся в DOM/для
+  // переиспользуем существующую утилиту .sr-only — список остается в DOM/для
   // скринридеров, но визуально скрыт, т.к. canvas теперь показывает то же самое.
   const staticList = section.querySelector('.skills-static');
   if (staticList) staticList.classList.add('sr-only');
