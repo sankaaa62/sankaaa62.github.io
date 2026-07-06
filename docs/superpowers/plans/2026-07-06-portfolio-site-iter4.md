@@ -12,19 +12,19 @@
 
 **Files:** global.css, src/scripts/reveal.js, новый src/scripts/parallax.js, Base.astro (подключение), точечные правки компонентов (классы .lift, stagger-атрибуты).
 
-- [ ] M.1 Reveal v2: заголовки секций `<h2>` получают полосу-подчёркивание (оранж, ширина 0→48px при .visible); карточки в сетках — stagger через `transition-delay: calc(var(--i) * 60ms)` (проставить style="--i:n" при рендере списков в Metrics/FeaturedCard/PrototypeGrid/Gallery).
-- [ ] M.2 .lift: единый hover-класс (transform: translateY(-3px) scale(1.02); border-color accent; box-shadow glow) — применить к карточкам проектов, прототипов, иконкам, кнопкам. Существующий tilt прототипов сохранить (он богаче) — .lift для остальных.
-- [ ] M.3 Фон v3: два слоя пятен (::before оранж+тил, ::after добавить фиолет к шуму ИЛИ отдельный div-слой) с разными keyframes в противофазе; parallax.js: на pointermove сдвиг слоёв ±2% (lerp-сглаживание), на scroll ±4% (rAF-троттлинг); reduced-motion выключает.
-- [ ] M.4 Проверка (визуально: reveal каскад, полосы заголовков, фон реагирует на курсор и скролл), сборка, коммит.
+- [x] M.1 Reveal v2: заголовки секций `<h2>` получают полосу-подчёркивание (оранж, ширина 0→48px при .visible); карточки в сетках — stagger через `transition-delay: calc(var(--i) * 60ms)` (проставить style="--i:n" при рендере списков в Metrics/FeaturedCard/PrototypeGrid/Gallery).
+- [x] M.2 .lift: единый hover-класс (transform: translateY(-3px) scale(1.02); border-color accent; box-shadow glow) — применить к карточкам проектов, прототипов, иконкам, кнопкам. Существующий tilt прототипов сохранить (он богаче) — .lift для остальных.
+- [x] M.3 Фон v3: два слоя пятен (::before оранж+тил, ::after добавить фиолет к шуму ИЛИ отдельный div-слой) с разными keyframes в противофазе; parallax.js: на pointermove сдвиг слоёв ±2% (lerp-сглаживание), на scroll ±4% (rAF-троттлинг); reduced-motion выключает.
+- [x] M.4 Проверка (визуально: reveal каскад, полосы заголовков, фон реагирует на курсор и скролл), сборка, коммит.
 
 ### Задача N: Header v2 (auto-hide + scroll-spy)
 
 **Files:** Base.astro, global.css, новый src/scripts/header.js.
 
-- [ ] N.1 Header становится fixed: blur-подложка (backdrop-filter), скрытие translateY(-100%) при скролле вниз >80px, появление при скролле вверх; лёгкая тень при «отлипании» от верха.
-- [ ] N.2 Scroll-spy: IntersectionObserver по секциям (#about,#projects,#prototypes,#skills,#contact) → активному пункту nav тиловая полоска-underline (анимированная). Работает на главной; на страницах проектов header просто sticky без spy.
-- [ ] N.3 Компенсация: body padding-top; якорные ссылки со scroll-margin-top.
-- [ ] N.4 Проверка в динамике (скролл вниз/вверх, подсветка меняется), мобильный, сборка, коммит.
+- [x] N.1 Header становится fixed: blur-подложка (backdrop-filter), скрытие translateY(-100%) при скролле вниз >80px, появление при скролле вверх; лёгкая тень при «отлипании» от верха.
+- [x] N.2 Scroll-spy: IntersectionObserver по секциям (#about,#projects,#prototypes,#skills,#contact) → активному пункту nav тиловая полоска-underline (анимированная). Работает на главной; на страницах проектов header просто sticky без spy.
+- [x] N.3 Компенсация: body padding-top; якорные ссылки со scroll-margin-top.
+- [x] N.4 Проверка в динамике (скролл вниз/вверх, подсветка меняется), мобильный, сборка, коммит.
 
 ### Задача O: Hero-визитка + футер + пасхалка
 
