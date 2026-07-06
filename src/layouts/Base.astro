@@ -36,7 +36,7 @@ const otherLocale: Locale = locale === 'en' ? 'ru' : 'en';
         </svg>
         <span class="brand-name">Kandakov</span>
       </a>
-      <nav class="site-nav" style="display:flex;flex-wrap:wrap;gap:14px;row-gap:6px;align-items:center;font-size:.95rem;">
+      <nav class="site-nav">
         <a href={localePath(locale, '/#about')} data-section="about">{t(locale, 'nav.about')}</a>
         <a href={localePath(locale, '/#projects')} data-section="projects">{t(locale, 'nav.projects')}</a>
         <a href={localePath(locale, '/#prototypes')} data-section="prototypes">{t(locale, 'nav.prototypes')}</a>
