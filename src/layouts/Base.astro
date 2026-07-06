@@ -25,6 +25,8 @@ const otherLocale: Locale = locale === 'en' ? 'ru' : 'en';
   <script is:inline>document.documentElement.classList.add('js');</script>
 </head>
 <body>
+  <div id="bg-a" aria-hidden="true"><div class="bg-inner"></div></div>
+  <div id="bg-b" aria-hidden="true"><div class="bg-inner"></div></div>
   <header class="container" style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;padding-top:20px;padding-bottom:20px;">
     <a href={localePath(locale, '/')} class="brand mono" aria-label="Kandakov">
       <svg class="brand-mark" width="32" height="32" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -43,5 +45,6 @@ const otherLocale: Locale = locale === 'en' ? 'ru' : 'en';
     </nav>
   </header>
   <slot />
+  <script src="../scripts/parallax.js"></script>
 </body>
 </html>

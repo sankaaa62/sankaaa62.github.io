@@ -9,8 +9,8 @@ const items = [
 ];
 ---
 <div class="container" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;">
-  {items.map((m) => (
-    <div class="reveal" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;">
+  {items.map((m, i) => (
+    <div class="reveal" style={`--i:${i};background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;`}>
       <div class="mono" style="font-size:2rem;font-weight:800;color:var(--accent-2);">
         {m.prefix ?? ''}<span class="counter" data-target={m.value}>0</span>{m.suffix}
       </div>

@@ -26,9 +26,9 @@ const title = locale === 'ru'
   <Metrics locale={locale} />
   <About locale={locale} />
   <section id="projects" class="section container">
-    <h2>{t(locale, 'featured.title')}</h2>
+    <h2 class="reveal">{t(locale, 'featured.title')}</h2>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;">
-      {projects.map((p) => <FeaturedCard locale={locale} project={p} />)}
+      {projects.map((p, i) => <FeaturedCard locale={locale} project={p} index={i} />)}
     </div>
   </section>
   <PrototypeGrid locale={locale} />

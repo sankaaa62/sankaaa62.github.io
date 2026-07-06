@@ -1,14 +1,14 @@
 ---
 import { existsSync } from 'node:fs';
 import { localePath, type Locale } from '../i18n/ui';
-const { locale, project } = Astro.props as { locale: Locale; project: any };
+const { locale, project, index } = Astro.props as { locale: Locale; project: any; index?: number };
 const slug = project.id.split('/')[1];
 const d = project.data;
 const coverShotPath = `public/media/projects/${slug}/shot-1.webp`;
 const hasCoverShot = !d.youtube && existsSync(coverShotPath);
 ---
-<a class="reveal" href={localePath(locale, `/projects/${slug}/`)}
-   style="display:grid;grid-template-columns:1fr;gap:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;color:var(--text);text-decoration:none;">
+<a class="reveal lift" href={localePath(locale, `/projects/${slug}/`)}
+   style={`display:grid;grid-template-columns:1fr;gap:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;color:var(--text);text-decoration:none;--i:${index ?? 0}`}>
   {d.youtube
     ? <img src={`https://i.ytimg.com/vi/${d.youtube}/hqdefault.jpg`} alt={d.title} loading="lazy" style="width:100%;aspect-ratio:16/9;object-fit:cover;" />
     : hasCoverShot

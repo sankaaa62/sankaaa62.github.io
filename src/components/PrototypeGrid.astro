@@ -5,17 +5,17 @@ const { locale } = Astro.props as { locale: Locale };
 const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 1 : 0) - (a.data.pin ? 1 : 0) || b.data.year - a.data.year);
 ---
 <section id="prototypes" class="section container">
-  <h2>{t(locale, 'prototypes.title')}</h2>
+  <h2 class="reveal">{t(locale, 'prototypes.title')}</h2>
   <p style="color:var(--muted);">{t(locale, 'prototypes.sub')}</p>
   <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;">
-    {protos.map((p) => (
+    {protos.map((p, i) => (
       <div class="proto-card reveal" role="button" tabindex="0"
         data-id={p.data.id} data-title={p.data.title} data-genre={p.data.genre[locale]}
         data-year={p.data.year} data-clip={p.data.clip ? '1' : '0'} data-shots={p.data.shots}
         data-clip-full={p.data.clipFull ? '1' : '0'}
         data-link={p.data.link ?? ''}
         data-badge={p.data.badge ? p.data.badge[locale] : ''}
-        style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;cursor:pointer;">
+        style={`--i:${i};background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;cursor:pointer;`}>
         <div style="position:relative;aspect-ratio:1;">
           <img src={`/media/prototypes/${p.data.id}/icon.webp`} alt={p.data.title} loading="lazy"
                style="width:100%;height:100%;object-fit:cover;" />

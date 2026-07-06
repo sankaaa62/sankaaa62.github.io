@@ -50,21 +50,57 @@ article li { margin-bottom: .35em; }
 /* прячем .reveal только когда JS точно есть (html.js ставится инлайн-скриптом в Base.astro) */
 html.js .reveal { opacity: 0; transform: translateY(24px); transition: opacity .6s, transform .6s; }
 html.js .reveal.visible { opacity: 1; transform: none; }
+/* M.1: stagger — задержка reveal-перехода по индексу карточки в сетке (style="--i:n") */
+html.js .reveal { transition-delay: calc(var(--i, 0) * 60ms); }
 @media (prefers-reduced-motion: reduce) {
   html.js .reveal { opacity: 1; transform: none; transition: none; }
   html { scroll-behavior: auto; }
 }
 
-/* --- iter3: заметно живой фон --- */
-body::before {
-  content: ""; position: fixed; inset: -20%; z-index: -2; pointer-events: none;
+/* M.1: полоса-подчёркивание у заголовков секций */
+h2.reveal { position: relative; }
+h2.reveal::after {
+  content: ""; display: block; height: 3px; width: 0; margin-top: .3em;
+  background: var(--accent);
+  transition: width .5s .15s;
+}
+h2.reveal.visible::after { width: 48px; }
+@media (prefers-reduced-motion: reduce) {
+  h2.reveal::after { transition: none; width: 48px; }
+}
+
+/* M.2: единый hover-lift для карточек (featured, gallery items) */
+.lift {
+  transition: transform .2s, border-color .2s, box-shadow .2s;
+}
+.lift:hover {
+  transform: translateY(-3px) scale(1.02);
+  border-color: var(--accent);
+  box-shadow: 0 6px 24px rgba(255,92,26,.15);
+}
+
+/* --- iter4 (M.3): фон v3 — два слоя пятен (реальные div'ы, не псевдоэлементы),
+   т.к. parallax.js должен трансформировать их из JS. Структура на слой:
+   #bg-a / #bg-b (outer, получает JS-параллакс transform) > .bg-inner
+   (получает CSS keyframes анимацию дыхания/дрейфа). Так transform из JS
+   и transform из CSS-анимации не конфликтуют (разные элементы). */
+#bg-a, #bg-b {
+  position: fixed; inset: -20%; pointer-events: none; will-change: transform;
+}
+#bg-a { z-index: -3; }
+#bg-b { z-index: -2; }
+#bg-a .bg-inner, #bg-b .bg-inner {
+  position: absolute; inset: 0; will-change: transform;
+}
+#bg-a .bg-inner {
   background:
     radial-gradient(600px 400px at 15% 10%, rgba(255,92,26,.16), transparent 70%),
-    radial-gradient(700px 500px at 85% 30%, rgba(124,92,255,.17), transparent 70%),
     radial-gradient(600px 500px at 50% 95%, rgba(45,212,191,.13), transparent 70%);
-  transform-origin: center center;
   animation: aurora 22s ease-in-out infinite alternate;
-  will-change: transform;
+}
+#bg-b .bg-inner {
+  background: radial-gradient(700px 500px at 85% 30%, rgba(124,92,255,.17), transparent 70%);
+  animation: aurora-violet 27s ease-in-out infinite alternate;
 }
 body::after {
   content: ""; position: fixed; inset: -20%; z-index: -1; pointer-events: none; opacity: .55;
@@ -77,12 +113,19 @@ body::after {
   50% { transform: translate(5%, 6%) scale(1.12); }
   100% { transform: translate(-4%, 7%) scale(1.06); }
 }
+/* противофаза: стартует и масштабируется зеркально относительно aurora */
+@keyframes aurora-violet {
+  0% { transform: translate(6%, 5%) scale(1.1); }
+  50% { transform: translate(-5%, -6%) scale(1); }
+  100% { transform: translate(4%, -3%) scale(1.05); }
+}
 @keyframes grain-drift {
   from { transform: translate(0, 0); }
   to { transform: translate(-4%, 3%); }
 }
 @media (prefers-reduced-motion: reduce) {
-  body::before, body::after { animation: none; transform: none; }
+  #bg-a .bg-inner, #bg-b .bg-inner, body::after { animation: none; transform: none; }
+  #bg-a, #bg-b { transform: none !important; }
 }
 h1 { text-shadow: 0 0 24px rgba(255,92,26,.25); }
 .btn { box-shadow: 0 0 18px rgba(255,92,26,.25); }
