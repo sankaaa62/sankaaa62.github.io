@@ -463,6 +463,10 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
 
     protoWrap?.addEventListener('pointerenter', () => pauseCarousel('hover'));
     protoWrap?.addEventListener('pointerleave', () => resumeCarousel('hover', true));
+    protoWrap?.addEventListener('focusin', () => pauseCarousel('focus'));
+    protoWrap?.addEventListener('focusout', (e) => {
+      if (!protoWrap.contains((e as FocusEvent).relatedTarget as Node | null)) resumeCarousel('focus', true);
+    });
     protoWrap?.addEventListener('pointerdown', () => pauseCarousel('drag'));
     window.addEventListener('pointerup', () => resumeCarousel('drag', true));
     window.addEventListener('pointercancel', () => resumeCarousel('drag', true));

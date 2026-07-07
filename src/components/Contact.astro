@@ -4,7 +4,7 @@ import SocialIcons from './SocialIcons.astro';
 const { locale } = Astro.props as { locale: Locale };
 ---
 <section id="contact" class="section container" style="text-align:center;padding-top:96px;padding-bottom:96px;">
-  <div class="contact-card reveal">
+  <div class="contact-card">
     <p class="mono" style="color:var(--accent);font-size:.9rem;margin:0 0 8px;">{t(locale, 'contact.kicker')}</p>
     <h2 class="reveal">{t(locale, 'contact.title')}</h2>
     <p style="color:var(--muted);max-width:52ch;margin:16px auto 0;">
