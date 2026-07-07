@@ -37,6 +37,9 @@ export const ui = {
     'prototypes.store': 'View on Google Play',
     'platform.pc': 'PC',
     'platform.mobile': 'Mobile',
+    'carousel.prev': 'Previous',
+    'carousel.next': 'Next',
+    'carousel.page': 'Page',
   },
   ru: {
     'nav.about': 'Обо мне',
@@ -73,6 +76,9 @@ export const ui = {
     'prototypes.store': 'Открыть в Google Play',
     'platform.pc': 'PC',
     'platform.mobile': 'Mobile',
+    'carousel.prev': 'Назад',
+    'carousel.next': 'Вперед',
+    'carousel.page': 'Страница',
   },
 } as const;
 

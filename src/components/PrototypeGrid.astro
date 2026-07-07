@@ -7,8 +7,8 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
 <section id="prototypes" class="section container">
   <h2 class="reveal">{t(locale, 'prototypes.title')}</h2>
   <p style="color:var(--muted);">{t(locale, 'prototypes.sub')}</p>
+  <div class="proto-carousel-wrap">
   <div class="proto-carousel">
-    <button type="button" class="proto-arrow proto-arrow--prev" aria-label="Previous" data-dir="-1">‹</button>
     <div class="proto-fade proto-fade--left" aria-hidden="true"></div>
     <div class="proto-track">
       {protos.map((p, i) => (
@@ -41,7 +41,12 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
       ))}
     </div>
     <div class="proto-fade proto-fade--right" aria-hidden="true"></div>
-    <button type="button" class="proto-arrow proto-arrow--next" aria-label="Next" data-dir="1">›</button>
+  </div>
+  <div class="proto-nav">
+    <button type="button" class="proto-nav-arrow proto-nav-arrow--prev" aria-label={t(locale, 'carousel.prev')}>‹</button>
+    <div class="proto-dots" data-page-label={t(locale, 'carousel.page')}></div>
+    <button type="button" class="proto-nav-arrow proto-nav-arrow--next" aria-label={t(locale, 'carousel.next')}>›</button>
+  </div>
   </div>
 </section>
 
@@ -160,44 +165,68 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
   .proto-fade.is-visible {
     opacity: 1;
   }
-  .proto-arrow {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 2;
+  .proto-nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    margin-top: 16px;
+  }
+  .proto-nav-arrow {
+    flex: 0 0 auto;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 44px;
-    height: 44px;
-    border-radius: 12px;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
     border: 1px solid var(--border);
     background: var(--surface);
     color: var(--text);
-    font-size: 1.4rem;
+    font-size: 1.15rem;
     cursor: pointer;
     transition: transform .15s, border-color .15s, box-shadow .15s, opacity .15s;
   }
-  .proto-arrow--prev {
-    left: -6px;
-  }
-  .proto-arrow--next {
-    right: -6px;
-  }
-  .proto-arrow:hover, .proto-arrow:focus-visible {
-    transform: translateY(-50%) translateY(-2px);
+  .proto-nav-arrow:hover, .proto-nav-arrow:focus-visible {
+    transform: translateY(-2px);
     border-color: var(--accent);
     box-shadow: 0 0 14px rgba(255,92,26,.3);
     outline: none;
   }
-  .proto-arrow:disabled {
-    opacity: 0;
-    pointer-events: none;
+  .proto-nav-arrow:disabled {
+    opacity: .3;
+    cursor: default;
+    box-shadow: none;
+    transform: none;
   }
-  @media (hover: none) {
-    .proto-arrow {
-      display: none;
-    }
+  .proto-dots {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .proto-dot {
+    width: 8px;
+    height: 8px;
+    padding: 0;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: transparent;
+    cursor: pointer;
+    transition: transform .15s, background-color .15s, border-color .15s;
+  }
+  .proto-dot:hover {
+    border-color: var(--accent);
+  }
+  .proto-dot:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .proto-dot.is-active {
+    background: var(--accent);
+    border-color: var(--accent);
+    transform: scale(1.3);
   }
   .proto-badge {
     position: absolute;
@@ -280,33 +309,178 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
 </style>
 
 <script>
-  {
-    const track = document.querySelector<HTMLElement>('.proto-track');
-    const prevBtn = document.querySelector<HTMLButtonElement>('.proto-arrow--prev');
-    const nextBtn = document.querySelector<HTMLButtonElement>('.proto-arrow--next');
-    const fadeLeft = document.querySelector<HTMLElement>('.proto-fade--left');
-    const fadeRight = document.querySelector<HTMLElement>('.proto-fade--right');
+  const protoWrap = document.querySelector<HTMLElement>('.proto-carousel-wrap');
+  const protoTrack = document.querySelector<HTMLElement>('.proto-track');
+  const protoFadeLeft = document.querySelector<HTMLElement>('.proto-fade--left');
+  const protoFadeRight = document.querySelector<HTMLElement>('.proto-fade--right');
+  const protoNavPrev = document.querySelector<HTMLButtonElement>('.proto-nav-arrow--prev');
+  const protoNavNext = document.querySelector<HTMLButtonElement>('.proto-nav-arrow--next');
+  const protoDots = document.querySelector<HTMLElement>('.proto-dots');
+  const protoPageLabel = protoDots?.dataset.pageLabel ?? 'Page';
 
-    if (track) {
-      const updateEdges = () => {
-        const maxScroll = track.scrollWidth - track.clientWidth;
-        const atStart = track.scrollLeft <= 2;
-        const atEnd = track.scrollLeft >= maxScroll - 2;
-        if (prevBtn) prevBtn.disabled = atStart || maxScroll <= 0;
-        if (nextBtn) nextBtn.disabled = atEnd || maxScroll <= 0;
-        fadeLeft?.classList.toggle('is-visible', !atStart && maxScroll > 0);
-        fadeRight?.classList.toggle('is-visible', !atEnd && maxScroll > 0);
-      };
+  const AUTOPLAY_MS = 4500;
+  const GRACE_MS = 2000;
+  const protoPauseReasons = new Set<string>();
+  let protoAutoplayTimer: ReturnType<typeof setTimeout> | null = null;
+  let protoGraceTimer: ReturnType<typeof setTimeout> | null = null;
+  let protoCurrentPage = 0;
+  let protoPageCount = 1;
 
-      updateEdges();
-      track.addEventListener('scroll', updateEdges, { passive: true });
-      window.addEventListener('resize', updateEdges);
+  function protoClearAutoplayTimer() {
+    if (protoAutoplayTimer !== null) { clearTimeout(protoAutoplayTimer); protoAutoplayTimer = null; }
+  }
+  function protoClearGraceTimer() {
+    if (protoGraceTimer !== null) { clearTimeout(protoGraceTimer); protoGraceTimer = null; }
+  }
+  function protoScheduleAdvance() {
+    protoClearAutoplayTimer();
+    protoAutoplayTimer = setTimeout(protoAdvance, AUTOPLAY_MS);
+  }
+  function protoAdvance() {
+    if (!protoTrack || protoPauseReasons.size > 0) return;
+    if (protoPageCount <= 1) { protoScheduleAdvance(); return; }
+    if (protoCurrentPage >= protoPageCount - 1) {
+      protoTrack.scrollTo({ left: 0, behavior: 'smooth' });
+      protoCurrentPage = 0;
+      protoUpdateActiveDot();
+      protoUpdateArrows();
+    } else {
+      protoGoToPage(protoCurrentPage + 1, false);
+    }
+    protoScheduleAdvance();
+  }
+  function pauseCarousel(reason: string) {
+    protoPauseReasons.add(reason);
+    protoClearGraceTimer();
+    protoClearAutoplayTimer();
+  }
+  function resumeCarousel(reason: string, grace = true) {
+    protoPauseReasons.delete(reason);
+    if (protoPauseReasons.size > 0) return;
+    protoClearGraceTimer();
+    if (grace) {
+      protoGraceTimer = setTimeout(() => {
+        protoGraceTimer = null;
+        if (protoPauseReasons.size === 0) protoScheduleAdvance();
+      }, GRACE_MS);
+    } else {
+      protoScheduleAdvance();
+    }
+  }
 
-      const scrollByCards = (dir: number) => {
-        track.scrollBy({ left: dir * 636, behavior: 'smooth' });
-      };
-      prevBtn?.addEventListener('click', () => scrollByCards(-1));
-      nextBtn?.addEventListener('click', () => scrollByCards(1));
+  function protoComputePageCount(): number {
+    if (!protoTrack || protoTrack.clientWidth <= 0) return 1;
+    return Math.max(1, Math.ceil(protoTrack.scrollWidth / protoTrack.clientWidth));
+  }
+
+  function protoBuildDots() {
+    if (!protoDots) return;
+    protoDots.innerHTML = '';
+    for (let i = 0; i < protoPageCount; i++) {
+      const dot = document.createElement('button');
+      dot.type = 'button';
+      dot.className = 'proto-dot';
+      dot.setAttribute('aria-label', `${protoPageLabel} ${i + 1}`);
+      dot.dataset.page = String(i);
+      dot.addEventListener('click', () => protoGoToPage(i, true));
+      protoDots.appendChild(dot);
+    }
+    protoUpdateActiveDot();
+  }
+
+  function protoUpdateActiveDot() {
+    if (!protoDots) return;
+    protoDots.querySelectorAll<HTMLElement>('.proto-dot').forEach((dot, i) => {
+      const active = i === protoCurrentPage;
+      dot.classList.toggle('is-active', active);
+      if (active) dot.setAttribute('aria-current', 'true');
+      else dot.removeAttribute('aria-current');
+    });
+  }
+
+  function protoUpdateArrows() {
+    if (protoNavPrev) protoNavPrev.disabled = protoCurrentPage <= 0;
+    if (protoNavNext) protoNavNext.disabled = protoCurrentPage >= protoPageCount - 1;
+  }
+
+  function protoUpdateFades() {
+    if (!protoTrack) return;
+    const maxScroll = protoTrack.scrollWidth - protoTrack.clientWidth;
+    const atStart = protoTrack.scrollLeft <= 2;
+    const atEnd = protoTrack.scrollLeft >= maxScroll - 2;
+    protoFadeLeft?.classList.toggle('is-visible', !atStart && maxScroll > 0);
+    protoFadeRight?.classList.toggle('is-visible', !atEnd && maxScroll > 0);
+  }
+
+  function protoGoToPage(page: number, userInitiated: boolean) {
+    if (!protoTrack) return;
+    const clamped = Math.min(Math.max(page, 0), protoPageCount - 1);
+    protoCurrentPage = clamped;
+    protoTrack.scrollTo({ left: clamped * protoTrack.clientWidth, behavior: 'smooth' });
+    protoUpdateActiveDot();
+    protoUpdateArrows();
+    if (userInitiated && protoPauseReasons.size === 0) {
+      protoScheduleAdvance();
+    }
+  }
+
+  function protoRefreshLayout() {
+    if (!protoTrack) return;
+    protoPageCount = protoComputePageCount();
+    const maxScroll = protoTrack.scrollWidth - protoTrack.clientWidth;
+    protoCurrentPage = maxScroll > 0
+      ? Math.min(Math.round(protoTrack.scrollLeft / protoTrack.clientWidth), protoPageCount - 1)
+      : 0;
+    protoBuildDots();
+    protoUpdateArrows();
+    protoUpdateFades();
+  }
+
+  if (protoTrack) {
+    protoRefreshLayout();
+
+    let protoScrollRaf = 0;
+    protoTrack.addEventListener('scroll', () => {
+      if (protoScrollRaf) return;
+      protoScrollRaf = requestAnimationFrame(() => {
+        protoScrollRaf = 0;
+        if (!protoTrack) return;
+        const cw = protoTrack.clientWidth || 1;
+        const page = Math.round(protoTrack.scrollLeft / cw);
+        protoCurrentPage = Math.min(Math.max(page, 0), protoPageCount - 1);
+        protoUpdateActiveDot();
+        protoUpdateArrows();
+        protoUpdateFades();
+      });
+    }, { passive: true });
+
+    window.addEventListener('resize', protoRefreshLayout);
+
+    protoNavPrev?.addEventListener('click', () => protoGoToPage(protoCurrentPage - 1, true));
+    protoNavNext?.addEventListener('click', () => protoGoToPage(protoCurrentPage + 1, true));
+
+    protoScheduleAdvance();
+
+    protoWrap?.addEventListener('pointerenter', () => pauseCarousel('hover'));
+    protoWrap?.addEventListener('pointerleave', () => resumeCarousel('hover', true));
+    protoWrap?.addEventListener('pointerdown', () => pauseCarousel('drag'));
+    window.addEventListener('pointerup', () => resumeCarousel('drag', true));
+    window.addEventListener('pointercancel', () => resumeCarousel('drag', true));
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) pauseCarousel('tab');
+      else resumeCarousel('tab', false);
+    });
+    if (document.hidden) pauseCarousel('tab');
+
+    if (protoWrap && 'IntersectionObserver' in window) {
+      const protoIo = new IntersectionObserver((entries) => {
+        const entry = entries[0];
+        if (!entry) return;
+        if (entry.isIntersecting) resumeCarousel('viewport', false);
+        else pauseCarousel('viewport');
+      }, { threshold: 0.1 });
+      protoIo.observe(protoWrap);
     }
   }
 
@@ -415,6 +589,7 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
         previousOverflow = document.body.style.overflow;
         document.body.style.overflow = 'hidden';
         modal!.showModal();
+        pauseCarousel('modal');
       }
       if (hasClip && videoEl) {
         videoEl.play().catch(() => {});
@@ -450,6 +625,7 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
         lastCard.style.transform = '';
         lastCard = null;
       }
+      resumeCarousel('modal', true);
     });
   }
 </script>
