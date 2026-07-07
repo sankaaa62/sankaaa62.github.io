@@ -8,6 +8,7 @@
   --accent: #ff5c1a;
   --accent-2: #ffb01a;
   --teal: #2dd4bf;
+  --violet: #7c5cff;
   --ok: #5dcaa5;
   --font-sans: 'Inter Variable', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
@@ -157,14 +158,16 @@ h1 { text-shadow: 0 0 24px rgba(255,92,26,.25); }
 .icon-link:focus-visible, .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* --- iter4 (R.1): бейджи платформ (PC / Mobile); iter5 (5.3): тил → оранж
-   (бренд-акцент), темная полупрозрачная подложка остается --- */
+   (бренд-акцент), темная полупрозрачная подложка остается; iter6 (Stellar,
+   п.12): оранж посветлел до --accent-2 (#ffb01a) — иконка+текст, темная
+   подложка не трогается --- */
 .platform-badge {
   display: inline-flex; align-items: center; gap: 4px;
   padding: 4px 10px; border-radius: 999px;
   background: rgba(14, 15, 19, .72);
   -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
-  color: var(--accent); font-family: var(--font-mono); font-size: .72rem;
-  border: 1px solid rgba(255, 92, 26, .35);
+  color: var(--accent-2); font-family: var(--font-mono); font-size: .72rem;
+  border: 1px solid rgba(255, 176, 26, .35);
   line-height: 1;
 }
 .platform-badge svg { width: 13px; height: 13px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; }
@@ -174,6 +177,12 @@ h1 { text-shadow: 0 0 24px rgba(255,92,26,.25); }
 }
 .platform-badge.lg { padding: 5px 12px; font-size: .8rem; gap: 6px; }
 .platform-badge.lg svg { width: 15px; height: 15px; }
+/* iter6 (Stellar, п.13): роль-бейдж на карточке — тот же пилл-стиль, но
+   фиолетовый (отличает роль от бейджей платформ) */
+.platform-badge.badge-role {
+  color: #a99bff;
+  border-color: rgba(124, 92, 255, .45);
+}
 
 /* R.4/iter5(5.4): фиолетовый акцент-чип — теперь на "company · role"
    (жанр стал mono-строкой без чипа, см. FeaturedCard/ProjectPage) */
@@ -181,6 +190,23 @@ h1 { text-shadow: 0 0 24px rgba(255,92,26,.25); }
   color: #a99bff;
   border-color: rgba(124, 92, 255, .45);
   background: rgba(124, 92, 255, .08);
+}
+
+/* iter6 (Stellar, п.15): тэги стека проекта — тил вместо серого */
+.tag.tag-teal {
+  color: var(--teal);
+  border-color: rgba(45, 212, 191, .45);
+  background: rgba(45, 212, 191, .08);
+}
+
+/* iter6 (Stellar, п.15): тонкая градиентная полоса сверху у карточек
+   роли/стека на странице проекта — оранж → фиолет, "stellar" вайб */
+.info-card { position: relative; }
+.info-card::before {
+  content: "";
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  border-radius: var(--radius) var(--radius) 0 0;
+  background: linear-gradient(90deg, var(--accent), var(--violet));
 }
 
 /* --- iter3: шапка с монограммой --- */

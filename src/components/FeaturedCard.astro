@@ -1,5 +1,5 @@
 ---
-import { existsSync } from 'node:fs';
+import { readdirSync, existsSync } from 'node:fs';
 import { t, localePath, type Locale } from '../i18n/ui';
 import { platformBadges } from '../lib/platforms';
 const { locale, project, index } = Astro.props as { locale: Locale; project: any; index?: number };
@@ -8,30 +8,138 @@ const d = project.data;
 const coverShotPath = `public/media/projects/${slug}/shot-1.webp`;
 const hasCoverShot = !d.youtube && existsSync(coverShotPath);
 const badges = platformBadges(d.platforms, { pc: t(locale, 'platform.pc'), mobile: t(locale, 'platform.mobile') });
+
+// iter6 (Stellar, п.14b): те же шоты, что и на странице проекта (ProjectPage),
+// используются для слайд-шоу превью на ховер карточки.
+const shotsDir = `public/media/projects/${slug}`;
+const shots = existsSync(shotsDir)
+  ? readdirSync(shotsDir)
+      .filter((f) => f.endsWith('.webp'))
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+      .map((f) => `/media/projects/${slug}/${f}`)
+  : [];
+const hoverClipPath = `public/media/projects/${slug}/hover-clip.webm`;
+const hasHoverClip = existsSync(hoverClipPath);
+const hasHoverSlideshow = !hasHoverClip && shots.length > 1;
 ---
-<a class="reveal lift" href={localePath(locale, `/projects/${slug}/`)}
+<a class="reveal lift proj-card" href={localePath(locale, `/projects/${slug}/`)}
+   data-shots={hasHoverSlideshow ? JSON.stringify(shots) : undefined}
    style={`display:grid;grid-template-columns:1fr;gap:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;color:var(--text);text-decoration:none;--i:${index ?? 0}`}>
-  <div style="position:relative;">
+  <div class="cover-wrap">
     {d.youtube
-      ? <img src={`https://i.ytimg.com/vi/${d.youtube}/hqdefault.jpg`} alt={d.title} loading="lazy" style="width:100%;aspect-ratio:16/9;object-fit:cover;" />
+      ? <img class="cover-static" src={`https://i.ytimg.com/vi/${d.youtube}/hqdefault.jpg`} alt={d.title} loading="lazy" style="width:100%;aspect-ratio:16/9;object-fit:cover;" />
       : hasCoverShot
-        ? <img src={`/media/projects/${slug}/shot-1.webp`} alt={d.title} loading="lazy" style="width:100%;aspect-ratio:16/9;object-fit:cover;" />
-        : <div style="aspect-ratio:16/9;background:var(--surface-2);display:grid;place-items:center;" class="mono">{d.title}</div>}
-    {badges.length > 0 && (
-      <div class="platform-badges-cover">
-        {badges.map((b) => (
-          <span class="platform-badge" set:html={b.svg + `<span>${b.label}</span>`} />
-        ))}
-      </div>
+        ? <img class="cover-static" src={`/media/projects/${slug}/shot-1.webp`} alt={d.title} loading="lazy" style="width:100%;aspect-ratio:16/9;object-fit:cover;" />
+        : <div class="cover-static mono" style="aspect-ratio:16/9;background:var(--surface-2);display:grid;place-items:center;">{d.title}</div>}
+    {hasHoverClip && (
+      <video class="cover-hover cover-hover-video" muted loop playsinline preload="none">
+        <source src={`/media/projects/${slug}/hover-clip.webm`} type="video/webm" />
+      </video>
     )}
+    {hasHoverSlideshow && (
+      <>
+        <img class="cover-hover cover-hover-img" data-layer="a" alt="" aria-hidden="true" />
+        <img class="cover-hover cover-hover-img" data-layer="b" alt="" aria-hidden="true" />
+      </>
+    )}
+    <div class="platform-badges-cover badge-row">
+      {d.role && <span class="platform-badge badge-role">{d.role}</span>}
+      {badges.map((b) => (
+        <span class="platform-badge" set:html={b.svg + `<span>${b.label}</span>`} />
+      ))}
+    </div>
   </div>
   <div style="padding:18px 20px;">
-    <h3 style="margin:0;">{d.title}</h3>
+    <h3 class="proj-title" style="margin:0;">{d.title}</h3>
     <div class="mono" style="color:var(--muted);font-size:.8rem;margin-top:4px;">{d.genre}</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
-      <span class="tag tag-violet">{d.company} · {d.role}</span>
-    </div>
     <p style="color:var(--muted);margin:.5em 0;">{d.tagline}</p>
     <div class="mono" style="color:var(--ok);font-size:.8rem;opacity:.9;">{d.metrics.join(' · ')}</div>
   </div>
 </a>
+
+<style>
+  /* iter6 (Stellar, п.14a): усиленный bump для больших карточек проектов —
+     перекрывает transform из общего .lift:hover (M.2), остальное (border-color,
+     box-shadow) наследуется от .lift без изменений. */
+  .proj-card.lift:hover {
+    transform: translateY(-5px) scale(1.03);
+  }
+
+  .cover-wrap { position: relative; overflow: hidden; }
+  .cover-hover {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: cover; opacity: 0; pointer-events: none;
+  }
+  .cover-hover-img { transition: opacity .5s ease; }
+  .cover-hover-img.is-visible { opacity: 1; }
+  .cover-hover-video { transition: opacity .4s ease; }
+  .cover-hover-video.is-visible { opacity: 1; }
+
+  /* п.14c: заголовок получает акцент-подчеркивание при ховере карточки */
+  .proj-title { position: relative; display: inline-block; }
+  .proj-title::after {
+    content: "";
+    position: absolute; left: 0; bottom: -3px; height: 2px; width: 0;
+    background: var(--accent-2);
+    transition: width .35s ease;
+  }
+
+  /* п.14c: бейджи "подпрыгивают" на 1-2px по очереди — только на устройствах
+     с настоящим ховером (мышь), тач-устройства получают статичную обложку */
+  @media (hover: hover) and (pointer: fine) {
+    .badge-row > * { transition: transform .25s ease; }
+    .proj-card:hover .badge-row > *:nth-child(1) { transform: translateY(-2px); transition-delay: 0s; }
+    .proj-card:hover .badge-row > *:nth-child(2) { transform: translateY(-2px); transition-delay: .06s; }
+    .proj-card:hover .badge-row > *:nth-child(3) { transform: translateY(-2px); transition-delay: .12s; }
+    .proj-card:hover .proj-title::after { width: 100%; }
+  }
+</style>
+
+<script>
+  // iter6 (Stellar, п.14b): hover-превью карточки проекта — слайд-шоу из шотов
+  // (кроссфейд, интервал ~1.1s, картинки грузятся только при первом ховере)
+  // либо, если у проекта есть hover-clip.webm (last-wish), короткое видео вместо
+  // слайд-шоу. Полностью выключено на тач-устройствах (нет реального hover).
+  if (matchMedia('(hover: hover) and (pointer: fine)').matches) {
+    document.querySelectorAll<HTMLAnchorElement>('.proj-card').forEach((card) => {
+      const cover = card.querySelector<HTMLElement>('.cover-wrap');
+      if (!cover) return;
+      const video = cover.querySelector<HTMLVideoElement>('.cover-hover-video');
+      const layers = Array.from(cover.querySelectorAll<HTMLImageElement>('.cover-hover-img'));
+
+      if (video) {
+        card.addEventListener('pointerenter', () => { video.play().catch(() => {}); video.classList.add('is-visible'); });
+        card.addEventListener('pointerleave', () => { video.pause(); video.classList.remove('is-visible'); });
+        return;
+      }
+
+      if (layers.length < 2) return;
+      let shots: string[] = [];
+      try { shots = JSON.parse(card.dataset.shots ?? '[]'); } catch { shots = []; }
+      if (shots.length === 0) return;
+
+      let index = 0;
+      let front = 0;
+      let timer: ReturnType<typeof setInterval> | null = null;
+
+      const showNext = () => {
+        index = (index + 1) % shots.length;
+        const back = front === 0 ? 1 : 0;
+        layers[back].src = shots[index];
+        layers[back].classList.add('is-visible');
+        layers[front].classList.remove('is-visible');
+        front = back;
+      };
+
+      card.addEventListener('pointerenter', () => {
+        if (timer !== null) return;
+        showNext();
+        timer = setInterval(showNext, 1100);
+      });
+      card.addEventListener('pointerleave', () => {
+        if (timer !== null) { clearInterval(timer); timer = null; }
+        layers.forEach((l) => l.classList.remove('is-visible'));
+      });
+    });
+  }
+</script>
