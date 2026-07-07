@@ -84,6 +84,9 @@ h2.reveal::after {
 }
 h2.reveal.visible::after { width: 48px; }
 
+/* iter6.GG: Get In Touch — заголовок в карточке без полоски (созвездие само по себе декор) */
+h2.no-bar::after { content: none; }
+
 /* M.2: единый hover-lift для карточек (featured, gallery items) */
 .lift {
   transition: transform .2s, border-color .2s, box-shadow .2s;
