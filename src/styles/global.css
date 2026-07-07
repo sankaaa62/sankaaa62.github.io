@@ -192,19 +192,27 @@ h1 { text-shadow: 0 0 24px rgba(255,92,26,.25); }
 .brand:hover svg { filter: drop-shadow(0 0 8px rgba(255,92,26,.6)); }
 
 /* --- iter4 (N.1): header v2 — fixed, blur-подложка, auto-hide --- */
+/* iter6 (Stellar, п.5): в состоянии "top" шапка раньше сливалась с фоном
+   (прозрачная подложка/граница). Теперь — постоянная полупрозрачная подложка
+   чуть темнее фона + тонкая граница уже у самого верха; при скролле (.is-scrolled)
+   подложка/граница усиливаются и добавляется мягкая тень для явного разделения. */
 .site-header {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   z-index: 50;
-  background: rgba(14, 15, 19, .75);
+  background: rgba(14, 15, 19, .55);
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
-  border-bottom: 1px solid transparent;
-  transition: transform .25s, border-color .25s;
+  border-bottom: 1px solid rgba(42, 45, 58, .5);
+  transition: transform .25s, background-color .25s, border-color .25s, box-shadow .25s;
 }
-.site-header.is-scrolled { border-bottom-color: var(--border); }
+.site-header.is-scrolled {
+  background: rgba(14, 15, 19, .75);
+  border-bottom-color: var(--border);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .35);
+}
 .site-header.is-hidden { transform: translateY(-100%); }
 .header-inner {
   height: var(--header-h);
@@ -248,9 +256,17 @@ h1 { text-shadow: 0 0 24px rgba(255,92,26,.25); }
    строку выходит за пределы фиксированной высоты шапки. Уменьшаем шрифт/зазоры
    и внутренние отступы шапки/тега — этого достаточно, чтобы все уместилось
    в одну строку вплоть до 320px (проверено в preview: 320/375/420 — без
-   переноса и без overflow). */
+   переноса и без overflow).
+   iter6 (Stellar, п.6): проверка на /ru/ показала, что более длинные RU-подписи
+   («Обо мне · Проекты · Прототипы · Навыки · Контакты · EN») всё же переносятся
+   на 2 строки при ширинах 320-414px (не покрыто предыдущим фиксом — он
+   проверялся только на EN). Ужимаем ещё сильнее + добавляем letter-spacing,
+   а для 320-360px — отдельный, ещё более плотный шаг. */
 @media (max-width: 480px) {
   .header-inner { padding-left: 12px; padding-right: 12px; }
-  .site-nav { font-size: .72rem; gap: 6px; }
-  .site-nav .tag { padding: 2px 6px; }
+  .site-nav { font-size: .68rem; gap: 5px; letter-spacing: -0.01em; }
+  .site-nav .tag { padding: 2px 5px; }
+}
+@media (max-width: 360px) {
+  .site-nav { font-size: .64rem; gap: 4px; }
 }
