@@ -13,6 +13,13 @@ const TIER_COLOR = { 1: '255,92,26', 2: '232,230,225', 3: '154,151,163' };
 const TIER_PX = { 1: 22, 2: 16, 3: 13 };
 const TIER_WEIGHT = { 1: '700', 2: '500', 3: '400' };
 
+// fix (P0): высота канваса зафиксирована в CSS (#skills-canvas { height: 380px }
+// в Skills.astro) — дублируем то же число здесь. Нужно, чтобы уметь измерять
+// целевой размер канваса ДО того, как он станет видимым (canvas.offsetHeight
+// всегда 0, пока элемент display:none, а мы намеренно не показываем канвас
+// раньше первого успешного кадра — см. init() ниже).
+const CANVAS_HEIGHT = 380;
+
 // fix: ctx.font не понимает CSS custom properties (var(--font-mono)) — canvas 2D
 // тихо откатывается на дефолтный шрифт, если строка font не парсится как валидный
 // CSS font-shorthand. Резолвим переменную один раз через getComputedStyle.
@@ -22,8 +29,11 @@ class SkillCloud {
   /**
    * @param {HTMLCanvasElement} canvas
    * @param {SkillTag[]} tags
+   * @param {() => void} [onFirstDraw] вызывается один раз после первого успешного
+   *   кадра (canvas имел ненулевой размер и реально что-то нарисовал) — на этом
+   *   сигнале вызывающий код прячет статичный fallback-список, а не заранее.
    */
-  constructor(canvas, tags) {
+  constructor(canvas, tags, onFirstDraw) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.tags = tags;
@@ -38,12 +48,24 @@ class SkillCloud {
     this.rafId = 0;
     this.lastT = 0;
     this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+    // fix (P0): root cause — resize() умел молча закэшировать нулевой размер
+    // (canvas.offsetWidth/Height === 0, если канвас на момент вызова ещё
+    // display:none), и после этого сфера НИКОГДА не перерисовывалась с
+    // правильным размером — единственный триггер переизмерения был window
+    // 'resize', который не стреляет при обычном скролле/загрузке страницы.
+    // Теперь resize() не перетирает валидные w/h нулями и явно помечает,
+    // измерен ли канвас валидно (this.sized), чтобы вызывающий код мог
+    // самовосстановиться (см. _tick) вместо вечной пустой отрисовки.
+    this.sized = false;
+    this.drawn = false; // true после первого успешного кадра
+    this._onFirstDraw = onFirstDraw;
 
     this._onPointerMove = this._onPointerMove.bind(this);
     this._onPointerLeave = this._onPointerLeave.bind(this);
     this._tick = this._tick.bind(this);
 
     this.resize();
+    this._observeResize();
   }
 
   _fibonacciSphere(n) {
@@ -63,14 +85,46 @@ class SkillCloud {
 
   resize() {
     const c = this.canvas;
-    const w = c.offsetWidth;
-    const h = c.offsetHeight;
+    // fix (P0): раньше ширину/высоту читали с самого канваса
+    // (c.offsetWidth/offsetHeight), которые ВСЕГДА равны 0, пока у канваса
+    // display:none — а мы намеренно держим канвас display:none до первого
+    // успешного кадра (см. init(), onFirstDraw), чтобы не прятать статичный
+    // список раньше времени. Поэтому измеряем ширину по РОДИТЕЛЮ (секции),
+    // который отрисован и имеет реальный бокс независимо от видимости канваса
+    // (canvas растягивается на 100% его ширины). Высота у канваса фиксированная
+    // в CSS — берём той же константой (CANVAS_HEIGHT), не завязываясь на бокс
+    // самого канваса.
+    const parent = c.parentElement;
+    const w = parent ? parent.clientWidth : c.offsetWidth;
+    const h = CANVAS_HEIGHT;
+    // Если ширины всё ещё нет (например, секция сама пока не имеет раскладки —
+    // маловероятно, но проверяем), НЕ фиксируем нулевой размер как окончательный.
+    // Оставляем предыдущий (валидный, если был) w/h/radius и просто помечаем,
+    // что нужно переизмерить позже (см. _tick self-heal и ResizeObserver ниже).
+    if (w <= 0 || h <= 0) {
+      this.sized = false;
+      return;
+    }
+    this.sized = true;
     c.width = Math.round(w * this.dpr);
     c.height = Math.round(h * this.dpr);
     this.w = w;
     this.h = h;
     this.radius = Math.min(w, h) * 0.42;
     this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+  }
+
+  _observeResize() {
+    // fix (P0, защита): ResizeObserver реагирует на ЛЮБОЕ изменение бокса
+    // родителя (секции) — не только на resize окна браузера, как раньше — это
+    // ловит смену ширины контейнера (брейкпоинты, сайдбар и т.п.) без ожидания
+    // ручного ресайза окна пользователем. Наблюдаем именно за родителем, а не
+    // за самим канвасом: пока канвас display:none, его собственный бокс всегда
+    // {0,0}, и ResizeObserver на нём ничего полезного не даст.
+    if (typeof ResizeObserver === 'undefined') return;
+    const target = this.canvas.parentElement || this.canvas;
+    this._ro = new ResizeObserver(() => this.resize());
+    this._ro.observe(target);
   }
 
   attachPointer() {
@@ -114,10 +168,21 @@ class SkillCloud {
     this.lastT = now;
 
     if (!document.hidden) {
-      const LERP = 0.05;
-      this.rotX += (this.targetTiltX - this.rotX) * LERP;
-      this.rotY += this.targetSpeed * dt;
-      this._draw();
+      // fix (P0, self-heal): если канвас ещё не измерен валидно (size 0 —
+      // именно так проявлялся баг у владельца сайта), пробуем переизмерить на
+      // каждом кадре вместо того, чтобы вечно рисовать в 0×0 канвас. Как
+      // только раскладка устаканится, sized станет true и сфера появится.
+      if (!this.sized) this.resize();
+      if (this.sized) {
+        const LERP = 0.05;
+        this.rotX += (this.targetTiltX - this.rotX) * LERP;
+        this.rotY += this.targetSpeed * dt;
+        this._draw();
+        if (!this.drawn) {
+          this.drawn = true;
+          if (this._onFirstDraw) this._onFirstDraw();
+        }
+      }
     }
     this.rafId = requestAnimationFrame(this._tick);
   }
@@ -169,7 +234,36 @@ class SkillCloud {
   const tags = JSON.parse(dataAttr);
   if (!tags.length) return;
 
-  const cloud = new SkillCloud(canvas, tags);
+  const staticList = section.querySelector('.skills-static');
+
+  // fix (P0, ROOT CAUSE): раньше и «показать канвас», и «спрятать статичный
+  // список» происходили безусловно сразу при инициализации скрипта — ДО
+  // того, как сфера успевала хоть раз отрисоваться. Конструктор SkillCloud
+  // сразу вызывает resize(), которая (в старой версии) читала
+  // canvas.offsetWidth/offsetHeight; пока канвас ещё display:none (CSS-дефолт
+  // в Skills.astro) — а он им и был на момент конструктора, — offsetWidth/
+  // offsetHeight равны 0 → w=h=radius=0, canvas.width/height становились 0×0.
+  // Дальше это НИЧЕМ не пересчитывалось (только слушатель window 'resize',
+  // который не стреляет от обычной загрузки страницы/скролла) — сфера
+  // оставалась нулевого размера НАВСЕГДА, а статичный список уже был спрятан.
+  // Итог у владельца сайта: пустая секция. В headless-превью баг маскировался,
+  // если инструмент программно менял viewport (это стреляет 'resize' и чинит
+  // размер задним числом) — поэтому важно тестировать реальный флоу без
+  // ручного вызова resize()/instantiation.
+  //
+  // Фикс: канвас остаётся display:none (и список — видимым) ровно до первого
+  // РЕАЛЬНО успешного кадра (onFirstDraw ниже, вызывается из _tick только
+  // когда this.sized === true и _draw() отработал). Само измерение размера
+  // теперь не зависит от видимости канваса (resize() меряет родителя — см.
+  // класс), поэтому можно мерить/готовить сферу, даже пока она не показана.
+  // Если сфера по любой причине так и не сможет отрисоваться — .sr-only и
+  // display:block сюда никогда не попадут, и пользователь увидит статичный
+  // список вместо пустой секции.
+  const cloud = new SkillCloud(canvas, tags, () => {
+    canvas.style.display = 'block';
+    section.classList.add('cloud-on');
+    if (staticList) staticList.classList.add('sr-only');
+  });
   // fix (review): доворот за курсором включаем только на hover-способных
   // устройствах с точным поинтером — на тач-устройствах pointermove стреляет
   // при скролле/свайпе и дергает сферу неожиданно для пользователя, листающего
@@ -178,28 +272,25 @@ class SkillCloud {
     cloud.attachPointer();
   }
 
-  canvas.style.display = 'block';
-  section.classList.add('cloud-on');
-  // fix (review): вместо дублирующего CSS-правила #skills.cloud-on .skills-static
-  // переиспользуем существующую утилиту .sr-only — список остается в DOM/для
-  // скринридеров, но визуально скрыт, т.к. canvas теперь показывает то же самое.
-  const staticList = section.querySelector('.skills-static');
-  if (staticList) staticList.classList.add('sr-only');
-
   let resizeTimer;
   addEventListener('resize', () => {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => cloud.resize(), 120);
   });
 
+  // fix (P0): наблюдаем за СЕКЦИЕЙ, а не за канвасом. Пока канвас display:none
+  // (до первого успешного кадра — см. выше), у него нет бокса, и
+  // IntersectionObserver/getBoundingClientRect на самом канвасе никогда не
+  // сработают — цикл _tick вообще не запустился бы, и сфера не смогла бы
+  // сделать тот самый первый кадр (дедлок). Секция отрисована всегда.
   new IntersectionObserver(([entry]) => {
     if (entry.isIntersecting && !document.hidden) cloud.start();
     else cloud.stop();
-  }, { threshold: 0.01 }).observe(canvas);
+  }, { threshold: 0.01 }).observe(section);
 
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) cloud.stop();
-    else if (canvas.getBoundingClientRect().top < innerHeight && canvas.getBoundingClientRect().bottom > 0) cloud.start();
+    else if (section.getBoundingClientRect().top < innerHeight && section.getBoundingClientRect().bottom > 0) cloud.start();
   });
 
   // экспонируем инстанс для ручной верификации в headless/devtools (не используется рантаймом)
