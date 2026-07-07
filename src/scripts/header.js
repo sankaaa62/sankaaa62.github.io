@@ -73,7 +73,21 @@ const sections = sectionIds
 if (sections.length) {
   const navLinks = document.querySelectorAll('.site-nav a[data-section]');
 
+  // AA.4: метеор в stars.js — дергаем при смене активной секции scroll-spy,
+  // не чаще раза в METEOR_COOLDOWN мс (спека: "не чаще раза в несколько секунд").
+  const METEOR_COOLDOWN = 4000;
+  let currentActiveId = null;
+  let lastMeteorAt = 0;
+
   const setActive = (id) => {
+    if (id !== currentActiveId) {
+      currentActiveId = id;
+      const now = performance.now();
+      if (now - lastMeteorAt > METEOR_COOLDOWN) {
+        lastMeteorAt = now;
+        window.dispatchEvent(new CustomEvent('meteor'));
+      }
+    }
     navLinks.forEach((link) => {
       link.classList.toggle('active', link.dataset.section === id);
     });

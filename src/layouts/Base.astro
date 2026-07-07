@@ -27,6 +27,7 @@ const otherLocale: Locale = locale === 'en' ? 'ru' : 'en';
 <body>
   <div id="bg-a" aria-hidden="true"><div class="bg-inner"></div></div>
   <div id="bg-b" aria-hidden="true"><div class="bg-inner"></div></div>
+  <canvas id="stars-canvas" aria-hidden="true"></canvas>
   <header class="site-header" id="site-header">
     <div class="container header-inner">
       <a href={localePath(locale, '/')} class="brand mono" aria-label="Kandakov">
@@ -46,6 +47,7 @@ const otherLocale: Locale = locale === 'en' ? 'ru' : 'en';
     </div>
   </header>
   <slot />
+  <script src="../scripts/stars.js"></script>
   <script src="../scripts/parallax.js"></script>
   <script src="../scripts/header.js"></script>
 </body>

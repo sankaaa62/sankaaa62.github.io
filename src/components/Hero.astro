@@ -21,7 +21,6 @@ const wordSpans = words.map((word) => {
 });
 ---
 <section class="hero-section" style="position:relative;overflow:hidden;">
-  <canvas id="hero-canvas" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;"></canvas>
   <div class="container hero-grid" style="position:relative;z-index:1;">
     <div class="hero-text">
       <p class="mono" style="color:var(--accent);margin:0;">{t(locale, 'hero.greeting')}</p>
@@ -63,7 +62,6 @@ const wordSpans = words.map((word) => {
     </svg>
   </button>
 </section>
-<script src="../scripts/hero-canvas.js"></script>
 <script src="../scripts/hero-type.js"></script>
 <script src="../scripts/hero-scroll-cue.js"></script>
 
