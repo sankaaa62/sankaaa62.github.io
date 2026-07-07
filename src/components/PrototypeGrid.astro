@@ -432,7 +432,7 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
       const distance = protoCardStep() * 3;
       if (distance <= 0) return;
       // пауза СИНХРОННО, до scrollBy — иначе собственный rAF-тикер может
-      // выиграть гонку у нативной smooth-анимации и затереть её тем же кадром
+      // выиграть гонку у нативной smooth-анимации и затереть ее тем же кадром
       protoScheduleUserScrollResume();
       protoEnsureHeadroom(-1, distance);
       protoTrack.scrollBy({ left: -distance, behavior: 'smooth' });
