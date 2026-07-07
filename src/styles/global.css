@@ -8,6 +8,7 @@
   --accent: #ff5c1a;
   --accent-2: #ffb01a;
   --teal: #2dd4bf;
+  --violet: #7c5cff;
   --ok: #5dcaa5;
   --font-sans: 'Inter Variable', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
@@ -83,6 +84,9 @@ h2.reveal::after {
 }
 h2.reveal.visible::after { width: 48px; }
 
+/* iter6.GG: Get In Touch — заголовок в карточке без полоски (созвездие само по себе декор) */
+h2.no-bar::after { content: none; }
+
 /* M.2: единый hover-lift для карточек (featured, gallery items) */
 .lift {
   transition: transform .2s, border-color .2s, box-shadow .2s;
@@ -103,29 +107,43 @@ h2.reveal.visible::after { width: 48px; }
 }
 #bg-a { z-index: -3; }
 #bg-b { z-index: -2; }
+
+/* iter6 (AA.2): звездный canvas — fixed на весь вьюпорт, между пятнами
+   (-3/-2) и контентом (0+); всегда виден, независимо от прокрутки/страницы. */
+#stars-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
 #bg-a .bg-inner, #bg-b .bg-inner {
   position: absolute; inset: 0; will-change: transform;
 }
+/* iter6 (AA.1): пятна-туманности ярче (альфа ~×1.8: оранж .16→.25,
+   тил .13→.20, фиолет .17→.27) + более заметный дрейф (амплитуда ±8-9%,
+   масштаб до 1.18, чуть короче период — 18s/20s вместо 22s/27s). */
 #bg-a .bg-inner {
   background:
-    radial-gradient(600px 400px at 15% 10%, rgba(255,92,26,.16), transparent 70%),
-    radial-gradient(600px 500px at 50% 95%, rgba(45,212,191,.13), transparent 70%);
-  animation: aurora 22s ease-in-out infinite alternate;
+    radial-gradient(600px 400px at 15% 10%, rgba(255,92,26,.25), transparent 70%),
+    radial-gradient(600px 500px at 50% 95%, rgba(45,212,191,.20), transparent 70%);
+  animation: aurora 18s ease-in-out infinite alternate;
 }
 #bg-b .bg-inner {
-  background: radial-gradient(700px 500px at 85% 30%, rgba(124,92,255,.17), transparent 70%);
-  animation: aurora-violet 27s ease-in-out infinite alternate;
+  background: radial-gradient(700px 500px at 85% 30%, rgba(124,92,255,.27), transparent 70%);
+  animation: aurora-violet 20s ease-in-out infinite alternate;
 }
 @keyframes aurora {
-  0% { transform: translate(-6%, -4%) scale(1); }
-  50% { transform: translate(5%, 6%) scale(1.12); }
-  100% { transform: translate(-4%, 7%) scale(1.06); }
+  0% { transform: translate(-9%, -6%) scale(1); }
+  50% { transform: translate(8%, 8%) scale(1.18); }
+  100% { transform: translate(-7%, 9%) scale(1.1); }
 }
 /* противофаза: стартует и масштабируется зеркально относительно aurora */
 @keyframes aurora-violet {
-  0% { transform: translate(6%, 5%) scale(1.1); }
-  50% { transform: translate(-5%, -6%) scale(1); }
-  100% { transform: translate(4%, -3%) scale(1.05); }
+  0% { transform: translate(8%, 7%) scale(1.15); }
+  50% { transform: translate(-8%, -8%) scale(1); }
+  100% { transform: translate(6%, -5%) scale(1.18); }
 }
 /* iter5 (V, доп.): решение пользователя (2026-07-07) — системные настройки
    моушена больше не влияют ни на что: keyframes-дрейф фона и параллакс
@@ -143,14 +161,16 @@ h1 { text-shadow: 0 0 24px rgba(255,92,26,.25); }
 .icon-link:focus-visible, .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* --- iter4 (R.1): бейджи платформ (PC / Mobile); iter5 (5.3): тил → оранж
-   (бренд-акцент), темная полупрозрачная подложка остается --- */
+   (бренд-акцент), темная полупрозрачная подложка остается; iter6 (Stellar,
+   п.12): оранж посветлел до --accent-2 (#ffb01a) — иконка+текст, темная
+   подложка не трогается --- */
 .platform-badge {
   display: inline-flex; align-items: center; gap: 4px;
   padding: 4px 10px; border-radius: 999px;
   background: rgba(14, 15, 19, .72);
   -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
-  color: var(--accent); font-family: var(--font-mono); font-size: .72rem;
-  border: 1px solid rgba(255, 92, 26, .35);
+  color: var(--accent-2); font-family: var(--font-mono); font-size: .72rem;
+  border: 1px solid rgba(255, 176, 26, .35);
   line-height: 1;
 }
 .platform-badge svg { width: 13px; height: 13px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; }
@@ -160,6 +180,12 @@ h1 { text-shadow: 0 0 24px rgba(255,92,26,.25); }
 }
 .platform-badge.lg { padding: 5px 12px; font-size: .8rem; gap: 6px; }
 .platform-badge.lg svg { width: 15px; height: 15px; }
+/* iter6 (Stellar, п.13): роль-бейдж на карточке — тот же пилл-стиль, но
+   фиолетовый (отличает роль от бейджей платформ) */
+.platform-badge.badge-role {
+  color: #a99bff;
+  border-color: rgba(124, 92, 255, .45);
+}
 
 /* R.4/iter5(5.4): фиолетовый акцент-чип — теперь на "company · role"
    (жанр стал mono-строкой без чипа, см. FeaturedCard/ProjectPage) */
@@ -167,6 +193,23 @@ h1 { text-shadow: 0 0 24px rgba(255,92,26,.25); }
   color: #a99bff;
   border-color: rgba(124, 92, 255, .45);
   background: rgba(124, 92, 255, .08);
+}
+
+/* iter6 (Stellar, п.15): тэги стека проекта — тил вместо серого */
+.tag.tag-teal {
+  color: var(--teal);
+  border-color: rgba(45, 212, 191, .45);
+  background: rgba(45, 212, 191, .08);
+}
+
+/* iter6 (Stellar, п.15): тонкая градиентная полоса сверху у карточек
+   роли/стека на странице проекта — оранж → фиолет, "stellar" вайб */
+.info-card { position: relative; }
+.info-card::before {
+  content: "";
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  border-radius: var(--radius) var(--radius) 0 0;
+  background: linear-gradient(90deg, var(--accent), var(--violet));
 }
 
 /* --- iter3: шапка с монограммой --- */
@@ -178,19 +221,27 @@ h1 { text-shadow: 0 0 24px rgba(255,92,26,.25); }
 .brand:hover svg { filter: drop-shadow(0 0 8px rgba(255,92,26,.6)); }
 
 /* --- iter4 (N.1): header v2 — fixed, blur-подложка, auto-hide --- */
+/* iter6 (Stellar, п.5): в состоянии "top" шапка раньше сливалась с фоном
+   (прозрачная подложка/граница). Теперь — постоянная полупрозрачная подложка
+   чуть темнее фона + тонкая граница уже у самого верха; при скролле (.is-scrolled)
+   подложка/граница усиливаются и добавляется мягкая тень для явного разделения. */
 .site-header {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   z-index: 50;
-  background: rgba(14, 15, 19, .75);
+  background: rgba(14, 15, 19, .55);
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
-  border-bottom: 1px solid transparent;
-  transition: transform .25s, border-color .25s;
+  border-bottom: 1px solid rgba(42, 45, 58, .5);
+  transition: transform .25s, background-color .25s, border-color .25s, box-shadow .25s;
 }
-.site-header.is-scrolled { border-bottom-color: var(--border); }
+.site-header.is-scrolled {
+  background: rgba(14, 15, 19, .75);
+  border-bottom-color: var(--border);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .35);
+}
 .site-header.is-hidden { transform: translateY(-100%); }
 .header-inner {
   height: var(--header-h);
@@ -234,9 +285,17 @@ h1 { text-shadow: 0 0 24px rgba(255,92,26,.25); }
    строку выходит за пределы фиксированной высоты шапки. Уменьшаем шрифт/зазоры
    и внутренние отступы шапки/тега — этого достаточно, чтобы все уместилось
    в одну строку вплоть до 320px (проверено в preview: 320/375/420 — без
-   переноса и без overflow). */
+   переноса и без overflow).
+   iter6 (Stellar, п.6): проверка на /ru/ показала, что более длинные RU-подписи
+   («Обо мне · Проекты · Прототипы · Навыки · Контакты · EN») все же переносятся
+   на 2 строки при ширинах 320-414px (не покрыто предыдущим фиксом — он
+   проверялся только на EN). Ужимаем еще сильнее + добавляем letter-spacing,
+   а для 320-360px — отдельный, еще более плотный шаг. */
 @media (max-width: 480px) {
   .header-inner { padding-left: 12px; padding-right: 12px; }
-  .site-nav { font-size: .72rem; gap: 6px; }
-  .site-nav .tag { padding: 2px 6px; }
+  .site-nav { font-size: .68rem; gap: 5px; letter-spacing: -0.01em; }
+  .site-nav .tag { padding: 2px 5px; }
+}
+@media (max-width: 360px) {
+  .site-nav { font-size: .64rem; gap: 4px; }
 }

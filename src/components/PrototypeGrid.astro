@@ -11,14 +11,17 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
   <div class="proto-carousel">
     <div class="proto-fade proto-fade--left" aria-hidden="true"></div>
     <div class="proto-track">
-      {protos.map((p, i) => (
-        <div class="proto-card reveal" role="button" tabindex="0"
+      {[...protos, ...protos].map((p, i) => {
+        const isClone = i >= protos.length;
+        return (
+        <div class={isClone ? 'proto-card' : 'proto-card reveal'}
+          role="button" tabindex={isClone ? undefined : 0} aria-hidden={isClone ? 'true' : undefined}
           data-id={p.data.id} data-title={p.data.title} data-genre={p.data.genre[locale]}
           data-year={p.data.year} data-clip={p.data.clip ? '1' : '0'} data-shots={p.data.shots}
           data-clip-full={p.data.clipFull ? '1' : '0'}
           data-link={p.data.link ?? ''}
           data-badge={p.data.badge ? p.data.badge[locale] : ''}
-          style={`--i:${i};background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;cursor:pointer;`}>
+          style={`--i:${isClone ? 0 : i};background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;cursor:pointer;`}>
           <div style="position:relative;aspect-ratio:1;">
             <img src={`/media/prototypes/${p.data.id}/icon.webp`} alt={p.data.title} loading="lazy"
                  style="width:100%;height:100%;object-fit:cover;" />
@@ -38,13 +41,13 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
             <div class="mono" style="color:var(--muted);font-size:.75rem;">{p.data.genre[locale]} · {p.data.year}</div>
           </div>
         </div>
-      ))}
+        );
+      })}
     </div>
     <div class="proto-fade proto-fade--right" aria-hidden="true"></div>
   </div>
   <div class="proto-nav">
     <button type="button" class="proto-nav-arrow proto-nav-arrow--prev" aria-label={t(locale, 'carousel.prev')}>‹</button>
-    <div class="proto-dots" data-page-label={t(locale, 'carousel.page')}></div>
     <button type="button" class="proto-nav-arrow proto-nav-arrow--next" aria-label={t(locale, 'carousel.next')}>›</button>
   </div>
   </div>
@@ -128,21 +131,36 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
     display: flex;
     gap: 12px;
     overflow-x: auto;
-    scroll-snap-type: x proximity;
+    overflow-y: visible;
     overscroll-behavior-x: contain;
     scrollbar-width: none;
-    padding-bottom: 2px;
+    touch-action: pan-x;
+    padding: 18px 0;
   }
   .proto-track::-webkit-scrollbar {
     display: none;
   }
   .proto-track .proto-card {
     flex: 0 0 200px;
-    scroll-snap-align: start;
+    transition: transform .25s ease-out;
+  }
+  /* карточки внутри marquee-трека появляются только затуханием — без
+     вертикального translateY из общего .reveal: с непрерывным горизонтальным
+     скроллом карточки, что еще не попадали во вьюпорт, будут постоянно
+     "приезжать" в состояние translateY(24px), и этот трансформ считается в
+     scrollHeight трека, создавая паразитную вертикальную прокрутку секции */
+  .proto-track .proto-card.reveal {
+    transform: none;
   }
   .proto-track .proto-card:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
+  }
+  .proto-track .proto-card.spread-left {
+    transform: translateX(-10px);
+  }
+  .proto-track .proto-card.spread-right {
+    transform: translateX(10px);
   }
   .proto-fade {
     position: absolute;
@@ -192,41 +210,6 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
     border-color: var(--accent);
     box-shadow: 0 0 14px rgba(255,92,26,.3);
     outline: none;
-  }
-  .proto-nav-arrow:disabled {
-    opacity: .3;
-    cursor: default;
-    box-shadow: none;
-    transform: none;
-  }
-  .proto-dots {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-  .proto-dot {
-    width: 8px;
-    height: 8px;
-    padding: 0;
-    border-radius: 50%;
-    border: 1px solid var(--border);
-    background: transparent;
-    cursor: pointer;
-    transition: transform .15s, background-color .15s, border-color .15s;
-  }
-  .proto-dot:hover {
-    border-color: var(--accent);
-  }
-  .proto-dot:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-  }
-  .proto-dot.is-active {
-    background: var(--accent);
-    border-color: var(--accent);
-    transform: scale(1.3);
   }
   .proto-badge {
     position: absolute;
@@ -315,165 +298,167 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
   const protoFadeRight = document.querySelector<HTMLElement>('.proto-fade--right');
   const protoNavPrev = document.querySelector<HTMLButtonElement>('.proto-nav-arrow--prev');
   const protoNavNext = document.querySelector<HTMLButtonElement>('.proto-nav-arrow--next');
-  const protoDots = document.querySelector<HTMLElement>('.proto-dots');
-  const protoPageLabel = protoDots?.dataset.pageLabel ?? 'Page';
 
-  const AUTOPLAY_MS = 4500;
-  const GRACE_MS = 2000;
+  // iter6 Задача FF: непрерывный marquee вместо постраничного автоплея.
+  // Последовательность карточек в разметке продублирована один раз (клоны
+  // aria-hidden, без tabindex, без .reveal — см. PrototypeGrid.astro map()),
+  // так что бесшовный цикл — это просто scrollLeft, обернутый по ширине
+  // оригинальной последовательности.
+  const PROTO_SPEED_PX_S = 35;
+  const PROTO_SCROLL_GRACE_MS = 2500;
   const protoPauseReasons = new Set<string>();
-  let protoAutoplayTimer: ReturnType<typeof setTimeout> | null = null;
-  let protoGraceTimer: ReturnType<typeof setTimeout> | null = null;
-  let protoCurrentPage = 0;
-  let protoPageCount = 1;
+  let protoOriginalWidth = 0;
+  let protoLastTs = 0;
+  // флаг (не таймер!) — тикер выставляет true перед своей записью в scrollLeft,
+  // слушатель 'scroll' гасит ОДНО следующее событие и сбрасывает флаг. Таймер-
+  // окно здесь не работает: тикер пишет каждый кадр (~16мс), и скользящее окно
+  // в 80мс никогда бы не успевало закрыться, маскируя все пользовательские скроллы.
+  let protoIsMarqueeWrite = false;
+  let protoUserScrollTimer: ReturnType<typeof setTimeout> | null = null;
+  let protoResizeTimer: ReturnType<typeof setTimeout> | null = null;
+  // отдельный float-аккумулятор: scrollLeft у некоторых движков округляется
+  // при чтении, а прирост за кадр (~35px/60fps ≈ 0.6px) на таком округлении
+  // тонет — позиция никогда не сдвигается, если считать от el.scrollLeft
+  let protoScrollAccum = 0;
 
-  function protoClearAutoplayTimer() {
-    if (protoAutoplayTimer !== null) { clearTimeout(protoAutoplayTimer); protoAutoplayTimer = null; }
-  }
-  function protoClearGraceTimer() {
-    if (protoGraceTimer !== null) { clearTimeout(protoGraceTimer); protoGraceTimer = null; }
-  }
-  function protoScheduleAdvance() {
-    protoClearAutoplayTimer();
-    protoAutoplayTimer = setTimeout(protoAdvance, AUTOPLAY_MS);
-  }
-  function protoAdvance() {
-    if (!protoTrack || protoPauseReasons.size > 0) return;
-    if (protoPageCount <= 1) { protoScheduleAdvance(); return; }
-    if (protoCurrentPage >= protoPageCount - 1) {
-      protoTrack.scrollTo({ left: 0, behavior: 'smooth' });
-      protoCurrentPage = 0;
-      protoUpdateActiveDot();
-      protoUpdateArrows();
-    } else {
-      protoGoToPage(protoCurrentPage + 1, false);
-    }
-    protoScheduleAdvance();
-  }
   function pauseCarousel(reason: string) {
     protoPauseReasons.add(reason);
-    protoClearGraceTimer();
-    protoClearAutoplayTimer();
   }
-  function resumeCarousel(reason: string, grace = true) {
+  function resumeCarousel(reason: string) {
     protoPauseReasons.delete(reason);
+    if (protoPauseReasons.size === 0) {
+      // сброс базовой временной метки, чтобы после долгой паузы (скрытая
+      // вкладка, вне вьюпорта) не случился скачок на большой dt, и ресинк
+      // аккумулятора с реальным scrollLeft (могло сместиться пользователем)
+      protoLastTs = 0;
+      if (protoTrack) protoScrollAccum = protoTrack.scrollLeft;
+    }
+  }
+
+  // помечает ближайшую запись в scrollLeft как программную (не пользовательскую)
+  function protoMarkProgrammatic() {
+    protoIsMarqueeWrite = true;
+  }
+
+  function protoScheduleUserScrollResume() {
+    pauseCarousel('user-scroll');
+    if (protoUserScrollTimer) clearTimeout(protoUserScrollTimer);
+    protoUserScrollTimer = setTimeout(() => {
+      protoUserScrollTimer = null;
+      resumeCarousel('user-scroll');
+    }, PROTO_SCROLL_GRACE_MS);
+  }
+
+  function protoMeasure() {
+    if (!protoTrack) return;
+    const cards = Array.from(protoTrack.children) as HTMLElement[];
+    const half = Math.floor(cards.length / 2);
+    const firstClone = cards[half];
+    if (!firstClone) { protoOriginalWidth = protoTrack.scrollWidth; return; }
+    const trackRect = protoTrack.getBoundingClientRect();
+    const cloneRect = firstClone.getBoundingClientRect();
+    // расстояние от левого края трека до первого клона в системе координат
+    // контента (не зависит от текущего scrollLeft на момент замера)
+    protoOriginalWidth = (cloneRect.left - trackRect.left) + protoTrack.scrollLeft;
+  }
+
+  function protoCardStep(): number {
+    if (!protoTrack) return 0;
+    const first = protoTrack.querySelector<HTMLElement>('.proto-card');
+    if (!first) return 0;
+    const style = getComputedStyle(protoTrack);
+    const gap = parseFloat(style.columnGap || style.gap || '0') || 0;
+    return first.getBoundingClientRect().width + gap;
+  }
+
+  // если для смещения на distance не хватает места до края скролла — заранее
+  // (незаметно, т.к. содержимое дублировано) сдвигает окно на originalWidth
+  function protoEnsureHeadroom(direction: 1 | -1, distance: number) {
+    if (!protoTrack || protoOriginalWidth <= 0) return;
+    const maxScroll = protoTrack.scrollWidth - protoTrack.clientWidth;
+    if (direction < 0 && protoTrack.scrollLeft - distance < 0) {
+      protoMarkProgrammatic();
+      protoTrack.scrollLeft += protoOriginalWidth;
+    } else if (direction > 0 && protoTrack.scrollLeft + distance > maxScroll) {
+      protoMarkProgrammatic();
+      protoTrack.scrollLeft -= protoOriginalWidth;
+    }
+  }
+
+  function protoTick(ts: number) {
+    requestAnimationFrame(protoTick);
+    if (!protoTrack || protoOriginalWidth <= 0) return;
+    if (!protoLastTs) { protoLastTs = ts; return; }
+    const dt = Math.min((ts - protoLastTs) / 1000, 0.1);
+    protoLastTs = ts;
     if (protoPauseReasons.size > 0) return;
-    protoClearGraceTimer();
-    if (grace) {
-      protoGraceTimer = setTimeout(() => {
-        protoGraceTimer = null;
-        if (protoPauseReasons.size === 0) protoScheduleAdvance();
-      }, GRACE_MS);
-    } else {
-      protoScheduleAdvance();
+    protoScrollAccum += PROTO_SPEED_PX_S * dt;
+    if (protoScrollAccum >= protoOriginalWidth) {
+      protoScrollAccum -= protoOriginalWidth;
     }
-  }
-
-  function protoComputePageCount(): number {
-    if (!protoTrack || protoTrack.clientWidth <= 0) return 1;
-    return Math.max(1, Math.ceil(protoTrack.scrollWidth / protoTrack.clientWidth));
-  }
-
-  function protoBuildDots() {
-    if (!protoDots) return;
-    protoDots.innerHTML = '';
-    for (let i = 0; i < protoPageCount; i++) {
-      const dot = document.createElement('button');
-      dot.type = 'button';
-      dot.className = 'proto-dot';
-      dot.setAttribute('aria-label', `${protoPageLabel} ${i + 1}`);
-      dot.dataset.page = String(i);
-      dot.addEventListener('click', () => protoGoToPage(i, true));
-      protoDots.appendChild(dot);
-    }
-    protoUpdateActiveDot();
-  }
-
-  function protoUpdateActiveDot() {
-    if (!protoDots) return;
-    protoDots.querySelectorAll<HTMLElement>('.proto-dot').forEach((dot, i) => {
-      const active = i === protoCurrentPage;
-      dot.classList.toggle('is-active', active);
-      if (active) dot.setAttribute('aria-current', 'true');
-      else dot.removeAttribute('aria-current');
-    });
-  }
-
-  function protoUpdateArrows() {
-    if (protoNavPrev) protoNavPrev.disabled = protoCurrentPage <= 0;
-    if (protoNavNext) protoNavNext.disabled = protoCurrentPage >= protoPageCount - 1;
-  }
-
-  function protoUpdateFades() {
-    if (!protoTrack) return;
-    const maxScroll = protoTrack.scrollWidth - protoTrack.clientWidth;
-    const atStart = protoTrack.scrollLeft <= 2;
-    const atEnd = protoTrack.scrollLeft >= maxScroll - 2;
-    protoFadeLeft?.classList.toggle('is-visible', !atStart && maxScroll > 0);
-    protoFadeRight?.classList.toggle('is-visible', !atEnd && maxScroll > 0);
-  }
-
-  function protoGoToPage(page: number, userInitiated: boolean) {
-    if (!protoTrack) return;
-    const clamped = Math.min(Math.max(page, 0), protoPageCount - 1);
-    protoCurrentPage = clamped;
-    protoTrack.scrollTo({ left: clamped * protoTrack.clientWidth, behavior: 'smooth' });
-    protoUpdateActiveDot();
-    protoUpdateArrows();
-    if (userInitiated && protoPauseReasons.size === 0) {
-      protoScheduleAdvance();
-    }
-  }
-
-  function protoRefreshLayout() {
-    if (!protoTrack) return;
-    protoPageCount = protoComputePageCount();
-    const maxScroll = protoTrack.scrollWidth - protoTrack.clientWidth;
-    protoCurrentPage = maxScroll > 0
-      ? Math.min(Math.round(protoTrack.scrollLeft / protoTrack.clientWidth), protoPageCount - 1)
-      : 0;
-    protoBuildDots();
-    protoUpdateArrows();
-    protoUpdateFades();
+    protoMarkProgrammatic();
+    protoTrack.scrollLeft = protoScrollAccum;
   }
 
   if (protoTrack) {
-    protoRefreshLayout();
+    protoMeasure();
+    protoScrollAccum = protoTrack.scrollLeft;
+    protoFadeLeft?.classList.add('is-visible');
+    protoFadeRight?.classList.add('is-visible');
+    // стартуем на паузе «вне вьюпорта» — IntersectionObserver снимет ее,
+    // как только подтвердит видимость секции
+    pauseCarousel('viewport');
+    requestAnimationFrame(protoTick);
 
-    let protoScrollRaf = 0;
     protoTrack.addEventListener('scroll', () => {
-      if (protoScrollRaf) return;
-      protoScrollRaf = requestAnimationFrame(() => {
-        protoScrollRaf = 0;
-        if (!protoTrack) return;
-        const cw = protoTrack.clientWidth || 1;
-        const page = Math.round(protoTrack.scrollLeft / cw);
-        protoCurrentPage = Math.min(Math.max(page, 0), protoPageCount - 1);
-        protoUpdateActiveDot();
-        protoUpdateArrows();
-        protoUpdateFades();
-      });
+      if (protoIsMarqueeWrite) { protoIsMarqueeWrite = false; return; }
+      // скролл вызван пользователем (свайп/колесо/клик по стрелке) —
+      // пауза + грация 2.5с после последнего такого события
+      protoScheduleUserScrollResume();
     }, { passive: true });
 
-    window.addEventListener('resize', protoRefreshLayout);
+    // колесо мыши не порождает pointerdown — ловим его отдельно, чтобы пауза
+    // включилась раньше, чем прилетит событие scroll (иначе возможна гонка
+    // с флагом protoIsMarqueeWrite, если тикер как раз пишет в этот же кадр)
+    protoTrack.addEventListener('wheel', () => protoScheduleUserScrollResume(), { passive: true });
 
-    protoNavPrev?.addEventListener('click', () => protoGoToPage(protoCurrentPage - 1, true));
-    protoNavNext?.addEventListener('click', () => protoGoToPage(protoCurrentPage + 1, true));
+    window.addEventListener('resize', () => {
+      if (protoResizeTimer) clearTimeout(protoResizeTimer);
+      protoResizeTimer = setTimeout(protoMeasure, 150);
+    });
 
-    protoScheduleAdvance();
+    protoNavPrev?.addEventListener('click', () => {
+      if (!protoTrack) return;
+      const distance = protoCardStep() * 3;
+      if (distance <= 0) return;
+      // пауза СИНХРОННО, до scrollBy — иначе собственный rAF-тикер может
+      // выиграть гонку у нативной smooth-анимации и затереть ее тем же кадром
+      protoScheduleUserScrollResume();
+      protoEnsureHeadroom(-1, distance);
+      protoTrack.scrollBy({ left: -distance, behavior: 'smooth' });
+    });
+    protoNavNext?.addEventListener('click', () => {
+      if (!protoTrack) return;
+      const distance = protoCardStep() * 3;
+      if (distance <= 0) return;
+      protoScheduleUserScrollResume();
+      protoEnsureHeadroom(1, distance);
+      protoTrack.scrollBy({ left: distance, behavior: 'smooth' });
+    });
 
     protoWrap?.addEventListener('pointerenter', () => pauseCarousel('hover'));
-    protoWrap?.addEventListener('pointerleave', () => resumeCarousel('hover', true));
+    protoWrap?.addEventListener('pointerleave', () => resumeCarousel('hover'));
     protoWrap?.addEventListener('focusin', () => pauseCarousel('focus'));
     protoWrap?.addEventListener('focusout', (e) => {
-      if (!protoWrap.contains((e as FocusEvent).relatedTarget as Node | null)) resumeCarousel('focus', true);
+      if (!protoWrap.contains((e as FocusEvent).relatedTarget as Node | null)) resumeCarousel('focus');
     });
     protoWrap?.addEventListener('pointerdown', () => pauseCarousel('drag'));
-    window.addEventListener('pointerup', () => resumeCarousel('drag', true));
-    window.addEventListener('pointercancel', () => resumeCarousel('drag', true));
+    window.addEventListener('pointerup', () => resumeCarousel('drag'));
+    window.addEventListener('pointercancel', () => resumeCarousel('drag'));
 
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) pauseCarousel('tab');
-      else resumeCarousel('tab', false);
+      else resumeCarousel('tab');
     });
     if (document.hidden) pauseCarousel('tab');
 
@@ -481,24 +466,32 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
       const protoIo = new IntersectionObserver((entries) => {
         const entry = entries[0];
         if (!entry) return;
-        if (entry.isIntersecting) resumeCarousel('viewport', false);
+        if (entry.isIntersecting) resumeCarousel('viewport');
         else pauseCarousel('viewport');
       }, { threshold: 0.1 });
       protoIo.observe(protoWrap);
+    } else {
+      resumeCarousel('viewport');
     }
   }
 
   if (matchMedia('(hover: hover) and (pointer: fine)').matches) {
-    document.querySelectorAll('.proto-card').forEach((card) => {
-      const el = card as HTMLElement;
-      el.style.transition = 'opacity .6s, transform .15s ease-out';
+    const protoCards = Array.from(document.querySelectorAll<HTMLElement>('.proto-card'));
+    protoCards.forEach((el, idx) => {
+      el.style.transition = 'opacity .6s, transform .25s ease-out';
       const video = el.querySelector('video');
+      const prevCard = protoCards[idx - 1];
+      const nextCard = protoCards[idx + 1];
       el.addEventListener('pointerenter', () => {
         if (video) { video.style.opacity = '1'; video.play().catch(() => {}); }
+        prevCard?.classList.add('spread-left');
+        nextCard?.classList.add('spread-right');
       });
       el.addEventListener('pointerleave', () => {
         if (video) { video.style.opacity = '0'; video.pause(); }
         el.style.transform = '';
+        prevCard?.classList.remove('spread-left');
+        nextCard?.classList.remove('spread-right');
       });
       el.addEventListener('pointermove', (e) => {
         const ev = e as PointerEvent;
@@ -629,7 +622,7 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
         lastCard.style.transform = '';
         lastCard = null;
       }
-      resumeCarousel('modal', true);
+      resumeCarousel('modal');
     });
   }
 </script>
