@@ -3,21 +3,36 @@ import { t, type Locale } from '../i18n/ui';
 import SocialIcons from './SocialIcons.astro';
 const { locale } = Astro.props as { locale: Locale };
 ---
-<section id="contact" class="section container" style="text-align:center;padding:96px 0;">
-  <p class="mono reveal" style="color:var(--accent);font-size:.9rem;margin:0 0 8px;">{t(locale, 'contact.kicker')}</p>
-  <h2 class="reveal">{t(locale, 'contact.title')}</h2>
-  <p class="reveal" style="color:var(--muted);max-width:52ch;margin:16px auto 0;">
-    {t(locale, 'contact.copy')}
-  </p>
-  <div class="reveal" style="margin-top:32px;">
-    <a class="btn-contact" href="mailto:kandakov.sasha@gmail.com">{t(locale, 'contact.cta')}</a>
-  </div>
-  <div class="reveal" style="display:flex;justify-content:center;margin-top:28px;">
-    <SocialIcons />
+<section id="contact" class="section container" style="text-align:center;padding-top:96px;padding-bottom:96px;">
+  <div class="contact-card reveal">
+    <p class="mono" style="color:var(--accent);font-size:.9rem;margin:0 0 8px;">{t(locale, 'contact.kicker')}</p>
+    <h2 class="reveal">{t(locale, 'contact.title')}</h2>
+    <p style="color:var(--muted);max-width:52ch;margin:16px auto 0;">
+      {t(locale, 'contact.copy')}
+    </p>
+    <div style="margin-top:32px;">
+      <a class="btn-contact" href="mailto:kandakov.sasha@gmail.com">{t(locale, 'contact.cta')}</a>
+    </div>
+    <div style="display:flex;justify-content:center;margin-top:28px;">
+      <SocialIcons />
+    </div>
   </div>
 </section>
 
 <style>
+  .contact-card {
+    /* min() keeps a 20px safety gutter on narrow viewports even though the
+       section's own horizontal padding is zeroed by a pre-existing cascade
+       quirk (.section's shorthand padding, declared after .container in
+       global.css, wins on left/right at equal specificity). */
+    max-width: min(640px, calc(100% - 40px));
+    margin: 0 auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 48px 32px;
+    box-shadow: 0 12px 48px rgba(255,92,26,.1);
+  }
   .btn-contact {
     display: inline-block;
     padding: 16px 34px;
