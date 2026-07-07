@@ -52,8 +52,9 @@ img, video { max-width: 100%; display: block; }
    используется, когда интерактивный canvas (aria-hidden) подменяет статичный
    список визуально, но список должен остаться в DOM для a11y. skill-cloud.js
    переключает этот класс на .skills-static при успешной инициализации сферы
-   (см. Q.2) — без JS и при prefers-reduced-motion класс не добавляется,
-   список виден как раньше. */
+   (см. Q.2) — без JS класс не добавляется, список виден как раньше. Сфера
+   теперь инициализируется всегда, вне зависимости от системных настроек
+   моушена пользователя (iter5). */
 .sr-only {
   position: absolute; width: 1px; height: 1px;
   padding: 0; margin: -1px; overflow: hidden;
@@ -67,11 +68,11 @@ html.js .reveal { opacity: 0; transform: translateY(24px); transition: opacity .
 html.js .reveal.visible { opacity: 1; transform: none; }
 /* M.1: stagger — задержка reveal-перехода по индексу карточки в сетке (style="--i:n") */
 html.js .reveal { transition-delay: calc(var(--i, 0) * 60ms); }
-@media (prefers-reduced-motion: reduce) {
-  html.js .reveal { opacity: 1; transform: none; }
-  html.js .reveal:not(.lift) { transition: none; }
-  html { scroll-behavior: auto; }
-}
+/* iter5 (V, доп.): reveal/stagger работает для ВСЕХ безусловно — раньше гейт
+   под системные настройки моушена делал элементы видимыми без анимации, и на
+   машине владельца сайта (у него такая настройка включена) вся анимация
+   появления была невидима. Решение пользователя (2026-07-07): гейты убраны
+   полностью, ни одна анимация больше не зависит от этой настройки. */
 
 /* M.1: полоса-подчеркивание у заголовков секций */
 h2.reveal { position: relative; }
@@ -81,9 +82,6 @@ h2.reveal::after {
   transition: width .5s .15s;
 }
 h2.reveal.visible::after { width: 48px; }
-@media (prefers-reduced-motion: reduce) {
-  h2.reveal::after { transition: none; width: 48px; }
-}
 
 /* M.2: единый hover-lift для карточек (featured, gallery items) */
 .lift {
@@ -93,15 +91,6 @@ h2.reveal.visible::after { width: 48px; }
   transform: translateY(-3px) scale(1.02);
   border-color: var(--accent);
   box-shadow: 0 6px 24px rgba(255,92,26,.15);
-}
-/* fix: .reveal:not(.lift) отключает transition под reduced-motion, но .lift
-   элементы (карточки FeaturedCard/Gallery) одновременно и .reveal — им нужно
-   сохранить свой hover-переход (интерактивная отдача), убрав только
-   декоративный reveal-эффект появления. Явно возвращаем .lift transition —
-   селектор должен совпадать по специфичности с `html.js .reveal` (0,2,1),
-   иначе тот его перебивает независимо от порядка источника. */
-@media (prefers-reduced-motion: reduce) {
-  html.js .reveal.lift { transition: transform .2s, border-color .2s, box-shadow .2s; }
 }
 
 /* --- iter4 (M.3): фон v3 — два слоя пятен (реальные div'ы, не псевдоэлементы),
@@ -127,12 +116,6 @@ h2.reveal.visible::after { width: 48px; }
   background: radial-gradient(700px 500px at 85% 30%, rgba(124,92,255,.17), transparent 70%);
   animation: aurora-violet 27s ease-in-out infinite alternate;
 }
-body::after {
-  content: ""; position: fixed; inset: -20%; z-index: -1; pointer-events: none; opacity: .55;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='3'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23n)' opacity='0.15'/%3E%3C/svg%3E");
-  animation: grain-drift 60s linear infinite alternate;
-  will-change: transform;
-}
 @keyframes aurora {
   0% { transform: translate(-6%, -4%) scale(1); }
   50% { transform: translate(5%, 6%) scale(1.12); }
@@ -144,14 +127,9 @@ body::after {
   50% { transform: translate(-5%, -6%) scale(1); }
   100% { transform: translate(4%, -3%) scale(1.05); }
 }
-@keyframes grain-drift {
-  from { transform: translate(0, 0); }
-  to { transform: translate(-4%, 3%); }
-}
-@media (prefers-reduced-motion: reduce) {
-  #bg-a .bg-inner, #bg-b .bg-inner, body::after { animation: none; transform: none; }
-  #bg-a, #bg-b { transform: none !important; }
-}
+/* iter5 (V, доп.): решение пользователя (2026-07-07) — системные настройки
+   моушена больше не влияют ни на что: keyframes-дрейф фона и параллакс
+   (parallax.js) работают у всех всегда (см. спеку, коммит 9be07e1). */
 h1 { text-shadow: 0 0 24px rgba(255,92,26,.25); }
 .btn { box-shadow: 0 0 18px rgba(255,92,26,.25); }
 .icon-link {
@@ -164,14 +142,15 @@ h1 { text-shadow: 0 0 24px rgba(255,92,26,.25); }
 .icon-link svg { width: 20px; height: 20px; fill: currentColor; }
 .icon-link:focus-visible, .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-/* --- iter4 (R.1): бейджи платформ (PC / Mobile) — тил = интерактив/платформа --- */
+/* --- iter4 (R.1): бейджи платформ (PC / Mobile); iter5 (5.3): тил → оранж
+   (бренд-акцент), темная полупрозрачная подложка остается --- */
 .platform-badge {
   display: inline-flex; align-items: center; gap: 4px;
   padding: 4px 10px; border-radius: 999px;
   background: rgba(14, 15, 19, .72);
   -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
-  color: var(--teal); font-family: var(--font-mono); font-size: .72rem;
-  border: 1px solid rgba(45, 212, 191, .3);
+  color: var(--accent); font-family: var(--font-mono); font-size: .72rem;
+  border: 1px solid rgba(255, 92, 26, .35);
   line-height: 1;
 }
 .platform-badge svg { width: 13px; height: 13px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; }
@@ -182,8 +161,9 @@ h1 { text-shadow: 0 0 24px rgba(255,92,26,.25); }
 .platform-badge.lg { padding: 5px 12px; font-size: .8rem; gap: 6px; }
 .platform-badge.lg svg { width: 15px; height: 15px; }
 
-/* R.4: жанр — фиолетовый акцент (атмосфера/категория второго плана) */
-.tag.tag-genre {
+/* R.4/iter5(5.4): фиолетовый акцент-чип — теперь на "company · role"
+   (жанр стал mono-строкой без чипа, см. FeaturedCard/ProjectPage) */
+.tag.tag-violet {
   color: #a99bff;
   border-color: rgba(124, 92, 255, .45);
   background: rgba(124, 92, 255, .08);
@@ -192,10 +172,10 @@ h1 { text-shadow: 0 0 24px rgba(255,92,26,.25); }
 /* --- iter3: шапка с монограммой --- */
 .brand { display: inline-flex; align-items: center; gap: 10px; color: var(--text); }
 .brand-mark { flex: none; display: block; border-radius: 8px; }
-.brand-name { font-weight: 700; }
-@media (max-width: 420px) {
-  .brand-name { display: none; }
-}
+/* iter5 (V): текст «Kandakov» убран из шапки — только монограмма AK
+   (aria-label остается на ссылке для a11y). Взамен — glow на hover. */
+.brand svg { transition: filter .2s; }
+.brand:hover svg { filter: drop-shadow(0 0 8px rgba(255,92,26,.6)); }
 
 /* --- iter4 (N.1): header v2 — fixed, blur-подложка, auto-hide --- */
 .site-header {
@@ -245,6 +225,7 @@ h1 { text-shadow: 0 0 24px rgba(255,92,26,.25); }
   transition: width .25s;
 }
 .site-nav a:hover::after { width: 100%; opacity: .5; }
+.site-nav a.active { color: var(--teal); }
 .site-nav a.active::after { width: 100%; opacity: 1; }
 .site-nav a.tag::after { content: none; }
 

@@ -1,6 +1,9 @@
 // Q.1: интерактивное canvas-облако тегов навыков (vanilla, без библиотек).
 // Fibonacci-сфера + автовращение + доворот за курсором; глубина -> размер/альфа.
-// Полностью не инициализируется при prefers-reduced-motion (статичный список остается).
+// iter5 (V, доп.): инициализируется для всех безусловно — решение пользователя
+// (2026-07-07) отменило любые гейты по системным настройкам моушена.
+// IntersectionObserver/document.hidden паузы (ниже) остаются — это про
+// производительность, а не про motion-политику.
 
 /**
  * @typedef {{ text: string, tier: 1 | 2 | 3 }} SkillTag
@@ -159,7 +162,6 @@ class SkillCloud {
   const section = document.getElementById('skills');
   const canvas = /** @type {HTMLCanvasElement|null} */ (document.getElementById('skills-canvas'));
   if (!section || !canvas) return;
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
   const dataAttr = canvas.getAttribute('data-tags');
   if (!dataAttr) return;

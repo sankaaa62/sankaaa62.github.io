@@ -27,13 +27,11 @@ const badges = platformBadges(d.platforms, { pc: t(locale, 'platform.pc'), mobil
   </div>
   <div style="padding:18px 20px;">
     <h3 style="margin:0;">{d.title}</h3>
-    <div class="mono" style="color:var(--muted);font-size:.8rem;margin-top:4px;">{d.company} · {d.role}</div>
+    <div class="mono" style="color:var(--muted);font-size:.8rem;margin-top:4px;">{d.genre}</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
-      <span class="tag tag-genre">{d.genre}</span>
+      <span class="tag tag-violet">{d.company} · {d.role}</span>
     </div>
     <p style="color:var(--muted);margin:.5em 0;">{d.tagline}</p>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;">
-      {d.metrics.map((m: string) => <span class="mono" style="color:var(--ok);font-size:.8rem;opacity:.9;">{m}</span>)}
-    </div>
+    <div class="mono" style="color:var(--ok);font-size:.8rem;opacity:.9;">{d.metrics.join(' · ')}</div>
   </div>
 </a>

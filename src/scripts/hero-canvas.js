@@ -1,5 +1,5 @@
 const canvas = /** @type {HTMLCanvasElement | null} */ (document.getElementById('hero-canvas'));
-if (canvas && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+if (canvas) {
   const ctx = /** @type {CanvasRenderingContext2D} */ (canvas.getContext('2d'));
   let w, h, particles;
   const mouse = { x: -1e4, y: -1e4 };

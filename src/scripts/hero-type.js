@@ -1,5 +1,5 @@
 const el = /** @type {HTMLElement | null} */ (document.getElementById('hero-type'));
-if (el && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+if (el) {
   const roles = ['Senior Unity Developer', 'Team Lead', 'ECS/DOTS · Multiplayer', 'AI-driven development'];
   const TYPE_MS = 45;
   const ERASE_MS = 25;

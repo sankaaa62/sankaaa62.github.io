@@ -1,14 +1,16 @@
 // M.3: легкий параллакс фоновых слоев (#bg-a, #bg-b).
 // Курсор двигает слои на ±2% от размера вьюпорта, скролл — на ±4% (по прогрессу
 // прокрутки страницы). Сглаживание через lerp, троттлинг через rAF.
-// Полностью выключается при prefers-reduced-motion (тот же паттерн, что и .reveal/фон).
+// iter5 (V, доп.): решение пользователя (2026-07-07) — системные настройки
+// моушена больше не влияют ни на что, параллакс работает у всех всегда
+// (см. спеку, коммит 9be07e1).
 
 const layers = [
   { el: document.getElementById('bg-a'), depth: 1 },
   { el: document.getElementById('bg-b'), depth: 1.4 },
 ].filter((l) => l.el);
 
-if (layers.length && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+if (layers.length) {
   const CURSOR_STRENGTH = 0.02; // ±2% viewport
   const SCROLL_STRENGTH = 0.04; // ±4% viewport
   const LERP = 0.06;
