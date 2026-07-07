@@ -78,9 +78,6 @@ const wordSpans = words.map((word) => {
   @keyframes ltr-in {
     to { opacity: 1; transform: none; }
   }
-  @media (prefers-reduced-motion: reduce) {
-    html.js .ltr { opacity: 1; transform: none; animation: none; }
-  }
 
   @media (min-width: 720px) {
     .hero-type-line { min-width: 23ch; }
@@ -90,9 +87,6 @@ const wordSpans = words.map((word) => {
     color: var(--teal);
     font-weight: 700;
     animation: cursor-blink 1s step-start infinite;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .hero-cursor { animation: none; }
   }
   @keyframes cursor-blink {
     50% { opacity: 0; }
@@ -111,9 +105,6 @@ const wordSpans = words.map((word) => {
     border: 3px solid var(--accent);
     box-shadow: 0 0 40px rgba(255,92,26,.25);
     animation: portrait-float 6s ease-in-out infinite;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .hero-portrait img { animation: none; }
   }
   @keyframes portrait-float {
     0%, 100% { transform: translateY(-6px); }

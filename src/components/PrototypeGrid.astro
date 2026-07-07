@@ -323,7 +323,6 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
         el.style.transform = '';
       });
       el.addEventListener('pointermove', (e) => {
-        if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
         const ev = e as PointerEvent;
         const r = el.getBoundingClientRect();
         const x = (ev.clientX - r.left) / r.width - 0.5;
