@@ -24,9 +24,10 @@ const shots = existsSync(shotsDir)
   <article class="container section">
     <a href={localePath(locale, '/#projects')} class="mono">{t(locale, 'project.back')}</a>
     <h1 style="margin-top:.5em;">{d.title}</h1>
+    <div class="mono" style="color:var(--muted);font-size:.85rem;margin-top:4px;">{d.genre}</div>
     <p style="color:var(--muted);font-size:1.1rem;">{d.tagline}</p>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0 24px;">
-      <span class="tag tag-genre">{d.genre}</span>
+      <span class="tag tag-violet">{d.company} · {d.role}</span>
       <span class="tag">{d.period}</span>
       {badges.map((b) => (
         <span class="platform-badge lg" set:html={b.svg + `<span>${b.label}</span>`} />
@@ -49,7 +50,7 @@ const shots = existsSync(shotsDir)
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;">
         <div class="mono" style="color:var(--muted);font-size:.8rem;">{t(locale, 'project.role')}</div>
         <div style="font-weight:700;">{d.role}</div>
-        {d.metrics.map((m: string) => <div class="mono" style="color:var(--ok);font-size:.9rem;">{m}</div>)}
+        <div class="mono" style="color:var(--ok);font-size:.9rem;margin-top:2px;">{d.metrics.join(' · ')}</div>
       </div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;">
         <div class="mono" style="color:var(--muted);font-size:.8rem;">{t(locale, 'project.stack')}</div>

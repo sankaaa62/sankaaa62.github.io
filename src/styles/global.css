@@ -142,14 +142,15 @@ h1 { text-shadow: 0 0 24px rgba(255,92,26,.25); }
 .icon-link svg { width: 20px; height: 20px; fill: currentColor; }
 .icon-link:focus-visible, .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-/* --- iter4 (R.1): бейджи платформ (PC / Mobile) — тил = интерактив/платформа --- */
+/* --- iter4 (R.1): бейджи платформ (PC / Mobile); iter5 (5.3): тил → оранж
+   (бренд-акцент), тёмная полупрозрачная подложка остаётся --- */
 .platform-badge {
   display: inline-flex; align-items: center; gap: 4px;
   padding: 4px 10px; border-radius: 999px;
   background: rgba(14, 15, 19, .72);
   -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
-  color: var(--teal); font-family: var(--font-mono); font-size: .72rem;
-  border: 1px solid rgba(45, 212, 191, .3);
+  color: var(--accent); font-family: var(--font-mono); font-size: .72rem;
+  border: 1px solid rgba(255, 92, 26, .35);
   line-height: 1;
 }
 .platform-badge svg { width: 13px; height: 13px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; }
@@ -160,8 +161,9 @@ h1 { text-shadow: 0 0 24px rgba(255,92,26,.25); }
 .platform-badge.lg { padding: 5px 12px; font-size: .8rem; gap: 6px; }
 .platform-badge.lg svg { width: 15px; height: 15px; }
 
-/* R.4: жанр — фиолетовый акцент (атмосфера/категория второго плана) */
-.tag.tag-genre {
+/* R.4/iter5(5.4): фиолетовый акцент-чип — теперь на "company · role"
+   (жанр стал mono-строкой без чипа, см. FeaturedCard/ProjectPage) */
+.tag.tag-violet {
   color: #a99bff;
   border-color: rgba(124, 92, 255, .45);
   background: rgba(124, 92, 255, .08);

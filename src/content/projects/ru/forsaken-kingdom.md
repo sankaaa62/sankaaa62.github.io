@@ -5,7 +5,7 @@ role: "Senior Unity Developer"
 period: "2026 — н.в."
 genre: "Roguelite авто-баттлер / RPG"
 platforms: ["PC (Steam)"]
-metrics: ["Инди · соло-разработка"]
+metrics: ["Единственный программист", "Все системы с нуля"]
 stack: ["Unity", "C#", "Бой в реальном времени", "Мета-системы"]
 links:
   - { label: "Steam", url: "https://store.steampowered.com/app/4418240/Forsaken_Kingdom/" }
