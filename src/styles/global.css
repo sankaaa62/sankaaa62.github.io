@@ -53,7 +53,8 @@ img, video { max-width: 100%; display: block; }
    список визуально, но список должен остаться в DOM для a11y. skill-cloud.js
    переключает этот класс на .skills-static при успешной инициализации сферы
    (см. Q.2) — без JS класс не добавляется, список виден как раньше. Сфера
-   теперь инициализируется всегда, включая prefers-reduced-motion (iter5). */
+   теперь инициализируется всегда, вне зависимости от системных настроек
+   моушена пользователя (iter5). */
 .sr-only {
   position: absolute; width: 1px; height: 1px;
   padding: 0; margin: -1px; overflow: hidden;
@@ -67,10 +68,11 @@ html.js .reveal { opacity: 0; transform: translateY(24px); transition: opacity .
 html.js .reveal.visible { opacity: 1; transform: none; }
 /* M.1: stagger — задержка reveal-перехода по индексу карточки в сетке (style="--i:n") */
 html.js .reveal { transition-delay: calc(var(--i, 0) * 60ms); }
-/* iter5 (V): reveal/stagger теперь работает для ВСЕХ, включая
-   prefers-reduced-motion — раньше гейт под reduce делал элементы видимыми
-   без анимации, и на машине владельца сайта (у него reduce всегда включен)
-   вся анимация появления была невидима. Осознанный трейд-офф для промо-сайта. */
+/* iter5 (V, доп.): reveal/stagger работает для ВСЕХ безусловно — раньше гейт
+   под системные настройки моушена делал элементы видимыми без анимации, и на
+   машине владельца сайта (у него такая настройка включена) вся анимация
+   появления была невидима. Решение пользователя (2026-07-07): гейты убраны
+   полностью, ни одна анимация больше не зависит от этой настройки. */
 
 /* M.1: полоса-подчеркивание у заголовков секций */
 h2.reveal { position: relative; }
@@ -125,14 +127,9 @@ h2.reveal.visible::after { width: 48px; }
   50% { transform: translate(-5%, -6%) scale(1); }
   100% { transform: translate(4%, -3%) scale(1.05); }
 }
-/* iter5 (V): под prefers-reduced-motion остаются гейтированными ТОЛЬКО
-   вестибулярные триггеры — keyframes-дрейф фоновых пятен (эта секция) и
-   курсор/скролл-параллакс (parallax.js). Слои остаются статичными цветовыми
-   заливками вместо дрейфующих пятен. */
-@media (prefers-reduced-motion: reduce) {
-  #bg-a .bg-inner, #bg-b .bg-inner { animation: none; transform: none; }
-  #bg-a, #bg-b { transform: none !important; }
-}
+/* iter5 (V, доп.): решение пользователя (2026-07-07) — системные настройки
+   моушена больше не влияют ни на что: keyframes-дрейф фона и параллакс
+   (parallax.js) работают у всех всегда (см. спеку, коммит 9be07e1). */
 h1 { text-shadow: 0 0 24px rgba(255,92,26,.25); }
 .btn { box-shadow: 0 0 18px rgba(255,92,26,.25); }
 .icon-link {
