@@ -19,6 +19,7 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
           data-id={p.data.id} data-title={p.data.title} data-genre={p.data.genre[locale]}
           data-year={p.data.year} data-clip={p.data.clip ? '1' : '0'} data-shots={p.data.shots}
           data-clip-full={p.data.clipFull ? '1' : '0'}
+          data-extra-clips={p.data.extraClips}
           data-link={p.data.link ?? ''}
           data-badge={p.data.badge ? p.data.badge[locale] : ''}
           style={`--i:${isClone ? 0 : i};background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;cursor:pointer;`}>
@@ -64,6 +65,7 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
     <div class="mono pm-meta" style="color:var(--muted);"></div>
     <a class="pm-link btn ghost" target="_blank" rel="noopener" style="display:none;"></a>
     <video class="pm-video" controls autoplay muted loop playsinline style="display:none;"></video>
+    <div class="pm-extra-clips"></div>
     <div class="pm-shots"></div>
     <img class="pm-icon" alt="" style="display:none;" />
   </div>
@@ -250,6 +252,20 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
     display: block;
     width: 100%;
     max-height: 50vh;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: #000;
+  }
+  .pm-extra-clips {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .pm-extra-clips video {
+    display: block;
+    width: 100%;
+    max-height: 40vh;
     border-radius: var(--radius);
     border: 1px solid var(--border);
     background: #000;
@@ -698,6 +714,7 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
     const metaEl = modal.querySelector<HTMLElement>('.pm-meta');
     const linkEl = modal.querySelector<HTMLAnchorElement>('.pm-link');
     const videoEl = modal.querySelector<HTMLVideoElement>('.pm-video');
+    const extraClipsEl = modal.querySelector<HTMLElement>('.pm-extra-clips');
     const shotsEl = modal.querySelector<HTMLElement>('.pm-shots');
     const iconEl = modal.querySelector<HTMLImageElement>('.pm-icon');
     const storeLabel = modal.dataset.storeLabel ?? 'View on Google Play';
@@ -742,6 +759,25 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
           videoEl.style.display = 'none';
           videoEl.removeAttribute('src');
           videoEl.load();
+        }
+      }
+
+      if (extraClipsEl) {
+        extraClipsEl.innerHTML = '';
+        const extraClips = Number(card.dataset.extraClips ?? '0');
+        for (let i = 2; i <= 1 + extraClips; i++) {
+          const extraVideo = document.createElement('video');
+          extraVideo.controls = true;
+          extraVideo.muted = true;
+          extraVideo.loop = true;
+          extraVideo.playsInline = true;
+          extraVideo.preload = 'none';
+          extraVideo.poster = `/media/prototypes/${id}/poster-${i}.jpg`;
+          const source = document.createElement('source');
+          source.src = `/media/prototypes/${id}/clip-${i}.webm`;
+          source.type = 'video/webm';
+          extraVideo.appendChild(source);
+          extraClipsEl.appendChild(extraVideo);
         }
       }
 
@@ -802,6 +838,7 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
         videoEl.removeAttribute('src');
         videoEl.load();
       }
+      if (extraClipsEl) extraClipsEl.innerHTML = '';
       document.body.style.overflow = previousOverflow;
       if (lastCard) {
         const v = lastCard.querySelector('video');
