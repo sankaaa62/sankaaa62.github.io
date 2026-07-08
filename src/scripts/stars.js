@@ -109,9 +109,11 @@ if (canvas) {
   };
   window.__spawnMeteor = spawnMeteor;
   window.addEventListener('meteor', spawnMeteor);
-  // iter7 (п.2, верификация): читает текущие множители альфы звезд по расстоянию
-  // от центра вьюпорта — без этого пришлось бы сэмплить пиксели canvas вручную.
-  window.__starsCenterMuls = () => stars.map((s) => ({ sx: s.sx, sy: s.sy, centerMul: s.centerMul }));
+  // iter7 (п.2, верификация): диагностический хук множителей альфы — только в dev,
+  // в прод-сборке не попадает.
+  if (import.meta.env.DEV) {
+    window.__starsCenterMuls = () => stars.map((s) => ({ sx: s.sx, sy: s.sy, centerMul: s.centerMul }));
+  }
 
   const drawMeteors = (dt) => {
     for (let i = meteors.length - 1; i >= 0; i--) {
@@ -154,7 +156,7 @@ if (canvas) {
   //      displace+wander+скролл-параллакс), т.е. от реальной позиции кадра.
   //   C) ПОДТВЕРДИЛОСЬ: maxDist — это расстояние до УГЛА вьюпорта, и по нему же
   //      нормировался smoothstep. У 1920x1080: maxDist=hypot(960,540)≈1102px.
-  //      На границе "центральной трети" (dist≈maxDist/3≈367px — всё еще визуально
+  //      На границе "центральной трети" (dist≈maxDist/3≈367px — все еще визуально
   //      середина экрана) t=0.33, smoothstep(0.33)≈0.26, mul=0.4+0.6*0.26≈0.55 —
   //      то есть уже больше половины полной яркости на существенной части
   //      экрана, которую пользователь воспринимает как "центр". Спека хотела
