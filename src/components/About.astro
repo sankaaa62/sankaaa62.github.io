@@ -3,26 +3,68 @@ import { t, type Locale } from '../i18n/ui';
 import Metrics from './Metrics.astro';
 const { locale } = Astro.props as { locale: Locale };
 
-const paragraphs: Record<Locale, string[]> = {
+// iter8 (п.8): текст по вехам — один абзац на компанию/этап, а не сплошным
+// потоком. Каждый абзац: моно-префикс годов + акцентированное название вехи +
+// сам текст. Легкий космический флер в формулировках (не более 1-2 метафор
+// на весь текст суммарно) — без перебора.
+type Milestone = { years: string; label: string; text: string };
+
+const milestones: Record<Locale, Milestone[]> = {
   en: [
-    'Unity / C# developer with 6+ years in gamedev — from hyper-casual games to mid-core multiplayer projects. Platforms: mobile and PC. Open to remote work. I started as the first developer at a startup: over 3+ years I grew the dev team from scratch, led a team of up to 8 programmers, built out the processes, and shipped 200+ prototypes plus releases with millions of installs.',
-    'After a restructuring, I led the technical side of "Last Wish", an interactive 3D visual novel for PC: released on Steam and VK Play, finalist of the "Start Game" accelerator (VK). At Reaction Games I spent 2+ years as one of the developers of Dead Impact, a mobile co-op action-RPG built on ECS/DOTS, from tech launch to a global self-published release (500K+ installs).',
-    'At Taptap Studio, in a lead role, I stabilized a mobile idle tycoon and pulled it out of tech debt, and moved the team to agentic development (Claude Code, Codex) with strict review. Right now I work on live ops for Days After, a major survival hit (10M+ installs), and part-time as the sole developer of Forsaken Kingdom, a roguelite auto-battler for Steam.',
+    {
+      years: '2020–2023',
+      label: 'Black Games',
+      text: 'Joined a startup as its first developer — the first orbit of my career. Over three years I built the dev team from scratch, led up to 8 programmers, set up the processes, and shipped 200+ prototypes plus releases with millions of installs. Later I led the technical side of Last Wish: released on Steam and VK Play, finalist of the Start Game accelerator.',
+    },
+    {
+      years: '2023–2026',
+      label: 'Reaction Games',
+      text: 'One of the developers of Dead Impact, a co-op action-RPG on ECS/DOTS with an 800K+ line codebase. Carried the project from tech launch to a global release, putting it into orbit with 500K+ installs.',
+    },
+    {
+      years: '2026',
+      label: 'Taptap Studio',
+      text: 'In a lead role, stabilized a mobile idle tycoon and pulled it out of tech debt, built an engineering culture, and moved the team to agentic development (Claude Code, Codex) with strict review — features started shipping roughly 2x faster.',
+    },
+    {
+      years: '2026 — present',
+      label: 'Now',
+      text: 'Live ops for Days After at Reaction Games (10M+ installs), plus part-time as the sole developer of Forsaken Kingdom, a roguelite auto-battler for Steam.',
+    },
   ],
   ru: [
-    'Unity / C# разработчик, 6+ лет в геймдеве — от гиперказуальных игр до мидкорных мультиплеерных проектов. Платформы: Mobile и PC. Открыт к удаленной работе. Начинал первым разработчиком в стартапе: за 3+ года вырастил отдел разработки с нуля и руководил командой до 8 программистов, выстроил процессы, выпустил 200+ прототипов и релизы с миллионами установок.',
-    'После реструктуризации вел техническую часть интерактивной 3D-новеллы под ПК «Последнее желание»: релиз в Steam и VK Play, финалист акселератора «Start Game». В Reaction Games 2+ года был одним из разработчиков Dead Impact — мобильной кооперативной action-RPG на ECS/DOTS, от tech launch до глобального самиздат-релиза (500K+ установок).',
-    'В Taptap Studio на lead-позиции стабилизировал и вывел из техдолга мобильный idle-тайкун, перевел команду на агентскую разработку (Claude Code, Codex) со строгим ревью. Сейчас работаю над лайвопсом крупного survival-хита Days After (10M+ установок) и парт-тайм — единственный разработчик roguelite-автобатлера Forsaken Kingdom под Steam.',
+    {
+      years: '2020–2023',
+      label: 'Black Games',
+      text: 'Пришел первым разработчиком в стартап — стартовая орбита карьеры. За три года собрал отдел разработки с нуля, руководил командой до 8 программистов, выстроил процессы и выпустил 200+ прототипов, а также релизы с миллионами установок. Позже вел техническую часть «Last Wish»: релиз в Steam и VK Play, финалист акселератора «Start Game».',
+    },
+    {
+      years: '2023–2026',
+      label: 'Reaction Games',
+      text: 'Один из разработчиков Dead Impact — кооперативной action-RPG на ECS/DOTS с кодовой базой 800K+ строк. Провел проект от tech launch до глобального релиза, выведя его на орбиту 500K+ установок.',
+    },
+    {
+      years: '2026',
+      label: 'Taptap Studio',
+      text: 'На lead-позиции стабилизировал мобильный idle-тайкун и вывел его из техдолга, выстроил инженерную культуру и перевел команду на агентскую разработку (Claude Code, Codex) со строгим ревью — фичи стали выходить примерно в 2 раза быстрее.',
+    },
+    {
+      years: '2026 — н.в.',
+      label: 'Сейчас',
+      text: 'Лайвопс Days After в Reaction Games (10M+ установок) и парт-тайм — единственный программист roguelite-автобатлера Forsaken Kingdom для Steam.',
+    },
   ],
 };
-const text = paragraphs[locale];
+const items = milestones[locale];
 ---
 <section id="about" class="section container">
   <h2 class="reveal">{t(locale, 'about.title')}</h2>
   <Metrics locale={locale} />
-  <div class="reveal about-content">
-    {text.map((p) => (
-      <p class="about-paragraph">{p}</p>
+  <div class="about-content">
+    {items.map((m, i) => (
+      <p class="about-paragraph reveal" style={`--i:${i}`}>
+        <span class="mono milestone-years">{m.years}</span> · <span class="milestone-label">{m.label}</span> — {m.text}
+      </p>
     ))}
   </div>
 </section>
@@ -40,5 +82,14 @@ const text = paragraphs[locale];
 
   .about-paragraph:last-child {
     margin-bottom: 0;
+  }
+
+  .milestone-years {
+    color: var(--accent-2);
+  }
+
+  .milestone-label {
+    font-weight: 600;
+    color: var(--text);
   }
 </style>

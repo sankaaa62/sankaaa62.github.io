@@ -25,7 +25,9 @@ const items = [
   /* iter7 (п.5): редизайн — убраны SVG-созвездия и угловые звездочки-спарки,
      остаются числа (с прежним glow) + подписи. Разделители между колонками —
      тонкие вертикальные border-left (только на десктопной 4-колоночной сетке;
-     на мобильной 2×2 разделителей нет — см. media-запрос ниже). */
+     на мобильной 2×2 разделителей нет — см. media-запрос ниже).
+     iter8 (п.7): убран градиентный underline под числом (.metric-value::after) —
+     остаются только цифры с glow, подписи и вертикальные разделители. */
   .metrics {
     margin-bottom: clamp(28px, 5vw, 44px);
   }
@@ -52,22 +54,6 @@ const items = [
     font-weight: 800;
     color: var(--accent-2);
     text-shadow: 0 0 12px rgba(255, 176, 26, .55), 0 0 26px rgba(255, 92, 26, .25);
-    padding-bottom: 10px;
-  }
-
-  /* деликатный градиентный underline под числом — оранж → фиолет, в тон
-     остальным "stellar"-акцентам (см. .info-card::before) */
-  .metric-value::after {
-    content: "";
-    position: absolute;
-    left: 50%;
-    bottom: 0;
-    transform: translateX(-50%);
-    width: 32px;
-    height: 2px;
-    border-radius: 1px;
-    background: linear-gradient(90deg, var(--accent), var(--violet));
-    opacity: .55;
   }
 
   .metric-label {
