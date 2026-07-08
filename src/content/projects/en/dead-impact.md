@@ -1,7 +1,7 @@
 ---
 title: "Dead Impact"
 tagline: "From tech launch to a global self-published release — 500K+ installs"
-role: "Unity Developer"
+role: "Developer"
 period: "2023 — 2026"
 genre: "Co-op Action-RPG"
 platforms: ["Android", "iOS"]

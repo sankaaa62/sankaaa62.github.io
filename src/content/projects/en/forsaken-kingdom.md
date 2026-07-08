@@ -1,7 +1,7 @@
 ---
 title: "Forsaken Kingdom"
 tagline: "Dark fantasy roguelite auto-battler for PC — sole programmer"
-role: "Senior Unity Developer"
+role: "Solo programmer"
 period: "2026 — present"
 genre: "Roguelite Auto-battler / RPG"
 platforms: ["PC (Steam)"]

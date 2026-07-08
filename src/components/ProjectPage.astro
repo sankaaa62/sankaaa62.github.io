@@ -15,7 +15,7 @@ const badges = platformBadges(d.platforms, { pc: t(locale, 'platform.pc'), mobil
 const shotsDir = `public/media/projects/${slug}`;
 const shots = existsSync(shotsDir)
   ? readdirSync(shotsDir)
-      .filter((f) => f.endsWith('.webp'))
+      .filter((f) => f.endsWith('.webp') && f !== 'cover.webp')
       .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
       .map((f) => `/media/projects/${slug}/${f}`)
   : [];

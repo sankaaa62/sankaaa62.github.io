@@ -5,6 +5,8 @@ import { platformBadges } from '../lib/platforms';
 const { locale, project, index } = Astro.props as { locale: Locale; project: any; index?: number };
 const slug = project.id.split('/')[1];
 const d = project.data;
+const coverImagePath = `public/media/projects/${slug}/cover.webp`;
+const hasCoverImage = existsSync(coverImagePath);
 const coverShotPath = `public/media/projects/${slug}/shot-1.webp`;
 const hasCoverShot = !d.youtube && existsSync(coverShotPath);
 const badges = platformBadges(d.platforms, { pc: t(locale, 'platform.pc'), mobile: t(locale, 'platform.mobile') });
@@ -14,7 +16,7 @@ const badges = platformBadges(d.platforms, { pc: t(locale, 'platform.pc'), mobil
 const shotsDir = `public/media/projects/${slug}`;
 const shots = existsSync(shotsDir)
   ? readdirSync(shotsDir)
-      .filter((f) => f.endsWith('.webp'))
+      .filter((f) => f.endsWith('.webp') && f !== 'cover.webp')
       .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
       .map((f) => `/media/projects/${slug}/${f}`)
   : [];
@@ -26,11 +28,13 @@ const hasHoverSlideshow = !hasHoverClip && shots.length > 1;
    data-shots={hasHoverSlideshow ? JSON.stringify(shots) : undefined}
    style={`display:grid;grid-template-columns:1fr;gap:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;color:var(--text);text-decoration:none;--i:${index ?? 0}`}>
   <div class="cover-wrap">
-    {d.youtube
-      ? <img class="cover-static" src={`https://i.ytimg.com/vi/${d.youtube}/hqdefault.jpg`} alt={d.title} loading="lazy" style="width:100%;aspect-ratio:16/9;object-fit:cover;" />
-      : hasCoverShot
-        ? <img class="cover-static" src={`/media/projects/${slug}/shot-1.webp`} alt={d.title} loading="lazy" style="width:100%;aspect-ratio:16/9;object-fit:cover;" />
-        : <div class="cover-static mono" style="aspect-ratio:16/9;background:var(--surface-2);display:grid;place-items:center;">{d.title}</div>}
+    {hasCoverImage
+      ? <img class="cover-static" src={`/media/projects/${slug}/cover.webp`} alt={d.title} loading="lazy" style="width:100%;aspect-ratio:16/9;object-fit:cover;" />
+      : d.youtube
+        ? <img class="cover-static" src={`https://i.ytimg.com/vi/${d.youtube}/hqdefault.jpg`} alt={d.title} loading="lazy" style="width:100%;aspect-ratio:16/9;object-fit:cover;" />
+        : hasCoverShot
+          ? <img class="cover-static" src={`/media/projects/${slug}/shot-1.webp`} alt={d.title} loading="lazy" style="width:100%;aspect-ratio:16/9;object-fit:cover;" />
+          : <div class="cover-static mono" style="aspect-ratio:16/9;background:var(--surface-2);display:grid;place-items:center;">{d.title}</div>}
     {hasHoverClip && (
       <video class="cover-hover cover-hover-video" muted loop playsinline preload="none">
         <source src={`/media/projects/${slug}/hover-clip.webm`} type="video/webm" />
@@ -43,14 +47,16 @@ const hasHoverSlideshow = !hasHoverClip && shots.length > 1;
       </>
     )}
     <div class="platform-badges-cover badge-row">
-      {d.role && <span class="platform-badge badge-role">{d.role}</span>}
       {badges.map((b) => (
         <span class="platform-badge" set:html={b.svg + `<span>${b.label}</span>`} />
       ))}
     </div>
   </div>
   <div style="padding:18px 20px;">
-    <h3 class="proj-title" style="margin:0;">{d.title}</h3>
+    <div class="title-row" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+      <h3 class="proj-title" style="margin:0;">{d.title}</h3>
+      {d.role && <span class="platform-badge badge-role" style="flex:none;">{d.role}</span>}
+    </div>
     <div class="mono" style="color:var(--muted);font-size:.8rem;margin-top:4px;">{d.genre}</div>
     <p style="color:var(--muted);margin:.5em 0;">{d.tagline}</p>
     <div class="mono" style="color:var(--ok);font-size:.8rem;opacity:.9;">{d.metrics.join(' · ')}</div>
