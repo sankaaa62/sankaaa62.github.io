@@ -65,7 +65,10 @@ if (header) {
 }
 
 // N.2: scroll-spy (только там, где есть секции — homepage)
-const sectionIds = ['about', 'projects', 'prototypes', 'skills', 'contact'];
+// RR.6 (iter8): 'skills' убран из списка — у раздела больше нет пункта nav
+// (см. Base.astro), подсвечивать в nav нечего, а сама секция теперь не между
+// prototypes и contact, а между about и projects (см. HomePage.astro).
+const sectionIds = ['about', 'projects', 'prototypes', 'contact'];
 const sections = sectionIds
   .map((id) => document.getElementById(id))
   .filter((el) => el !== null);

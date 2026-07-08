@@ -23,6 +23,9 @@ const title = locale === 'ru'
 <Base locale={locale} title={title} description={desc} path="/">
   <Hero locale={locale} />
   <About locale={locale} />
+  <!-- RR.6 (iter8): Skills — теперь полноширинная лента-разделитель между
+       "Обо мне" и "Проектами" (не отдельная секция со своим h2/nav-пунктом). -->
+  <Skills locale={locale} />
   <section id="projects" class="section container">
     <h2 class="reveal">{t(locale, 'featured.title')}</h2>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(360px,100%),1fr));gap:20px;">
@@ -30,7 +33,6 @@ const title = locale === 'ru'
     </div>
   </section>
   <PrototypeGrid locale={locale} />
-  <Skills locale={locale} />
   <Contact locale={locale} />
   <MiniGame locale={locale} />
   <script src="../scripts/reveal.js"></script>

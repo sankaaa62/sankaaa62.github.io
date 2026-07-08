@@ -40,7 +40,9 @@ const otherLocale: Locale = locale === 'en' ? 'ru' : 'en';
         <a href={localePath(locale, '/#about')} data-section="about">{t(locale, 'nav.about')}</a>
         <a href={localePath(locale, '/#projects')} data-section="projects">{t(locale, 'nav.projects')}</a>
         <a href={localePath(locale, '/#prototypes')} data-section="prototypes">{t(locale, 'nav.prototypes')}</a>
-        <a href={localePath(locale, '/#skills')} data-section="skills">{t(locale, 'nav.skills')}</a>
+        <!-- RR.6 (iter8): пункт "Навыки" убран — раздел стал безымянной
+             full-bleed лентой-разделителем (id="skills" остался для якоря,
+             просто больше не выделен пунктом меню). -->
         <a href={localePath(locale, '/#contact')} data-section="contact">{t(locale, 'nav.contact')}</a>
         <a href={localePath(otherLocale, path)} class="tag">{otherLocale.toUpperCase()}</a>
       </nav>
