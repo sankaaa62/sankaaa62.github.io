@@ -2,32 +2,259 @@
 import { t, type Locale } from '../i18n/ui';
 const { locale } = Astro.props as { locale: Locale };
 
-// Q.1: три уровня важности для облака тегов (и для статичного fallback-списка).
-// tier 1 — крупные/оранж (флагманские компетенции), tier 2 — средние, tier 3 — мелкие/muted.
-const tier1 = ['Unity', 'C#', 'ECS/DOTS', 'Multiplayer'];
-const tier2 = ['Team Leadership', 'Performance Optimization', 'Client-Server', 'Jobs/Burst',
-  'Clean Architecture', 'DI', 'Unit Testing', 'AI-assisted development'];
-const tier3 = ['Addressables', 'URP', 'SOLID', 'Code Review', 'Git', 'CI/CD', 'Mentoring',
-  'Agile', 'Mobile Optimization', 'Gameplay Programming', 'Claude Code', 'Codex'];
+// Задача OO (iter7): «привет из 2010» — 3D-сфера тегов (skill-cloud.js) удалена
+// целиком. Взамен — три статичных, полностью SSR-рендерящихся варианта показа
+// навыков (A/B/C), переключаемых дискретным mono-свитчером; выбор запоминается
+// в localStorage (см. ../scripts/skills-switch.js). Без JS виден вариант A —
+// это единственный источник правды для no-JS fallback (см. инлайн display:none
+// у панелей B/C ниже).
+//
+// Один источник данных на все три варианта: категория несет tier (визуальный
+// вес — вариант B использует его для радиуса звезды, Core — самая крупная) и
+// список навыков. Названия навыков — англоязычные термины, одинаковые в обеих
+// локалях; категория переведена (label.en / label.ru).
+type Tier = 1 | 2 | 3;
+interface SkillCategory {
+  id: string;
+  label: { en: string; ru: string };
+  tier: Tier;
+  skills: string[];
+}
 
-const tags = [
-  ...tier1.map((text) => ({ text, tier: 1 })),
-  ...tier2.map((text) => ({ text, tier: 2 })),
-  ...tier3.map((text) => ({ text, tier: 3 })),
+const categories: SkillCategory[] = [
+  {
+    id: 'core',
+    label: { en: 'Core', ru: 'Ядро' },
+    tier: 1,
+    skills: ['Unity', 'C#', 'ECS/DOTS', 'Jobs/Burst', 'URP', 'Addressables', 'AssetBundles'],
+  },
+  {
+    id: 'multiplayer',
+    label: { en: 'Multiplayer & Architecture', ru: 'Мультиплеер и архитектура' },
+    tier: 2,
+    skills: ['Client-Server', 'Multiplayer', 'Event Sourcing', 'Clean Architecture', 'SOLID', 'DI', 'Unit Testing', 'Data Migrations'],
+  },
+  {
+    id: 'performance',
+    label: { en: 'Performance', ru: 'Производительность' },
+    tier: 2,
+    skills: ['Profiling', 'Mobile Optimization', 'Performance Optimization'],
+  },
+  {
+    id: 'leadership',
+    label: { en: 'Leadership & Process', ru: 'Лидерство и процессы' },
+    tier: 3,
+    skills: ['Team Leadership', 'Hiring & Interviews', 'Mentoring', 'Code Review', 'Sprint Planning', 'Agile', 'Git', 'CI/CD', 'Live-ops', 'Prototyping', 'Analytics'],
+  },
+  {
+    id: 'ai',
+    label: { en: 'AI', ru: 'AI' },
+    tier: 3,
+    skills: ['AI-assisted development', 'Claude Code', 'Codex', 'AI pipeline'],
+  },
 ];
-const skills = [...tier1, ...tier2, ...tier3];
+
+// --- Вариант B («Созвездия»): раскладка каждой категории в отдельном SVG. ---
+// Q: почему отдельный SVG на категорию, а не один общий? Так и "мобайл —
+// вертикальная компоновка" решается бесплатно (обычный flex-wrap заворачивает
+// карточки-кластеры на новую строку без медиа-запросов и без двух версий
+// разметки), и hover-подсветка "своего созвездия" — это просто :hover на
+// корневом svg (все звезды/линии внутри принадлежат ровно одному кластеру).
+// Текст всегда на фиксированной X-колонке (без наложений), звезды слегка
+// "гуляют" зигзагом левее нее — читается как цепочка созвездия, а не список.
+const STAR_R: Record<Tier, number> = { 1: 7.5, 2: 6, 3: 5 };
+const ROW_H = 28;
+const PAD_Y = 14;
+const TEXT_X = 46;
+const PAD_RIGHT = 18;
+const CHAR_W = 7.8; // приблизительная ширина символа при font-size 12.5 мono (с запасом — увидели обрезание "Performance Optimization"/"AI-assisted development" при 6.6)
+const FONT_SIZE = 12.5;
+const ZIGZAG = [24, 14, 32, 20, 28, 16]; // px, всегда левее TEXT_X с запасом
+
+interface ConstellationStar { cx: number; cy: number; text: string }
+interface ConstellationCluster { cat: SkillCategory; width: number; height: number; stars: ConstellationStar[] }
+
+function layoutCluster(cat: SkillCategory): ConstellationCluster {
+  const n = cat.skills.length;
+  const maxLen = Math.max(...cat.skills.map((s) => s.length));
+  const width = TEXT_X + Math.ceil(maxLen * CHAR_W) + PAD_RIGHT;
+  const height = PAD_Y * 2 + (n - 1) * ROW_H;
+  const stars: ConstellationStar[] = cat.skills.map((text, i) => ({
+    cx: ZIGZAG[i % ZIGZAG.length],
+    cy: PAD_Y + i * ROW_H,
+    text,
+  }));
+  return { cat, width, height, stars };
+}
+const clusters = categories.map(layoutCluster);
+
+// --- Вариант C («Бегущие ряды»): категории перемешаны между 3 лентами. ---
+// Детерминированное "перемешивание" без RNG (стабильно между сборками/SSR):
+// раздаем навыки по кругу — по одному из каждой категории за проход — так
+// соседние элементы почти никогда не из одной категории.
+function interleave(cats: SkillCategory[]): string[] {
+  const maxLen = Math.max(...cats.map((c) => c.skills.length));
+  const out: string[] = [];
+  for (let i = 0; i < maxLen; i++) {
+    for (const c of cats) if (c.skills[i]) out.push(c.skills[i]);
+  }
+  return out;
+}
+const mixed = interleave(categories);
+const marqueeRows: string[][] = [[], [], []];
+mixed.forEach((s, i) => marqueeRows[i % 3].push(s));
+
+// ~30px/s: длительность оценивается по контенту ленты (в % от ширины трека —
+// см. keyframes ниже), реальные px не считаем, но целимся в похожую скорость.
+function estimateDuration(row: string[]): number {
+  const px = row.reduce((sum, s) => sum + s.length * 7.4 + 34, 0);
+  return Math.max(18, Math.round(px / 30));
+}
 ---
 <section id="skills" class="section container">
-  <h2 class="reveal">{t(locale, 'skills.title')}</h2>
-  <canvas id="skills-canvas" aria-hidden="true" data-tags={JSON.stringify(tags)}></canvas>
-  <div class="skills-static" style="display:flex;gap:8px;flex-wrap:wrap;">{skills.map((s) => <span class="tag">{s}</span>)}</div>
+  <div class="skills-head">
+    <h2 class="reveal">{t(locale, 'skills.title')}</h2>
+    <div class="skills-switch mono" role="group" aria-label={t(locale, 'skills.switch.label')}>
+      <button type="button" data-variant-btn="a" class="is-active" aria-pressed="true" aria-label={t(locale, 'skills.switch.a')}>A</button>
+      <span aria-hidden="true">·</span>
+      <button type="button" data-variant-btn="b" aria-pressed="false" aria-label={t(locale, 'skills.switch.b')}>B</button>
+      <span aria-hidden="true">·</span>
+      <button type="button" data-variant-btn="c" aria-pressed="false" aria-label={t(locale, 'skills.switch.c')}>C</button>
+    </div>
+  </div>
+
+  <!-- Вариант A («Категории») — семантический fallback, виден без JS. -->
+  <div class="skills-variant skills-a" data-variant-panel="a">
+    {categories.map((cat, i) => (
+      <div class="skill-group reveal" style={`--i:${i}`}>
+        <p class="skill-kicker mono">{cat.label[locale]}</p>
+        <div class="skill-chips">
+          {cat.skills.map((s) => <span class="tag skill-chip">{s}</span>)}
+        </div>
+      </div>
+    ))}
+  </div>
+
+  <!-- Вариант B («Созвездия») — скрыт без JS (см. skills-switch.js). -->
+  <div class="skills-variant skills-b" data-variant-panel="b" style="display:none;">
+    {clusters.map(({ cat, width, height, stars }) => (
+      <div class="skill-const-cluster">
+        <p class="skill-kicker mono">{cat.label[locale]}</p>
+        <svg class="skill-const" viewBox={`0 0 ${width} ${height}`} width={width} height={height} role="img" aria-label={`${cat.label[locale]}: ${cat.skills.join(', ')}`}>
+          <g class="const-links" stroke="var(--border)" stroke-width="1" fill="none">
+            {stars.slice(1).map((s, i) => (
+              <line x1={stars[i].cx} y1={stars[i].cy} x2={s.cx} y2={s.cy} />
+            ))}
+          </g>
+          <g class="const-stars">
+            {stars.map((s) => (
+              <>
+                <circle class="const-dot" cx={s.cx} cy={s.cy} r={STAR_R[cat.tier]} fill="var(--accent)" />
+                <text x={TEXT_X} y={s.cy} font-family="var(--font-mono)" font-size={FONT_SIZE} fill="var(--text)" dominant-baseline="middle" text-anchor="start">{s.text}</text>
+              </>
+            ))}
+          </g>
+        </svg>
+      </div>
+    ))}
+  </div>
+
+  <!-- Вариант C («Бегущие ряды») — скрыт без JS (см. skills-switch.js). -->
+  <div class="skills-variant skills-c" data-variant-panel="c" style="display:none;">
+    <div class="marquee-wrap">
+      {marqueeRows.map((row, ri) => (
+        <div class={`marquee-row${ri % 2 === 1 ? ' marquee-row--rev' : ''}`}>
+          <div class="marquee-track" style={`--duration:${estimateDuration(row)}s`}>
+            <div class="marquee-group">{row.map((s) => <span class="tag">{s}</span>)}</div>
+            <div class="marquee-group" aria-hidden="true">{row.map((s) => <span class="tag">{s}</span>)}</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
 </section>
-<script src="../scripts/skill-cloud.js"></script>
+<script src="../scripts/skills-switch.js"></script>
 
 <style>
-  #skills-canvas {
-    display: none;
-    width: 100%;
-    height: 380px;
+  .skills-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .skills-switch {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: .72rem;
+    color: var(--muted);
+    flex: none;
+  }
+  .skills-switch span { opacity: .4; }
+  .skills-switch button {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 3px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: inherit;
+    line-height: 1;
+    transition: color .15s, border-color .15s;
+  }
+  .skills-switch button:hover { color: var(--text); border-color: var(--muted); }
+  .skills-switch button.is-active { color: var(--accent); border-color: var(--accent); }
+  .skills-switch button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .skills-variant { margin-top: 32px; }
+
+  /* --- Вариант A: категории чипов --- */
+  .skills-a { display: flex; flex-direction: column; gap: 24px; }
+  .skill-kicker {
+    font-size: .72rem;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--accent-2);
+    margin: 0 0 10px;
+  }
+  .skill-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .skill-chip { transition: color .15s, border-color .15s, background-color .15s; }
+  .skill-chip:hover {
+    color: var(--text);
+    border-color: var(--accent);
+    background: rgba(255, 92, 26, .08);
+  }
+
+  /* --- Вариант B: созвездия --- */
+  .skills-b { display: flex; flex-wrap: wrap; gap: 22px 36px; }
+  .skill-const-cluster {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    padding: 14px 16px;
+  }
+  .skill-const-cluster .skill-kicker { margin-bottom: 6px; }
+  .skill-const { display: block; }
+  .const-links line, .const-dot { transition: stroke .2s, fill .2s, filter .2s; }
+  /* hover где угодно в своем svg = "своя звезда", т.к. кластер = один svg */
+  .skill-const:hover .const-links line { stroke: var(--accent); }
+  .skill-const:hover .const-dot { fill: var(--accent-2); filter: drop-shadow(0 0 4px rgba(255,176,26,.6)); }
+
+  /* --- Вариант C: бегущие ряды --- */
+  .marquee-wrap { display: flex; flex-direction: column; gap: 14px; }
+  .marquee-row { overflow: hidden; }
+  .marquee-track { display: flex; width: max-content; animation: marquee-left var(--duration, 40s) linear infinite; }
+  .marquee-row--rev .marquee-track { animation-name: marquee-right; }
+  .marquee-row:hover .marquee-track { animation-play-state: paused; }
+  .marquee-group { display: flex; flex: 0 0 auto; gap: 10px; padding-right: 10px; }
+  @keyframes marquee-left {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+  @keyframes marquee-right {
+    from { transform: translateX(-50%); }
+    to { transform: translateX(0); }
   }
 </style>

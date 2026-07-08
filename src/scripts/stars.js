@@ -70,7 +70,7 @@ if (canvas) {
     });
   };
   resize();
-  // защита от гонки при инициализации (тот же класс бага, что у skill-cloud:
+  // защита от гонки при инициализации (типовой баг с canvas-размером:
   // window.innerWidth/innerHeight иногда еще 0 в момент разбора скрипта) —
   // перемеряем на следующем кадре и на 'load', если размер не устаканился.
   const ensureSized = () => { if (!canvas.width || !canvas.height) resize(); };
