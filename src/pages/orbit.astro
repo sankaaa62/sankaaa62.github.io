@@ -1,0 +1,323 @@
+---
+// ОРБИТЫ — экспериментальная альтернативная страница портфолио.
+// Полностью изолирована от основного сайта: свой layout (не Base.astro), свой
+// css (styles/orbit.css, не импортирует global.css), свои скрипты
+// (scripts/orbit.js, scripts/orbit-stars.js — звездный фон скопирован, а не
+// импортирован, см. комментарий в файле). Ссылок на основной сайт и обратно —
+// нет. См. docs/superpowers/specs/2026-07-02-portfolio-site-design.md,
+// раздел «Эксперимент «Орбиты»».
+//
+// Концепция: карьера как планетная система в хронологическом порядке.
+// Скролл сверху вниз = путешествие от текущей орбиты («Сейчас») к звезде,
+// с которой все началось (Black Games, 2020 — первый разработчик стартапа).
+// Данные вех/дат/компаний взяты из существующих content collections
+// (src/content/projects/ru/*.md, src/content/prototypes/prototypes.json) —
+// структура вех захардкожена здесь по ТЗ, сам контент — переиспользован.
+import { getCollection } from 'astro:content';
+import { existsSync } from 'node:fs';
+import '@fontsource-variable/inter';
+import '@fontsource-variable/jetbrains-mono';
+import '../styles/orbit.css';
+import { platformBadges } from '../lib/platforms';
+
+const allProjects = await getCollection('projects', (p) => p.id.startsWith('ru/'));
+const bySlug = Object.fromEntries(allProjects.map((p) => [p.id.split('/')[1], p.data]));
+
+function coverFor(slug: string): string {
+  const cover = `public/media/projects/${slug}/cover.webp`;
+  if (existsSync(cover)) return `/media/projects/${slug}/cover.webp`;
+  return `/media/projects/${slug}/shot-1.webp`;
+}
+
+type PlanetSpec = { slug: string; size: number; ring: 'solid' | 'dashed' };
+type Era = {
+  id: string;
+  kicker: string;
+  range: string;
+  color: string;
+  planets: PlanetSpec[];
+};
+
+const eras: Era[] = [
+  {
+    id: 'now',
+    kicker: 'Сейчас',
+    range: '2026 — н.в.',
+    color: 'var(--accent)',
+    planets: [
+      { slug: 'days-after', size: 210, ring: 'solid' },
+      { slug: 'forsaken-kingdom', size: 120, ring: 'dashed' },
+    ],
+  },
+  {
+    id: 'taptap',
+    kicker: 'Taptap Studio',
+    range: '2026',
+    color: 'var(--violet)',
+    planets: [{ slug: 'mafia-stories', size: 160, ring: 'solid' }],
+  },
+  {
+    id: 'reaction',
+    kicker: 'Reaction Games',
+    range: '2023 — 2026',
+    color: 'var(--teal)',
+    planets: [{ slug: 'dead-impact', size: 190, ring: 'solid' }],
+  },
+  {
+    id: 'blackgames',
+    kicker: 'Black Games',
+    range: '2020 — 2023',
+    color: 'var(--gold)',
+    planets: [{ slug: 'last-wish', size: 165, ring: 'solid' }],
+  },
+];
+
+// --- пояс навыков: тот же расширенный набор, что и на основном сайте
+// (Skills.astro), но здесь — собственная, более простая двухрядная лента
+// (без переиспользования компонента — только данные-константы). ---
+const skillCategories = [
+  { skills: ['Unity', 'C#', 'ECS/DOTS', 'Jobs/Burst'], core: true },
+  { skills: ['Client-Server', 'Multiplayer', 'Event Sourcing', 'Clean Architecture', 'SOLID', 'DI'], core: false },
+  { skills: ['Profiling', 'Mobile Optimization', 'Addressables', 'AssetBundles', 'URP'], core: false },
+  { skills: ['Team Leadership', 'Hiring & Interviews', 'Mentoring', 'Code Review', 'Agile', 'CI/CD', 'Live-ops'], core: false },
+  { skills: ['AI-assisted development', 'Claude Code', 'Codex', 'AI pipeline'], core: false },
+];
+const coreSkills = new Set(skillCategories.find((c) => c.core)!.skills);
+const flatSkills = skillCategories.flatMap((c) => c.skills);
+const beltRows: string[][] = [[], []];
+flatSkills.forEach((s, i) => beltRows[i % 2].push(s));
+const beltSpeed = [30, 24];
+function beltDuration(row: string[], speed: number) {
+  const px = row.reduce((sum, s) => sum + s.length * 7.4 + 34, 0);
+  return Math.max(16, Math.round(px / speed));
+}
+
+// --- рой прототипов: детерминированные псевдослучайные позиции по id, чтобы
+// раскладка была стабильной между сборками и не прыгала на клиенте. ---
+function hashStr(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return h;
+}
+function mulberry32(seed: number) {
+  let a = seed;
+  return function () {
+    a |= 0; a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const prototypes = (await getCollection('prototypes')).sort((a, b) => a.data.year - b.data.year || a.data.id.localeCompare(b.data.id));
+const asteroids = prototypes.map((p) => {
+  const rand = mulberry32(hashStr(p.data.id));
+  return {
+    id: p.data.id,
+    title: p.data.title,
+    genre: p.data.genre.ru,
+    year: p.data.year,
+    clip: p.data.clip,
+    badge: p.data.badge?.ru,
+    x: (4 + rand() * 92).toFixed(1),
+    y: (6 + rand() * 88).toFixed(1),
+    size: Math.round(34 + rand() * 30),
+    delay: (rand() * 6).toFixed(2),
+  };
+});
+const fillerDots = Array.from({ length: 55 }, (_, i) => {
+  const rand = mulberry32(hashStr(`filler-${i}`));
+  return {
+    x: (2 + rand() * 96).toFixed(1),
+    y: (2 + rand() * 96).toFixed(1),
+    size: (2 + rand() * 4).toFixed(1),
+  };
+});
+
+const title = 'Орбиты — Александр Кандаков';
+const description = 'Экспериментальная альтернативная версия портфолио: карьера как планетная система.';
+---
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{title}</title>
+  <meta name="description" content={description} />
+  <meta name="robots" content="noindex" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+</head>
+<body class="orbit-body">
+  <div class="orbit-depth-fade" aria-hidden="true"></div>
+  <div id="orbit-bg-a" aria-hidden="true"><div class="bg-inner"></div></div>
+  <div id="orbit-bg-b" aria-hidden="true"><div class="bg-inner"></div></div>
+  <canvas id="orbit-stars-canvas" aria-hidden="true"></canvas>
+  <div class="orbit-spine" aria-hidden="true"></div>
+
+  <!-- intro -->
+  <section class="orbit-intro">
+    <p class="orbit-kicker mono">Эксперимент · альтернативная версия портфолио</p>
+    <h1 class="orbit-title">Орбиты</h1>
+    <p class="orbit-subtitle">
+      Профессиональный путь как планетная система: от текущей орбиты — вниз,
+      к звезде, с которой все началось.
+    </p>
+    <a href="#now" class="orbit-scroll-cue">
+      <span>Листайте вниз</span>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 4v16M6 14l6 6 6-6" /></svg>
+    </a>
+  </section>
+
+  {eras.map((era, eraIndex) => (
+    <>
+      <section class="orbit-stage" id={era.id} style={`--era-color:${era.color}`}>
+        <div class="orbit-stage-inner">
+          <div class="orbit-stage-head">
+            <p class="orbit-era-kicker mono">{era.kicker}</p>
+            <p class="orbit-era-range mono">{era.range}</p>
+          </div>
+          <div class={`orbit-planets${era.planets.length === 1 ? ' single' : ''}`}>
+            {era.planets.map((planet) => {
+              const d = bySlug[planet.slug];
+              const badges = platformBadges(d.platforms, { pc: 'PC', mobile: 'Mobile' });
+              const detailId = `detail-${planet.slug}`;
+              return (
+                <div class="planet-card" style={`--era-color:${era.color}`}>
+                  <div class="planet-orbit-wrap" style={`--size:${planet.size}px`}>
+                    <div class={`ring ring--r1${planet.ring === 'dashed' ? ' ring--dashed' : ''}`} aria-hidden="true"></div>
+                    <div class={`ring ring--r2${planet.ring === 'dashed' ? ' ring--dashed' : ''}`} aria-hidden="true"></div>
+                    <button
+                      type="button"
+                      class="planet reset"
+                      data-planet-toggle
+                      aria-expanded="false"
+                      aria-controls={detailId}
+                      aria-label={`${d.title} — показать детали`}
+                    >
+                      <img src={coverFor(planet.slug)} alt={d.title} loading="lazy" />
+                    </button>
+                    <div class="planet-tooltip" aria-hidden="true">{d.tagline}</div>
+                  </div>
+                  <div class="planet-label">
+                    <h3>{d.title}</h3>
+                    <p class="mono planet-meta">{d.genre}</p>
+                    <p class="planet-role mono">{d.role}</p>
+                  </div>
+                  <button type="button" class="planet-expand-btn reset" data-planet-toggle aria-expanded="false" aria-controls={detailId}>
+                    <span>Подробнее</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+                  </button>
+                  <div class="planet-detail" id={detailId}>
+                    <div class="planet-detail-inner">
+                      <div class="planet-detail-content">
+                        <p>{d.tagline}</p>
+                        <div class="chip-row">
+                          {d.metrics.map((m: string) => <span class="chip chip-ok">{m}</span>)}
+                          {badges.map((b) => (
+                            <span class="chip" set:html={b.svg + `<span>${b.label}</span>`} />
+                          ))}
+                        </div>
+                        <div class="link-row">
+                          {d.links.map((l: { label: string; url: string }) => (
+                            <a class="pill-link" href={l.url} target="_blank" rel="noopener" style={`--era-color:${era.color}`}>{l.label} →</a>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {era.id === 'blackgames' && (
+            <>
+              <div class="orbit-genesis">
+                <div class="genesis-star" aria-hidden="true"></div>
+                <h3>Исток — первая орбита</h3>
+                <p>
+                  2020 год. Пришел первым разработчиком в стартап Black Games.
+                  За три года собрал отдел с нуля, руководил командой до 8
+                  программистов, выстроил процессы разработки и построил
+                  конвейер из 200+ прототипов — вокруг этой звезды и родилась
+                  вся система, которую вы только что пролистали.
+                </p>
+              </div>
+
+              <div>
+                <p class="orbit-swarm-note mono">200+ прототипов отдела · рой из тех, что собирал лично:</p>
+                <div class="orbit-swarm" aria-label="Облако прототипов Black Games">
+                  {fillerDots.map((f) => (
+                    <span class="asteroid-dot" style={`--x:${f.x}%;--y:${f.y}%;--size:${f.size}px`}></span>
+                  ))}
+                  {asteroids.map((a) => (
+                    <button
+                      type="button"
+                      class="asteroid reset"
+                      style={`--x:${a.x}%;--y:${a.y}%;--size:${a.size}px;--delay:${a.delay}s`}
+                      data-title={a.title}
+                      data-genre={a.genre}
+                      data-year={a.year}
+                      data-icon={`/media/prototypes/${a.id}/icon.webp`}
+                      data-clip={a.clip ? `/media/prototypes/${a.id}/clip.webm` : ''}
+                      data-poster={a.clip ? `/media/prototypes/${a.id}/poster.jpg` : ''}
+                      data-badge={a.badge ?? ''}
+                      aria-label={`${a.title} — открыть`}
+                    >
+                      <img src={`/media/prototypes/${a.id}/icon.webp`} alt="" loading="lazy" draggable="false" />
+                      {a.badge && <span class="asteroid-badge mono">{a.badge}</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </section>
+
+      {eraIndex === 0 && (
+        <div class="orbit-belt">
+          <p class="orbit-belt-kicker mono">Пояс навыков</p>
+          <div class="orbit-belt-wrap">
+            <div class="orbit-fade orbit-fade--left" aria-hidden="true"></div>
+            {beltRows.map((row, ri) => (
+              <div class={`orbit-belt-row${ri === 1 ? ' orbit-belt-row--rev' : ''}`}>
+                <div class="orbit-belt-track" style={`--duration:${beltDuration(row, beltSpeed[ri])}s`}>
+                  <div class="orbit-belt-group">
+                    {row.map((s) => <span class={`chip${coreSkills.has(s) ? ' chip-ok' : ''}`}>{s}</span>)}
+                  </div>
+                  <div class="orbit-belt-group" aria-hidden="true">
+                    {row.map((s) => <span class={`chip${coreSkills.has(s) ? ' chip-ok' : ''}`}>{s}</span>)}
+                  </div>
+                </div>
+              </div>
+            ))}
+            <div class="orbit-fade orbit-fade--right" aria-hidden="true"></div>
+          </div>
+        </div>
+      )}
+    </>
+  ))}
+
+  <footer class="orbit-footer">
+    <a href="#" class="back-to-top mono">↑ К началу системы</a>
+    <p class="mono">© 2026 Aleksandr Kandakov. Экспериментальная страница /orbit/.</p>
+  </footer>
+
+  <dialog id="orbit-proto-modal">
+    <button type="button" class="opm-close" aria-label="Закрыть">✕</button>
+    <div class="opm-body">
+      <div class="opm-media">
+        <video class="opm-video" muted loop playsinline controls style="display:none;"></video>
+        <img class="opm-icon" alt="" />
+      </div>
+      <h3 class="opm-title"></h3>
+      <div class="opm-meta mono"></div>
+      <span class="opm-badge mono" style="display:none;"></span>
+    </div>
+  </dialog>
+
+  <script src="../scripts/orbit-stars.js"></script>
+  <script src="../scripts/orbit.js"></script>
+</body>
+</html>
