@@ -44,7 +44,6 @@ const wordSpans = words.map((word) => {
       <span id="hero-type">{firstRole}</span><span class="hero-cursor" aria-hidden="true">▍</span>
     </p>
     <p class="hero-about">{t(locale, 'hero.about')}</p>
-    <p class="mono hero-personality">{t(locale, 'hero.personality')}</p>
     <div class="hero-cta">
       <a class="btn" href={locale === 'ru' ? '/cv/Kandakov_CV_ru.pdf' : '/cv/Kandakov_CV_en.pdf'} download>{t(locale, 'hero.cv')}</a>
       <SocialIcons />
@@ -137,18 +136,6 @@ const wordSpans = words.map((word) => {
   }
   @keyframes hero-about-in {
     to { opacity: 1; }
-  }
-
-  /* V.5: личный абзац 2 (характер) — отдельный приглушенный блок мельче
-     основного текста, отделен тонкой чертой сверху. */
-  .hero-personality {
-    color: var(--muted);
-    font-size: .88rem;
-    line-height: 1.5;
-    max-width: 56ch;
-    margin: 0 auto 20px;
-    padding-top: 12px;
-    border-top: 1px solid var(--border);
   }
 
   .hero-cta {

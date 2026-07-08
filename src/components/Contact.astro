@@ -48,11 +48,7 @@ const { locale } = Astro.props as { locale: Locale };
 
 <style>
   .contact-card {
-    /* min() keeps a 20px safety gutter on narrow viewports even though the
-       section's own horizontal padding is zeroed by a pre-existing cascade
-       quirk (.section's shorthand padding, declared after .container in
-       global.css, wins on left/right at equal specificity). */
-    max-width: min(640px, calc(100% - 40px));
+    max-width: 640px;
     margin: 0 auto;
     position: relative;
     isolation: isolate;

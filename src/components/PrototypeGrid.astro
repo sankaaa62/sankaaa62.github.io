@@ -136,6 +136,13 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
     scrollbar-width: none;
     touch-action: pan-x;
     padding: 18px 0;
+    cursor: grab;
+  }
+  /* курсор карточек — inline style="cursor:pointer" на самом элементе
+     карточки (см. map() выше) — он всегда выигрывает у унаследованного
+     grab с трека, так что кликабельность визуально не теряется */
+  .proto-track.is-dragging {
+    cursor: grabbing;
   }
   .proto-track::-webkit-scrollbar {
     display: none;
@@ -321,6 +328,20 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
   // тонет — позиция никогда не сдвигается, если считать от el.scrollLeft
   let protoScrollAccum = 0;
 
+  // iter7 Задача NN: drag-скролл трека мышкой. Гейт по pointerType === 'mouse' —
+  // тач-свайп идет нативным путем (touch-action: pan-x на треке, см. стили),
+  // здесь его не трогаем. Пауза 'drag' на время драга уже вешается общим
+  // pointerdown-слушателем на protoWrap ниже; наши записи в scrollLeft НЕ
+  // помечаются protoMarkProgrammatic(), поэтому естественно рождают событие
+  // 'scroll' → protoScheduleUserScrollResume() → аккумулятор ресинкается
+  // с реальным scrollLeft, когда 'user-scroll' снимется по грации — тот же
+  // путь, что и для колеса/тач-свайпа, ничего специального добавлять не нужно.
+  const PROTO_DRAG_CLICK_SUPPRESS_PX = 6;
+  let protoDragActive = false;
+  let protoDragStartX = 0;
+  let protoDragStartScroll = 0;
+  let protoDragDistance = 0;
+
   function pauseCarousel(reason: string) {
     protoPauseReasons.add(reason);
   }
@@ -421,6 +442,54 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
     // включилась раньше, чем прилетит событие scroll (иначе возможна гонка
     // с флагом protoIsMarqueeWrite, если тикер как раз пишет в этот же кадр)
     protoTrack.addEventListener('wheel', () => protoScheduleUserScrollResume(), { passive: true });
+
+    // drag-скролл мышкой (iter7). pointerType-гейт держит тач нетронутым —
+    // нативный pan-x скролл продолжает работать как раньше.
+    protoTrack.addEventListener('pointerdown', (e) => {
+      if (!protoTrack) return;
+      const ev = e as PointerEvent;
+      protoDragDistance = 0;
+      if (ev.pointerType !== 'mouse' || ev.button !== 0) return;
+      protoDragActive = true;
+      protoDragStartX = ev.clientX;
+      protoDragStartScroll = protoTrack.scrollLeft;
+      protoTrack.setPointerCapture(ev.pointerId);
+      protoTrack.classList.add('is-dragging');
+      // не даем мышке потащить нативное выделение текста заголовков/картинку
+      ev.preventDefault();
+    });
+
+    protoTrack.addEventListener('pointermove', (e) => {
+      if (!protoTrack || !protoDragActive) return;
+      const ev = e as PointerEvent;
+      const dx = ev.clientX - protoDragStartX;
+      protoDragDistance = Math.max(protoDragDistance, Math.abs(dx));
+      // пишем НЕ через protoMarkProgrammatic() — это настоящий пользовательский
+      // скролл, событие 'scroll' должно пройти обычным путем (пауза + грация +
+      // ресинк аккумулятора при резюме, см. комментарий у объявления переменных)
+      protoTrack.scrollLeft = protoDragStartScroll - dx;
+    });
+
+    const protoEndDrag = (e: PointerEvent) => {
+      if (!protoTrack || !protoDragActive) return;
+      protoDragActive = false;
+      protoTrack.classList.remove('is-dragging');
+      if (protoTrack.hasPointerCapture(e.pointerId)) protoTrack.releasePointerCapture(e.pointerId);
+    };
+    protoTrack.addEventListener('pointerup', (e) => protoEndDrag(e as PointerEvent));
+    protoTrack.addEventListener('pointercancel', (e) => protoEndDrag(e as PointerEvent));
+
+    // подавление клика по карточке сразу после драга (порог 6px) — capture-фаза
+    // гарантирует остановку раньше bubble-обработчика клика карточки (см. ниже,
+    // document.querySelectorAll('.proto-card').forEach(card => card.addEventListener('click', ...))),
+    // независимо от порядка регистрации слушателей. Клавиатурный Enter/Space
+    // не затронут — там openModal() вызывается напрямую из keydown, не через click.
+    protoTrack.addEventListener('click', (e) => {
+      if (protoDragDistance > PROTO_DRAG_CLICK_SUPPRESS_PX) {
+        e.stopPropagation();
+        e.preventDefault();
+      }
+    }, true);
 
     window.addEventListener('resize', () => {
       if (protoResizeTimer) clearTimeout(protoResizeTimer);
