@@ -109,6 +109,9 @@ if (canvas) {
   };
   window.__spawnMeteor = spawnMeteor;
   window.addEventListener('meteor', spawnMeteor);
+  // iter7 (п.2, верификация): читает текущие множители альфы звезд по расстоянию
+  // от центра вьюпорта — без этого пришлось бы сэмплить пиксели canvas вручную.
+  window.__starsCenterMuls = () => stars.map((s) => ({ sx: s.sx, sy: s.sy, centerMul: s.centerMul }));
 
   const drawMeteors = (dt) => {
     for (let i = meteors.length - 1; i >= 0; i--) {
@@ -136,10 +139,24 @@ if (canvas) {
     }
   };
 
+  // iter7 (п.2): звезды у центра вьюпорта бледнее, чтобы не спорить с текстом
+  // поверх них. smoothstep сглаживает переход (плавный градиент вместо
+  // ступеньки на границе); множитель применяется и к самой звезде, и к линиям
+  // созвездий (среднее двух множителей), пересчитывается каждый кадр от
+  // текущих sx/sy — дешево (одно extra умножение на звезду).
+  const smoothstep = (t) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
+  const centerAlphaMul = (sx, sy, cx, cy, maxDist) => {
+    if (maxDist <= 0) return 1;
+    const dist = Math.hypot(sx - cx, sy - cy);
+    return 0.4 + 0.6 * smoothstep(dist / maxDist);
+  };
+
   const tick = (now) => {
     const dt = Math.min(48, now - lastFrameTime); // clamp против табов на фоне
     lastFrameTime = now;
     const scrollY = window.scrollY;
+    const centerX = w / 2, centerY = h / 2;
+    const maxDist = Math.hypot(centerX, centerY); // расстояние центр→угол вьюпорта
 
     ctx.clearRect(0, 0, w, h);
 
@@ -173,9 +190,10 @@ if (canvas) {
       sy = ((sy % h) + h) % h; // заворот по вертикали
 
       s.sx = sx; s.sy = sy;
+      s.centerMul = centerAlphaMul(sx, sy, centerX, centerY, maxDist);
 
       const twinkle = 0.55 + 0.45 * Math.sin(now * s.twinkleSpeed + s.twinklePhase);
-      ctx.fillStyle = `rgba(232,230,225,${(s.baseAlpha * twinkle).toFixed(3)})`;
+      ctx.fillStyle = `rgba(232,230,225,${(s.baseAlpha * twinkle * s.centerMul).toFixed(3)})`;
       ctx.beginPath();
       ctx.arc(sx, sy, s.r, 0, Math.PI * 2);
       ctx.fill();
@@ -187,7 +205,8 @@ if (canvas) {
         const a = stars[i], b = stars[j];
         const dd2 = (a.sx - b.sx) ** 2 + (a.sy - b.sy) ** 2;
         if (dd2 < 7200) {
-          ctx.strokeStyle = `rgba(154,151,163,${((1 - dd2 / 7200) * 0.18).toFixed(3)})`;
+          const lineMul = (a.centerMul + b.centerMul) / 2;
+          ctx.strokeStyle = `rgba(154,151,163,${((1 - dd2 / 7200) * 0.18 * lineMul).toFixed(3)})`;
           ctx.beginPath(); ctx.moveTo(a.sx, a.sy); ctx.lineTo(b.sx, b.sy); ctx.stroke();
         }
       }

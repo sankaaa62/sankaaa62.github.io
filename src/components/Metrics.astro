@@ -9,22 +9,9 @@ const items = [
 ];
 ---
 <div class="metrics">
-  <svg class="constellation constellation-row" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-    <polyline points="12.5,50 37.5,50 62.5,50 87.5,50" />
-    <circle class="constellation-dot" cx="25" cy="50" r="1.1" />
-    <circle class="constellation-dot" cx="75" cy="50" r="1.1" />
-  </svg>
-  <svg class="constellation constellation-grid" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-    <polyline points="25,25 75,25 25,75 75,75" />
-    <circle class="constellation-dot" cx="50" cy="25" r="1.6" />
-    <circle class="constellation-dot" cx="50" cy="75" r="1.6" />
-  </svg>
   <div class="metrics-grid">
     {items.map((m, i) => (
       <div class="metric reveal" style={`--i:${i}`}>
-        <svg class="spark" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M12 1 L14.2 9.8 L23 12 L14.2 14.2 L12 23 L9.8 14.2 L1 12 L9.8 9.8 Z" />
-        </svg>
         <div class="metric-value mono">
           {m.prefix ?? ''}<span class="counter" data-target={m.value}>0</span>{m.suffix}
         </div>
@@ -35,67 +22,52 @@ const items = [
 </div>
 
 <style>
+  /* iter7 (п.5): редизайн — убраны SVG-созвездия и угловые звездочки-спарки,
+     остаются числа (с прежним glow) + подписи. Разделители между колонками —
+     тонкие вертикальные border-left (только на десктопной 4-колоночной сетке;
+     на мобильной 2×2 разделителей нет — см. media-запрос ниже). */
   .metrics {
-    position: relative;
     margin-bottom: clamp(28px, 5vw, 44px);
   }
 
   .metrics-grid {
-    position: relative;
-    z-index: 1;
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 14px;
   }
 
-  .constellation {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 0;
-    pointer-events: none;
-  }
-
-  .constellation polyline {
-    fill: none;
-    stroke: var(--border);
-    stroke-width: .6;
-    vector-effect: non-scaling-stroke;
-    opacity: .8;
-  }
-
-  .constellation-dot {
-    fill: var(--border);
-  }
-
-  .constellation-grid {
-    display: none;
-  }
-
   .metric {
-    position: relative;
     padding: 16px 10px;
     text-align: center;
-    border-radius: var(--radius);
-    background: transparent;
   }
 
-  .spark {
-    position: absolute;
-    top: 4px;
-    right: 10px;
-    width: 11px;
-    height: 11px;
-    fill: var(--accent-2);
-    opacity: .7;
+  .metric + .metric {
+    border-left: 1px solid var(--border);
   }
 
   .metric-value {
+    position: relative;
+    display: inline-block;
     font-size: clamp(1.6rem, 4vw, 2.1rem);
     font-weight: 800;
     color: var(--accent-2);
     text-shadow: 0 0 12px rgba(255, 176, 26, .55), 0 0 26px rgba(255, 92, 26, .25);
+    padding-bottom: 10px;
+  }
+
+  /* деликатный градиентный underline под числом — оранж → фиолет, в тон
+     остальным "stellar"-акцентам (см. .info-card::before) */
+  .metric-value::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    transform: translateX(-50%);
+    width: 32px;
+    height: 2px;
+    border-radius: 1px;
+    background: linear-gradient(90deg, var(--accent), var(--violet));
+    opacity: .55;
   }
 
   .metric-label {
@@ -110,12 +82,8 @@ const items = [
       gap: 22px 14px;
     }
 
-    .constellation-row {
-      display: none;
-    }
-
-    .constellation-grid {
-      display: block;
+    .metric + .metric {
+      border-left: none;
     }
   }
 </style>

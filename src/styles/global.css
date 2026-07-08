@@ -36,7 +36,13 @@ a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
 img, video { max-width: 100%; display: block; }
 .container { max-width: var(--container); margin: 0 auto; padding: 0 20px; }
-.section { padding: 72px 0; }
+/* iter7 (п.3): было `padding: 72px 0` — тот же shorthand, что и padding-left/
+   padding-right у .container, и объявлен ПОЗЖЕ в файле, поэтому при равной
+   специфичности (.section .container на одном элементе) обнулял боковые 20px
+   .container на КАЖДОЙ секции с классами "section container" (не только в
+   Contact, который был залатан точечно — см. git-историю). padding-block
+   трогает только верх/низ, боковые паддинги .container больше не перетираются. */
+.section { padding-block: 72px; }
 .mono { font-family: var(--font-mono); }
 .tag {
   display: inline-block; padding: 2px 10px; border: 1px solid var(--border);
