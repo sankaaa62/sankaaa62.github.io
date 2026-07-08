@@ -19,11 +19,13 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
           data-id={p.data.id} data-title={p.data.title} data-genre={p.data.genre[locale]}
           data-year={p.data.year} data-clip={p.data.clip ? '1' : '0'} data-shots={p.data.shots}
           data-clip-full={p.data.clipFull ? '1' : '0'}
+          data-extra-clips={p.data.extraClips}
           data-link={p.data.link ?? ''}
           data-badge={p.data.badge ? p.data.badge[locale] : ''}
           style={`--i:${isClone ? 0 : i};background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;cursor:pointer;`}>
           <div style="position:relative;aspect-ratio:1;">
             <img src={`/media/prototypes/${p.data.id}/icon.webp`} alt={p.data.title} loading="lazy"
+                 draggable="false"
                  style="width:100%;height:100%;object-fit:cover;" />
             {p.data.clip && (
               <video muted loop playsinline preload="none"
@@ -63,6 +65,7 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
     <div class="mono pm-meta" style="color:var(--muted);"></div>
     <a class="pm-link btn ghost" target="_blank" rel="noopener" style="display:none;"></a>
     <video class="pm-video" controls autoplay muted loop playsinline style="display:none;"></video>
+    <div class="pm-extra-clips"></div>
     <div class="pm-shots"></div>
     <img class="pm-icon" alt="" style="display:none;" />
   </div>
@@ -137,6 +140,14 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
     touch-action: pan-x;
     padding: 18px 0;
     cursor: grab;
+    /* iter8 фикс: раньше от нативного выделения текста при драге спасались
+       через ev.preventDefault() в pointerdown — но по спеке Pointer Events
+       preventDefault() на pointerdown ГАСИТ последующие compatibility mouse
+       events, включая click (см. комментарий у pointerdown-слушателя ниже).
+       Правильный паттерн — не трогать preventDefault, а запретить выделение
+       через CSS */
+    user-select: none;
+    -webkit-user-select: none;
   }
   /* курсор карточек — inline style="cursor:pointer" на самом элементе
      карточки (см. map() выше) — он всегда выигрывает у унаследованного
@@ -146,6 +157,12 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
   }
   .proto-track::-webkit-scrollbar {
     display: none;
+  }
+  /* iter8: запрет нативного drag-n-drop картинок (иначе браузер норовит
+     начать перетаскивание <img> как файл поверх нашего pointer-based драга) */
+  .proto-track img {
+    -webkit-user-drag: none;
+    user-drag: none;
   }
   .proto-track .proto-card {
     flex: 0 0 200px;
@@ -235,6 +252,20 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
     display: block;
     width: 100%;
     max-height: 50vh;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: #000;
+  }
+  .pm-extra-clips {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .pm-extra-clips video {
+    display: block;
+    width: 100%;
+    max-height: 40vh;
     border-radius: var(--radius);
     border: 1px solid var(--border);
     background: #000;
@@ -341,6 +372,17 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
   let protoDragStartX = 0;
   let protoDragStartScroll = 0;
   let protoDragDistance = 0;
+
+  // iter8 Задача: инерция драга мышкой после отпускания. Скорость считаем по
+  // последним сэмплам scrollLeft (не clientX!) — так знак v сразу совпадает
+  // с направлением, в котором надо продолжать писать в scrollLeft.
+  const PROTO_MOMENTUM_SAMPLES = 4; // последние N точек => N-1 дельт скорости
+  const PROTO_MOMENTUM_DECAY_PER_FRAME = 0.94; // на кадр ~16.67мс, см. protoMomentumTick
+  const PROTO_MOMENTUM_MIN_V = 0.05; // px/ms — и порог запуска, и порог остановки (по спеке)
+  let protoDragSamples: { t: number; x: number }[] = [];
+  let protoMomentumActive = false;
+  let protoMomentumV = 0;
+  let protoMomentumLastTs = 0;
 
   function pauseCarousel(reason: string) {
     protoPauseReasons.add(reason);
@@ -449,35 +491,127 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
       if (!protoTrack) return;
       const ev = e as PointerEvent;
       protoDragDistance = 0;
+      // новый жест обрывает предыдущую инерцию (если пользователь ловит
+      // едущий по инерции трек рукой)
+      protoMomentumActive = false;
       if (ev.pointerType !== 'mouse' || ev.button !== 0) return;
       protoDragActive = true;
       protoDragStartX = ev.clientX;
       protoDragStartScroll = protoTrack.scrollLeft;
-      protoTrack.setPointerCapture(ev.pointerId);
+      protoDragSamples = [{ t: ev.timeStamp, x: protoTrack.scrollLeft }];
       protoTrack.classList.add('is-dragging');
-      // не даем мышке потащить нативное выделение текста заголовков/картинку
-      ev.preventDefault();
+      // ВАЖНО (iter8, root cause бага "клик не открывает модалку" — 2 части):
+      // 1) раньше тут стоял ev.preventDefault() — по спеке Pointer Events это
+      //    гасит синтезируемые compatibility mouse events, В ТОМ ЧИСЛЕ 'click',
+      //    для ЛЮБОГО клика мышью (не только после реального драга). Выделение
+      //    текста теперь блокируется через CSS (user-select: none на .proto-track,
+      //    -webkit-user-drag: none + draggable="false" на img — см. стили выше)
+      //    вместо preventDefault.
+      // 2) setPointerCapture() РАНЬШЕ вызывался прямо тут, безусловно на каждый
+      //    pointerdown. По спеке Pointer Events захват указателя ретаргетит
+      //    compatibility mouse events (в т.ч. click) НА элемент захвата — т.е.
+      //    click при отпускании стал таргетиться на protoTrack, а не на
+      //    карточку. Поскольку карточка — потомок protoTrack, событие в этом
+      //    случае вообще не проходит через ее bubble-листенер (клик не
+      //    всплывает К потомкам, только ОТ таргета вверх) — card.click()
+      //    просто никогда не срабатывал. Проверено вживую: даже без
+      //    preventDefault клик долетал до protoTrack, а не до карточки.
+      //    Исправлено ниже — захват указателя теперь ЛЕНИВЫЙ: включается
+      //    только когда движение подтверждает реальный драг (после порога
+      //    PROTO_DRAG_CLICK_SUPPRESS_PX). Для обычного клика без движения
+      //    capture вообще не включается — click естественно доходит до
+      //    карточки и открывает модалку.
     });
 
     protoTrack.addEventListener('pointermove', (e) => {
       if (!protoTrack || !protoDragActive) return;
       const ev = e as PointerEvent;
       const dx = ev.clientX - protoDragStartX;
+      const wasDrag = protoDragDistance > PROTO_DRAG_CLICK_SUPPRESS_PX;
       protoDragDistance = Math.max(protoDragDistance, Math.abs(dx));
+      // ленивый захват указателя — см. комментарий у pointerdown выше. try/catch
+      // защищает от редкого InvalidPointerId (указатель уже отпущен/невалиден
+      // к моменту вызова) — без него необработанное исключение оборвало бы
+      // остаток этого обработчика, потеряв запись scrollLeft для этого кадра
+      if (!wasDrag && protoDragDistance > PROTO_DRAG_CLICK_SUPPRESS_PX && !protoTrack.hasPointerCapture(ev.pointerId)) {
+        try { protoTrack.setPointerCapture(ev.pointerId); } catch { /* noop */ }
+      }
       // пишем НЕ через protoMarkProgrammatic() — это настоящий пользовательский
       // скролл, событие 'scroll' должно пройти обычным путем (пауза + грация +
       // ресинк аккумулятора при резюме, см. комментарий у объявления переменных)
       protoTrack.scrollLeft = protoDragStartScroll - dx;
+      protoDragSamples.push({ t: ev.timeStamp, x: protoTrack.scrollLeft });
+      if (protoDragSamples.length > PROTO_MOMENTUM_SAMPLES) protoDragSamples.shift();
     });
 
-    const protoEndDrag = (e: PointerEvent) => {
+    // decay-анимация инерции: пишем в scrollLeft каждый кадр (тоже НЕ через
+    // protoMarkProgrammatic — событие 'scroll' само продлевает грацию
+    // 'user-scroll', пока идет инерция; когда инерция останавливается,
+    // последнее такое событие запускает обычные 2.5с грации → резюм marquee,
+    // см. комментарий у protoScheduleUserScrollResume)
+    function protoMomentumTick(ts: number) {
+      if (!protoMomentumActive || !protoTrack) return;
+      if (!protoMomentumLastTs) {
+        protoMomentumLastTs = ts;
+        requestAnimationFrame(protoMomentumTick);
+        return;
+      }
+      const dt = ts - protoMomentumLastTs;
+      protoMomentumLastTs = ts;
+      protoTrack.scrollLeft += protoMomentumV * dt;
+      // wraparound по дублированному контенту, как в protoEnsureHeadroom —
+      // но реактивно, т.к. направление инерции известно только по знаку v
+      if (protoOriginalWidth > 0) {
+        const maxScroll = protoTrack.scrollWidth - protoTrack.clientWidth;
+        if (protoTrack.scrollLeft < 0) {
+          protoMarkProgrammatic();
+          protoTrack.scrollLeft += protoOriginalWidth;
+        } else if (protoTrack.scrollLeft > maxScroll) {
+          protoMarkProgrammatic();
+          protoTrack.scrollLeft -= protoOriginalWidth;
+        }
+      }
+      // декремент масштабирован на dt, чтобы не зависеть от реального фреймрейта
+      protoMomentumV *= Math.pow(PROTO_MOMENTUM_DECAY_PER_FRAME, dt / (1000 / 60));
+      if (Math.abs(protoMomentumV) < PROTO_MOMENTUM_MIN_V) {
+        protoMomentumActive = false;
+        return;
+      }
+      requestAnimationFrame(protoMomentumTick);
+    }
+
+    function protoStartMomentum() {
+      if (!protoTrack || protoDragSamples.length < 2) return;
+      let sumV = 0;
+      let count = 0;
+      for (let i = 1; i < protoDragSamples.length; i++) {
+        const a = protoDragSamples[i - 1];
+        const b = protoDragSamples[i];
+        const dt = b.t - a.t;
+        if (dt <= 0) continue;
+        sumV += (b.x - a.x) / dt;
+        count++;
+      }
+      if (count === 0) return;
+      const v = sumV / count;
+      if (Math.abs(v) < PROTO_MOMENTUM_MIN_V) return;
+      protoMomentumV = v;
+      protoMomentumActive = true;
+      protoMomentumLastTs = 0;
+      requestAnimationFrame(protoMomentumTick);
+    }
+
+    const protoEndDrag = (e: PointerEvent, allowMomentum: boolean) => {
       if (!protoTrack || !protoDragActive) return;
       protoDragActive = false;
       protoTrack.classList.remove('is-dragging');
       if (protoTrack.hasPointerCapture(e.pointerId)) protoTrack.releasePointerCapture(e.pointerId);
+      // pointercancel — жест прерван (например, курсор ушел из окна), инерцию
+      // в этом случае не запускаем, только для честного pointerup
+      if (allowMomentum) protoStartMomentum();
     };
-    protoTrack.addEventListener('pointerup', (e) => protoEndDrag(e as PointerEvent));
-    protoTrack.addEventListener('pointercancel', (e) => protoEndDrag(e as PointerEvent));
+    protoTrack.addEventListener('pointerup', (e) => protoEndDrag(e as PointerEvent, true));
+    protoTrack.addEventListener('pointercancel', (e) => protoEndDrag(e as PointerEvent, false));
 
     // подавление клика по карточке сразу после драга (порог 6px) — capture-фаза
     // гарантирует остановку раньше bubble-обработчика клика карточки (см. ниже,
@@ -580,6 +714,7 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
     const metaEl = modal.querySelector<HTMLElement>('.pm-meta');
     const linkEl = modal.querySelector<HTMLAnchorElement>('.pm-link');
     const videoEl = modal.querySelector<HTMLVideoElement>('.pm-video');
+    const extraClipsEl = modal.querySelector<HTMLElement>('.pm-extra-clips');
     const shotsEl = modal.querySelector<HTMLElement>('.pm-shots');
     const iconEl = modal.querySelector<HTMLImageElement>('.pm-icon');
     const storeLabel = modal.dataset.storeLabel ?? 'View on Google Play';
@@ -624,6 +759,25 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
           videoEl.style.display = 'none';
           videoEl.removeAttribute('src');
           videoEl.load();
+        }
+      }
+
+      if (extraClipsEl) {
+        extraClipsEl.innerHTML = '';
+        const extraClips = Number(card.dataset.extraClips ?? '0');
+        for (let i = 2; i <= 1 + extraClips; i++) {
+          const extraVideo = document.createElement('video');
+          extraVideo.controls = true;
+          extraVideo.muted = true;
+          extraVideo.loop = true;
+          extraVideo.playsInline = true;
+          extraVideo.preload = 'none';
+          extraVideo.poster = `/media/prototypes/${id}/poster-${i}.jpg`;
+          const source = document.createElement('source');
+          source.src = `/media/prototypes/${id}/clip-${i}.webm`;
+          source.type = 'video/webm';
+          extraVideo.appendChild(source);
+          extraClipsEl.appendChild(extraVideo);
         }
       }
 
@@ -684,6 +838,7 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
         videoEl.removeAttribute('src');
         videoEl.load();
       }
+      if (extraClipsEl) extraClipsEl.innerHTML = '';
       document.body.style.overflow = previousOverflow;
       if (lastCard) {
         const v = lastCard.querySelector('video');

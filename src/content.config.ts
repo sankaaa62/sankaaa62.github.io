@@ -31,6 +31,7 @@ const prototypes = defineCollection({
     clip: z.boolean().default(false),
     clipFull: z.boolean().default(false),
     shots: z.number().default(0),
+    extraClips: z.number().default(0),
     link: z.url().optional(),
     badge: z.object({ en: z.string(), ru: z.string() }).optional(),
     pin: z.boolean().default(false),

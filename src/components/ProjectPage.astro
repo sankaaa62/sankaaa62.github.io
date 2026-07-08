@@ -1,8 +1,7 @@
 ---
-import { readdirSync, existsSync } from 'node:fs';
 import { render } from 'astro:content';
 import Base from '../layouts/Base.astro';
-import Gallery from './Gallery.astro';
+import MediaViewer from './MediaViewer.astro';
 import { t, localePath, type Locale } from '../i18n/ui';
 import { platformBadges } from '../lib/platforms';
 
@@ -11,14 +10,6 @@ const d = project.data;
 const { Content } = await render(project);
 const slug = project.id.split('/')[1];
 const badges = platformBadges(d.platforms, { pc: t(locale, 'platform.pc'), mobile: t(locale, 'platform.mobile') });
-
-const shotsDir = `public/media/projects/${slug}`;
-const shots = existsSync(shotsDir)
-  ? readdirSync(shotsDir)
-      .filter((f) => f.endsWith('.webp'))
-      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
-      .map((f) => `/media/projects/${slug}/${f}`)
-  : [];
 ---
 <Base locale={locale} title={`${d.title} — Aleksandr Kandakov`} description={d.tagline} path={`/projects/${slug}/`}>
   <article class="container section">
@@ -38,19 +29,7 @@ const shots = existsSync(shotsDir)
         {d.links.map((l: any) => <a class="btn ghost" href={l.url}>{l.label}</a>)}
       </p>
     )}
-    {d.youtube && (
-      <div style="aspect-ratio:16/9;margin-bottom:24px;">
-        <iframe src={`https://www.youtube-nocookie.com/embed/${d.youtube}`} title={d.title}
-          style="width:100%;height:100%;border:0;border-radius:var(--radius);"
-          loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
-      </div>
-    )}
-    {!d.youtube && d.trailer && (
-      <div style="aspect-ratio:16/9;margin-bottom:24px;">
-        <video src={d.trailer} controls preload="metadata"
-          style="width:100%;height:100%;border:0;border-radius:var(--radius);background:#000;"></video>
-      </div>
-    )}
+    <MediaViewer locale={locale} slug={slug} title={d.title} youtube={d.youtube} />
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-bottom:24px;">
       <div class="info-card" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;">
         <div class="mono" style="color:var(--muted);font-size:.8rem;">{t(locale, 'project.role')}</div>
@@ -63,10 +42,5 @@ const shots = existsSync(shotsDir)
       </div>
     </div>
     <Content />
-    {shots.length > 0 && (
-      <div style="margin-top:24px;">
-        <Gallery images={shots} alt={d.title} locale={locale} />
-      </div>
-    )}
   </article>
 </Base>

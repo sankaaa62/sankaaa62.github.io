@@ -69,7 +69,8 @@
     "year": 2020,
     "clip": true,
     "shots": 5,
-    "clipFull": true
+    "clipFull": true,
+    "extraClips": 2
   },
   {
     "id": "skeeballleague",
@@ -128,7 +129,8 @@
     "year": 2021,
     "clip": true,
     "shots": 5,
-    "clipFull": true
+    "clipFull": true,
+    "extraClips": 1
   },
   {
     "id": "sloth-sadventure",
@@ -236,7 +238,8 @@
     "year": 2022,
     "clip": true,
     "shots": 6,
-    "clipFull": true
+    "clipFull": true,
+    "extraClips": 1
   },
   {
     "id": "almightyrun",
@@ -260,7 +263,8 @@
     "year": 2022,
     "clip": true,
     "shots": 6,
-    "clipFull": true
+    "clipFull": true,
+    "extraClips": 1
   },
   {
     "id": "personalityrun",
@@ -284,7 +288,8 @@
     "year": 2022,
     "clip": true,
     "shots": 5,
-    "clipFull": true
+    "clipFull": true,
+    "extraClips": 1
   },
   {
     "id": "idalpetsalon",

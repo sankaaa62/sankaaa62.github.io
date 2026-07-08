@@ -1,7 +1,7 @@
 ---
 title: "Last Wish"
 tagline: "Интерактивная 3D визуальная новелла для PC с удмуртским нарративом — тимлид"
-role: "Tech Lead"
+role: "Техлид"
 period: "2023"
 genre: "3D визуальная новелла"
 platforms: ["PC (Steam)", "VK Play"]

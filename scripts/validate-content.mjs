@@ -42,6 +42,12 @@ if (!existsSync(protoPath)) {
             if (!existsSync(f)) errors.push(`prototype ${p.id}: shots=${p.shots}, но нет shots/${i}.webp`);
           }
         }
+        if (p.extraClips > 0) {
+          for (let i = 2; i <= 1 + p.extraClips; i++) {
+            const f = join(dir, `clip-${i}.webm`);
+            if (!existsSync(f)) errors.push(`prototype ${p.id}: extraClips=${p.extraClips}, но нет clip-${i}.webm`);
+          }
+        }
       }
     }
   }
