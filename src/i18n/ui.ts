@@ -38,6 +38,7 @@ export const ui = {
     'platform.mobile': 'Mobile',
     'carousel.prev': 'Previous',
     'carousel.next': 'Next',
+    'viewer.video': 'Video',
   },
   ru: {
     'nav.about': 'Обо мне',
@@ -75,6 +76,7 @@ export const ui = {
     'platform.mobile': 'Mobile',
     'carousel.prev': 'Назад',
     'carousel.next': 'Вперед',
+    'viewer.video': 'Видео',
   },
 } as const;
 

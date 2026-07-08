@@ -1,0 +1,463 @@
+---
+// Итерация 8, п.16: Steam-стиль медиа-вьювер на страницах проектов.
+// Заменяет отдельный блок трейлера/youtube и секцию <Gallery> — один плейлист
+// [видео (локальные трейлеры + youtube), затем все скрины], собранный на
+// этапе SSG через fs (никакого ffmpeg в рантайме: постер локального видео —
+// cover.webp/shot-1.webp, если есть).
+import { readdirSync, existsSync } from 'node:fs';
+import { t, type Locale } from '../i18n/ui';
+
+interface Props {
+  locale: Locale;
+  slug: string;
+  title: string;
+  youtube?: string;
+}
+
+const { locale, slug, title, youtube } = Astro.props as Props;
+
+const mediaDir = `public/media/projects/${slug}`;
+const webPath = (name: string) => `/media/projects/${slug}/${name}`;
+const hasFile = (name: string) => existsSync(`${mediaDir}/${name}`);
+
+const localPoster = hasFile('cover.webp')
+  ? webPath('cover.webp')
+  : hasFile('shot-1.webp')
+    ? webPath('shot-1.webp')
+    : '';
+
+interface PlaylistItem {
+  kind: 'video' | 'youtube' | 'image';
+  src: string;
+  id: string;
+  poster: string;
+  label: string;
+}
+
+const localVideos: PlaylistItem[] = ['trailer.webm', 'trailer-2.webm']
+  .filter((name) => hasFile(name))
+  .map((name) => ({ kind: 'video', src: webPath(name), id: '', poster: localPoster, label: '' }));
+
+const youtubeItems: PlaylistItem[] = youtube
+  ? [{ kind: 'youtube', src: '', id: youtube, poster: `https://i.ytimg.com/vi/${youtube}/mqdefault.jpg`, label: '' }]
+  : [];
+
+const shots: PlaylistItem[] = existsSync(mediaDir)
+  ? readdirSync(mediaDir)
+      .filter((f) => /^shot-\d+\.webp$/.test(f))
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+      .map((f) => ({ kind: 'image', src: webPath(f), id: '', poster: '', label: '' }))
+  : [];
+
+let videoCounter = 0;
+let imageCounter = 0;
+const playlist: PlaylistItem[] = [...localVideos, ...youtubeItems, ...shots].map((item) => {
+  if (item.kind === 'image') {
+    imageCounter += 1;
+    return { ...item, label: `${t(locale, 'gallery.screenshot')} ${imageCounter}` };
+  }
+  videoCounter += 1;
+  return { ...item, label: `${t(locale, 'viewer.video')} ${videoCounter}` };
+});
+
+const first = playlist[0];
+---
+{playlist.length > 0 && (
+  <div class="media-viewer" data-title={title}>
+    <div class="mv-stage" tabindex="0" aria-label={`${title} — media viewer`}>
+      {first.kind === 'video' && (
+        <video controls preload="metadata" poster={first.poster || undefined} playsinline>
+          <source src={first.src} type="video/webm" />
+        </video>
+      )}
+      {first.kind === 'youtube' && (
+        <iframe
+          src={`https://www.youtube-nocookie.com/embed/${first.id}`}
+          title={title}
+          loading="lazy"
+          referrerpolicy="strict-origin-when-cross-origin"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowfullscreen
+        ></iframe>
+      )}
+      {first.kind === 'image' && (
+        <img src={first.src} alt={title} decoding="async" />
+      )}
+    </div>
+
+    <div class="mv-strip-wrap">
+      <button type="button" class="mv-arrow mv-arrow--prev" aria-label={t(locale, 'carousel.prev')}>‹</button>
+      <div class="mv-strip">
+        {playlist.map((item, i) => (
+          <button
+            type="button"
+            class={`mv-thumb${i === 0 ? ' is-active' : ''}`}
+            data-index={i}
+            data-kind={item.kind}
+            data-src={item.src}
+            data-id={item.id}
+            data-poster={item.poster}
+            aria-label={`${title} — ${item.label}`}
+          >
+            {item.kind === 'image' && <img src={item.src} loading="lazy" alt="" />}
+            {item.kind === 'youtube' && <img src={item.poster} loading="lazy" alt="" />}
+            {item.kind === 'video' && (item.poster
+              ? <img src={item.poster} loading="lazy" alt="" />
+              : <span class="mv-thumb-blank" aria-hidden="true"></span>)}
+            {item.kind !== 'image' && <span class="mv-play" aria-hidden="true">▶</span>}
+          </button>
+        ))}
+      </div>
+      <button type="button" class="mv-arrow mv-arrow--next" aria-label={t(locale, 'carousel.next')}>›</button>
+    </div>
+
+    <dialog class="mv-lightbox">
+      <button type="button" class="mv-lb-close" aria-label={t(locale, 'gallery.close')}>✕</button>
+      <button type="button" class="mv-lb-prev" aria-label={t(locale, 'gallery.prev')}>‹</button>
+      <img class="mv-lb-image" src="" alt="" decoding="async" />
+      <button type="button" class="mv-lb-next" aria-label={t(locale, 'gallery.next')}>›</button>
+    </dialog>
+  </div>
+)}
+
+<style>
+  .media-viewer {
+    margin-bottom: 24px;
+  }
+
+  .mv-stage {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: #000;
+    overflow: hidden;
+  }
+  .mv-stage:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .mv-stage video,
+  .mv-stage iframe,
+  .mv-stage img {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    display: block;
+    object-fit: cover;
+  }
+
+  .mv-strip-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .mv-strip {
+    flex: 1;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    scroll-behavior: smooth;
+    padding: 2px;
+  }
+  .mv-strip::-webkit-scrollbar {
+    display: none;
+  }
+  .mv-thumb {
+    position: relative;
+    flex: 0 0 auto;
+    width: 160px;
+    height: 90px;
+    padding: 0;
+    overflow: hidden;
+    border: 2px solid var(--border);
+    border-radius: calc(var(--radius) - 4px);
+    background: var(--surface);
+    cursor: pointer;
+    filter: brightness(.65);
+    transition: filter .15s, border-color .15s, transform .15s;
+  }
+  .mv-thumb img,
+  .mv-thumb-blank {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    background: var(--surface-2);
+  }
+  .mv-thumb:hover {
+    filter: brightness(.9);
+  }
+  .mv-thumb.is-active {
+    border-color: var(--accent);
+    filter: brightness(1);
+  }
+  .mv-thumb:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .mv-play {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 1.15rem;
+    text-shadow: 0 0 6px rgba(0, 0, 0, .8);
+    background: radial-gradient(circle, rgba(0, 0, 0, .3), transparent 70%);
+    pointer-events: none;
+  }
+
+  .mv-arrow {
+    display: none;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 1.15rem;
+    cursor: pointer;
+    transition: transform .15s, border-color .15s, box-shadow .15s;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .mv-arrow.has-overflow {
+      display: inline-flex;
+    }
+  }
+  .mv-arrow:hover,
+  .mv-arrow:focus-visible {
+    transform: translateY(-2px);
+    border-color: var(--accent);
+    box-shadow: 0 0 14px rgba(255, 92, 26, .3);
+    outline: none;
+  }
+
+  .mv-lightbox {
+    border: none;
+    padding: 0;
+    background: transparent;
+    max-width: none;
+    max-height: none;
+    width: 100%;
+    height: 100%;
+    position: fixed;
+    inset: 0;
+    margin: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+  .mv-lightbox[open] {
+    display: flex;
+  }
+  .mv-lightbox::backdrop {
+    background: rgba(4, 5, 8, .88);
+  }
+  .mv-lb-image {
+    max-width: 92vw;
+    max-height: 85vh;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, .5);
+  }
+  .mv-lb-close, .mv-lb-prev, .mv-lb-next {
+    position: fixed;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 1.4rem;
+    cursor: pointer;
+    transition: transform .15s, border-color .15s, box-shadow .15s;
+  }
+  .mv-lb-close:hover, .mv-lb-prev:hover, .mv-lb-next:hover,
+  .mv-lb-close:focus-visible, .mv-lb-prev:focus-visible, .mv-lb-next:focus-visible {
+    transform: translateY(-2px);
+    border-color: var(--accent);
+    box-shadow: 0 0 14px rgba(255, 92, 26, .3);
+    outline: none;
+  }
+  .mv-lb-close { top: 16px; right: 16px; }
+  .mv-lb-prev { left: 16px; top: 50%; transform: translateY(-50%); font-size: 1.8rem; }
+  .mv-lb-next { right: 16px; top: 50%; transform: translateY(-50%); font-size: 1.8rem; }
+  .mv-lb-prev:hover, .mv-lb-next:hover { transform: translateY(-50%) translateY(-2px); }
+
+  @media (max-width: 640px) {
+    .mv-lb-prev, .mv-lb-next { min-width: 44px; min-height: 44px; }
+    .mv-lb-prev { left: 6px; }
+    .mv-lb-next { right: 6px; }
+    .mv-lb-close { top: 10px; right: 10px; }
+    .mv-lb-image { max-width: calc(100vw - 108px); }
+  }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLElement>('.media-viewer').forEach((root) => {
+    const stage = root.querySelector<HTMLElement>('.mv-stage');
+    const thumbs = Array.from(root.querySelectorAll<HTMLButtonElement>('.mv-thumb'));
+    const strip = root.querySelector<HTMLElement>('.mv-strip');
+    const prevArrow = root.querySelector<HTMLButtonElement>('.mv-arrow--prev');
+    const nextArrow = root.querySelector<HTMLButtonElement>('.mv-arrow--next');
+    const lightbox = root.querySelector<HTMLDialogElement>('.mv-lightbox');
+    const lbImage = root.querySelector<HTMLImageElement>('.mv-lb-image');
+    const lbClose = root.querySelector<HTMLButtonElement>('.mv-lb-close');
+    const lbPrev = root.querySelector<HTMLButtonElement>('.mv-lb-prev');
+    const lbNext = root.querySelector<HTMLButtonElement>('.mv-lb-next');
+    const title = root.dataset.title ?? '';
+    if (!stage || thumbs.length === 0) return;
+
+    let active = 0;
+
+    type Item = { kind: string; src: string; id: string; poster: string };
+    const readItem = (btn: HTMLButtonElement): Item => ({
+      kind: btn.dataset.kind ?? 'image',
+      src: btn.dataset.src ?? '',
+      id: btn.dataset.id ?? '',
+      poster: btn.dataset.poster ?? '',
+    });
+
+    const imageIndices = thumbs
+      .map((btn, i) => (btn.dataset.kind === 'image' ? i : -1))
+      .filter((i) => i >= 0);
+
+    let lbCurrent = 0;
+    let previousOverflow = '';
+
+    const showLightbox = (posInImages: number) => {
+      if (!lightbox || !lbImage || imageIndices.length === 0) return;
+      lbCurrent = (posInImages + imageIndices.length) % imageIndices.length;
+      const btn = thumbs[imageIndices[lbCurrent]];
+      lbImage.src = btn.dataset.src ?? '';
+      lbImage.alt = title;
+    };
+
+    const openLightbox = (thumbIndex: number) => {
+      const pos = imageIndices.indexOf(thumbIndex);
+      if (pos === -1 || !lightbox) return;
+      showLightbox(pos);
+      if (!lightbox.open) {
+        previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        lightbox.showModal();
+      }
+    };
+
+    lbClose?.addEventListener('click', () => lightbox?.close());
+    lbPrev?.addEventListener('click', () => showLightbox(lbCurrent - 1));
+    lbNext?.addEventListener('click', () => showLightbox(lbCurrent + 1));
+    lightbox?.addEventListener('click', (e) => {
+      if (e.target === lightbox) lightbox.close();
+    });
+    lightbox?.addEventListener('close', () => {
+      if (lbImage) lbImage.src = '';
+      document.body.style.overflow = previousOverflow;
+    });
+    lightbox?.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') showLightbox(lbCurrent - 1);
+      else if (e.key === 'ArrowRight') showLightbox(lbCurrent + 1);
+    });
+
+    // Первый элемент плейлиста, если это картинка, отрисован сразу на сервере
+    // (SSR) — renderStage() ниже его не создает и не навешивает клик-зум,
+    // поэтому вешаем его отдельно на уже существующий <img>.
+    const initialImg = stage.querySelector<HTMLImageElement>('img');
+    if (initialImg && thumbs[0]?.dataset.kind === 'image') {
+      initialImg.style.cursor = 'zoom-in';
+      initialImg.addEventListener('click', () => openLightbox(0));
+    }
+
+    const renderStage = (item: Item, autoplay: boolean) => {
+      stage.innerHTML = '';
+      if (item.kind === 'video') {
+        const video = document.createElement('video');
+        video.controls = true;
+        video.playsInline = true;
+        video.preload = 'metadata';
+        if (item.poster) video.poster = item.poster;
+        const source = document.createElement('source');
+        source.src = item.src;
+        source.type = 'video/webm';
+        video.appendChild(source);
+        stage.appendChild(video);
+        if (autoplay) {
+          // Явный клик пользователя = user gesture, синхронно внутри обработчика —
+          // разрешает автоплей СО ЗВУКОМ. Если браузер все равно откажет
+          // (нестандартные политики), fallback на приглушенный автоплей.
+          video.play().catch(() => {
+            video.muted = true;
+            video.play().catch(() => {});
+          });
+        }
+      } else if (item.kind === 'youtube') {
+        const iframe = document.createElement('iframe');
+        iframe.src = `https://www.youtube-nocookie.com/embed/${item.id}${autoplay ? '?autoplay=1' : ''}`;
+        iframe.title = title;
+        iframe.loading = 'lazy';
+        iframe.referrerPolicy = 'strict-origin-when-cross-origin';
+        iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+        iframe.allowFullscreen = true;
+        stage.appendChild(iframe);
+      } else {
+        const img = document.createElement('img');
+        img.src = item.src;
+        img.alt = title;
+        img.decoding = 'async';
+        img.style.cursor = 'zoom-in';
+        img.addEventListener('click', () => {
+          const idx = thumbs.findIndex((b) => b.dataset.kind === 'image' && b.dataset.src === item.src);
+          if (idx !== -1) openLightbox(idx);
+        });
+        stage.appendChild(img);
+      }
+    };
+
+    const setActive = (index: number, autoplay: boolean) => {
+      index = Math.max(0, Math.min(thumbs.length - 1, index));
+      thumbs[active]?.classList.remove('is-active');
+      active = index;
+      thumbs[active].classList.add('is-active');
+      thumbs[active].scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' });
+      renderStage(readItem(thumbs[active]), autoplay);
+    };
+
+    thumbs.forEach((btn, i) => {
+      btn.addEventListener('click', () => setActive(i, true));
+    });
+
+    stage.addEventListener('keydown', (e) => {
+      if (document.activeElement !== stage) return;
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        setActive(active - 1, true);
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        setActive(active + 1, true);
+      }
+    });
+
+    const updateArrows = () => {
+      if (!strip || !prevArrow || !nextArrow) return;
+      const overflow = strip.scrollWidth > strip.clientWidth + 1;
+      prevArrow.classList.toggle('has-overflow', overflow);
+      nextArrow.classList.toggle('has-overflow', overflow);
+    };
+    updateArrows();
+    window.addEventListener('resize', updateArrows);
+
+    prevArrow?.addEventListener('click', () => strip?.scrollBy({ left: -240, behavior: 'smooth' }));
+    nextArrow?.addEventListener('click', () => strip?.scrollBy({ left: 240, behavior: 'smooth' }));
+  });
+</script>
