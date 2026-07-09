@@ -81,9 +81,7 @@ function estimateDuration(row: string[], speedPxS: number): number {
 // Плоский список всех навыков в порядке категорий — .sr-only fallback.
 const allSkillsFlat = categories.flatMap((c) => c.skills);
 ---
-<section id="skills" class="skills-band">
-  <p class="skills-kicker mono">{t(locale, 'skills.title')}</p>
-
+<section id="skills" class="skills-band" aria-label={t(locale, 'skills.title')}>
   <div class="marquee-wrap">
     <div class="marquee-fade marquee-fade--left" aria-hidden="true"></div>
     {marqueeRows.map((row, ri) => (
@@ -120,16 +118,8 @@ const allSkillsFlat = categories.flatMap((c) => c.skills);
     right: 50%;
     margin-left: -50vw;
     margin-right: -50vw;
-    padding-block: 40px;
+    padding-block: 48px;
     overflow: hidden;
-  }
-  .skills-kicker {
-    text-align: center;
-    font-size: .75rem;
-    letter-spacing: .08em;
-    text-transform: uppercase;
-    color: var(--accent-2);
-    margin: 0 0 20px;
   }
 
   .marquee-wrap { position: relative; display: flex; flex-direction: column; gap: 14px; }

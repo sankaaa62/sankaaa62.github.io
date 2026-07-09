@@ -1,7 +1,7 @@
 ---
 title: "Days After"
 tagline: "Мобильная survival action-RPG на 10M+ установок, издается с MY.GAMES"
-role: "Разработчик"
+role: "Developer"
 period: "2026 — н.в."
 genre: "Survival RPG"
 platforms: ["Android", "iOS", "PC"]

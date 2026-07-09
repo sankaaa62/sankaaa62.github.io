@@ -4,9 +4,8 @@ import { t, type Locale } from '../i18n/ui';
 const { locale } = Astro.props as { locale: Locale };
 const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 1 : 0) - (a.data.pin ? 1 : 0) || b.data.year - a.data.year);
 ---
-<section id="prototypes" class="section container">
-  <h2 class="reveal">{t(locale, 'prototypes.title')}</h2>
-  <p style="color:var(--muted);">{t(locale, 'prototypes.sub')}</p>
+<div id="prototypes" class="proto-section">
+  <p class="mono" style="color:var(--muted);font-size:.85rem;">{t(locale, 'prototypes.sub')}</p>
   <div class="proto-carousel-wrap">
   <div class="proto-carousel">
     <div class="proto-fade proto-fade--left" aria-hidden="true"></div>
@@ -53,7 +52,7 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
     <button type="button" class="proto-nav-arrow proto-nav-arrow--next" aria-label={t(locale, 'carousel.next')}>›</button>
   </div>
   </div>
-</section>
+</div>
 
 <dialog id="proto-modal" data-store-label={t(locale, 'prototypes.store')}>
   <button type="button" class="pm-close" aria-label={t(locale, 'gallery.close')}>✕</button>
@@ -72,6 +71,13 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
 </dialog>
 
 <style>
+  /* iter9 (п.3): отступ от карточек "Проектов" сверху — секция-родитель
+     теперь общая (#projects), свой .section/.container не нужен (иначе
+     двойной вертикальный паддинг), но зазор от карточек все равно нужен. */
+  .proto-section {
+    margin-top: 48px;
+  }
+
   #proto-modal {
     border: 1px solid var(--border);
     border-radius: var(--radius);

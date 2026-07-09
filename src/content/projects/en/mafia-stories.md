@@ -1,7 +1,7 @@
 ---
 title: "Mafia Stories: Idle Tycoon"
 tagline: "Mobile idle tycoon — took over an unstable project, stabilized and shipped"
-role: "Lead"
+role: "Team Lead"
 period: "2026"
 genre: "Idle Tycoon (F2P)"
 platforms: ["Android"]

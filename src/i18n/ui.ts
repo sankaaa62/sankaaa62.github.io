@@ -4,8 +4,8 @@ export type Locale = (typeof locales)[number];
 export const ui = {
   en: {
     'nav.about': 'About',
+    'nav.skills': 'Skills',
     'nav.projects': 'Projects',
-    'nav.prototypes': 'Prototypes',
     'nav.contact': 'Contact',
     'hero.greeting': 'Hi, my name is',
     'hero.cv': 'Download CV',
@@ -17,7 +17,6 @@ export const ui = {
     'metrics.protos': 'prototypes shipped by my team',
     'metrics.team': 'grew a team',
     'featured.title': 'Projects',
-    'prototypes.title': 'Prototype archive',
     'prototypes.sub': "Hyper-casual prototypes I built hands-on at Black Games — the team shipped 200+ overall:",
     'skills.title': 'Skills',
     'contact.kicker': "What's next?",
@@ -42,8 +41,8 @@ export const ui = {
   },
   ru: {
     'nav.about': 'Обо мне',
+    'nav.skills': 'Навыки',
     'nav.projects': 'Проекты',
-    'nav.prototypes': 'Прототипы',
     'nav.contact': 'Контакты',
     'hero.greeting': 'Привет, меня зовут',
     'hero.cv': 'Скачать CV',
@@ -55,7 +54,6 @@ export const ui = {
     'metrics.protos': 'прототипов выпустил отдел',
     'metrics.team': 'вырастил команду',
     'featured.title': 'Проекты',
-    'prototypes.title': 'Архив прототипов',
     'prototypes.sub': 'Прототипы, которые я собирал лично в Black Games — всего отдел выпустил 200+:',
     'skills.title': 'Навыки',
     'contact.kicker': 'Что дальше?',

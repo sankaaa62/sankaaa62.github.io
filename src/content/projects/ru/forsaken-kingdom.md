@@ -1,7 +1,7 @@
 ---
 title: "Forsaken Kingdom"
 tagline: "Темное фэнтези, roguelite авто-баттлер для PC — единственный программист"
-role: "Единственный программист"
+role: "Tech Lead"
 period: "2026 — н.в."
 genre: "Roguelite авто-баттлер / RPG"
 platforms: ["PC (Steam)"]

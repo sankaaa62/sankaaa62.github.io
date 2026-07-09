@@ -31,8 +31,10 @@ const title = locale === 'ru'
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(360px,100%),1fr));gap:20px;">
       {projects.map((p, i) => <FeaturedCard locale={locale} project={p} index={i} />)}
     </div>
+    <!-- iter9 (п.3): прототипы стали хвостом раздела "Проекты" — среди них
+         есть проект-миллионник, отдельная секция была лишней. -->
+    <PrototypeGrid locale={locale} />
   </section>
-  <PrototypeGrid locale={locale} />
   <Contact locale={locale} />
   <MiniGame locale={locale} />
   <script src="../scripts/reveal.js"></script>
