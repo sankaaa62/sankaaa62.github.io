@@ -54,7 +54,17 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
   </div>
 </div>
 
-<dialog id="proto-modal" data-store-label={t(locale, 'prototypes.store')}>
+<dialog
+  id="proto-modal"
+  data-store-label={t(locale, 'prototypes.store')}
+  data-label-prev={t(locale, 'carousel.prev')}
+  data-label-next={t(locale, 'carousel.next')}
+  data-label-close={t(locale, 'gallery.close')}
+  data-label-prev-shot={t(locale, 'gallery.prev')}
+  data-label-next-shot={t(locale, 'gallery.next')}
+  data-label-video={t(locale, 'viewer.video')}
+  data-label-screenshot={t(locale, 'gallery.screenshot')}
+>
   <button type="button" class="pm-close" aria-label={t(locale, 'gallery.close')}>✕</button>
   <div class="pm-body">
     <div class="pm-head">
@@ -63,10 +73,7 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
     </div>
     <div class="mono pm-meta" style="color:var(--muted);"></div>
     <a class="pm-link btn ghost" target="_blank" rel="noopener" style="display:none;"></a>
-    <video class="pm-video" controls autoplay muted loop playsinline style="display:none;"></video>
-    <div class="pm-extra-clips"></div>
-    <div class="pm-shots"></div>
-    <img class="pm-icon" alt="" style="display:none;" />
+    <div class="pm-viewer"></div>
   </div>
 </dialog>
 
@@ -84,8 +91,10 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
     background: var(--surface);
     color: var(--text);
     padding: 0;
-    width: min(720px, 92vw);
-    max-width: 720px;
+    /* iter9 (п.5 YE): было 720px — вьювер с лентой миниатюр внутри тесноват
+       на такой ширине, поднято под новую модалку с MediaViewer */
+    width: min(860px, 92vw);
+    max-width: 860px;
     max-height: 90vh;
     position: fixed;
     inset: 0;
@@ -254,51 +263,12 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
     white-space: nowrap;
     z-index: 1;
   }
-  .pm-video {
-    display: block;
-    width: 100%;
-    max-height: 50vh;
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-    background: #000;
-  }
-  .pm-extra-clips {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-top: 12px;
-  }
-  .pm-extra-clips video {
-    display: block;
-    width: 100%;
-    max-height: 40vh;
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-    background: #000;
-  }
-  .pm-shots {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 10px;
-    margin-top: 16px;
-  }
-  .pm-shots img {
-    display: block;
-    width: 100%;
-    aspect-ratio: 16/9;
-    object-fit: cover;
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-  }
-  .pm-icon {
-    display: block;
-    width: 100%;
-    max-width: 320px;
-    aspect-ratio: 1;
-    object-fit: cover;
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-    margin: 0 auto;
+  /* iter9 (п.5 YE): вертикальный список pm-video/pm-extra-clips/pm-shots/
+     pm-icon заменен на общий Steam-стиль вьювер (.pm-viewer собирается на
+     клиенте через buildViewer() из media-viewer.js, стили вьювера — в
+     src/styles/global.css, см. .media-viewer--contain там же) */
+  .pm-viewer {
+    margin-top: 4px;
   }
   .pm-close {
     position: fixed;
@@ -336,6 +306,10 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
 </style>
 
 <script>
+  // iter9 (п.5 YE): модалка прототипа собирает вьювер на клиенте тем же
+  // движком, что и Steam-стиль страниц проектов (см. MediaViewer.astro)
+  import { buildViewer, attachViewer } from '../scripts/media-viewer.js';
+
   const protoWrap = document.querySelector<HTMLElement>('.proto-carousel-wrap');
   const protoTrack = document.querySelector<HTMLElement>('.proto-track');
   const protoFadeLeft = document.querySelector<HTMLElement>('.proto-fade--left');
@@ -719,13 +693,43 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
     const badgeEl = modal.querySelector<HTMLElement>('.pm-badge');
     const metaEl = modal.querySelector<HTMLElement>('.pm-meta');
     const linkEl = modal.querySelector<HTMLAnchorElement>('.pm-link');
-    const videoEl = modal.querySelector<HTMLVideoElement>('.pm-video');
-    const extraClipsEl = modal.querySelector<HTMLElement>('.pm-extra-clips');
-    const shotsEl = modal.querySelector<HTMLElement>('.pm-shots');
-    const iconEl = modal.querySelector<HTMLImageElement>('.pm-icon');
+    const viewerEl = modal.querySelector<HTMLElement>('.pm-viewer');
     const storeLabel = modal.dataset.storeLabel ?? 'View on Google Play';
+    // подписи для buildViewer() — берем из data-label-* атрибутов диалога,
+    // проставленных в разметке через t(locale, ...) (см. верх файла)
+    const viewerLabels = {
+      prev: modal.dataset.labelPrev ?? '',
+      next: modal.dataset.labelNext ?? '',
+      close: modal.dataset.labelClose ?? '',
+      prevShot: modal.dataset.labelPrevShot ?? '',
+      nextShot: modal.dataset.labelNextShot ?? '',
+      video: modal.dataset.labelVideo ?? '',
+      screenshot: modal.dataset.labelScreenshot ?? '',
+    };
     let previousOverflow = '';
     let lastCard: HTMLElement | null = null;
+    // хендл текущего вьювера модалки — destroy() снимает таймер слайдшоу
+    // и window-слушатель youtube-сообщений перед сборкой нового плейлиста
+    let viewerHandle: { destroy: () => void } | null = null;
+
+    const buildPlaylist = (id: string, hasClip: boolean, hasClipFull: boolean, extraClips: number, shots: number) => {
+      const base = `/media/prototypes/${id}`;
+      const list: { kind: 'video' | 'youtube' | 'image'; src: string; id: string; poster: string }[] = [];
+      if (hasClip) {
+        list.push({ kind: 'video', src: `${base}/${hasClipFull ? 'clip-full.webm' : 'clip.webm'}`, id: '', poster: `${base}/poster.jpg` });
+      }
+      for (let i = 2; i <= 1 + extraClips; i++) {
+        list.push({ kind: 'video', src: `${base}/clip-${i}.webm`, id: '', poster: `${base}/poster-${i}.jpg` });
+      }
+      for (let i = 1; i <= shots; i++) {
+        list.push({ kind: 'image', src: `${base}/shots/${i}.webp`, id: '', poster: '' });
+      }
+      if (list.length === 0) {
+        // ни клипа, ни скринов — единственный слайд-иконка (как раньше pm-icon)
+        list.push({ kind: 'image', src: `${base}/icon.webp`, id: '', poster: '' });
+      }
+      return list;
+    };
 
     const openModal = (card: HTMLElement) => {
       lastCard = card;
@@ -756,69 +760,39 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
         }
       }
 
-      if (videoEl) {
-        if (hasClip) {
-          videoEl.poster = `/media/prototypes/${id}/poster.jpg`;
-          videoEl.src = `/media/prototypes/${id}/${hasClipFull ? 'clip-full.webm' : 'clip.webm'}`;
-          videoEl.style.display = 'block';
-        } else {
-          videoEl.style.display = 'none';
-          videoEl.removeAttribute('src');
-          videoEl.load();
-        }
-      }
-
-      if (extraClipsEl) {
-        extraClipsEl.innerHTML = '';
-        const extraClips = Number(card.dataset.extraClips ?? '0');
-        for (let i = 2; i <= 1 + extraClips; i++) {
-          const extraVideo = document.createElement('video');
-          extraVideo.controls = true;
-          extraVideo.muted = true;
-          extraVideo.loop = true;
-          extraVideo.playsInline = true;
-          extraVideo.preload = 'none';
-          extraVideo.poster = `/media/prototypes/${id}/poster-${i}.jpg`;
-          const source = document.createElement('source');
-          source.src = `/media/prototypes/${id}/clip-${i}.webm`;
-          source.type = 'video/webm';
-          extraVideo.appendChild(source);
-          extraClipsEl.appendChild(extraVideo);
-        }
-      }
-
-      if (shotsEl) {
-        shotsEl.innerHTML = '';
-        if (shots > 0) {
-          for (let i = 1; i <= shots; i++) {
-            const img = document.createElement('img');
-            img.src = `/media/prototypes/${id}/shots/${i}.webp`;
-            img.alt = `${title} — screenshot ${i}`;
-            img.loading = 'lazy';
-            shotsEl.appendChild(img);
-          }
-        }
-      }
-
-      if (iconEl) {
-        if (!hasClip && shots === 0) {
-          iconEl.src = `/media/prototypes/${id}/icon.webp`;
-          iconEl.alt = title;
-          iconEl.style.display = 'block';
-        } else {
-          iconEl.style.display = 'none';
-          iconEl.src = '';
-        }
-      }
-
+      // showModal() ДО сборки вьювера: <dialog> без [open] спрятан через
+      // UA-стили (display:none), а renderFirst ниже сразу дергает
+      // video.play() — если элемент еще не в открытом диалоге, автоплей
+      // молча отклоняется (браузер не играет видео в нерендерящемся дереве).
+      // В старом коде play() тоже вызывался после showModal() — сохраняем
+      // тот же порядок.
       if (!modal!.open) {
         previousOverflow = document.body.style.overflow;
         document.body.style.overflow = 'hidden';
         modal!.showModal();
         pauseCarousel('modal');
       }
-      if (hasClip && videoEl) {
-        videoEl.play().catch(() => {});
+
+      if (viewerEl) {
+        // снимаем предыдущий вьювер (таймер слайдшоу + window-слушатель
+        // youtube-сообщений) ПЕРЕД сборкой нового плейлиста — иначе при
+        // открытии другого прототипа старый таймер продолжил бы тикать
+        // на уже отсоединенной разметке
+        viewerHandle?.destroy();
+        viewerHandle = null;
+        viewerEl.innerHTML = '';
+
+        const extraClips = Number(card.dataset.extraClips ?? '0');
+        const playlist = buildPlaylist(id, hasClip, hasClipFull, extraClips, shots);
+        const root = buildViewer(playlist, { ...viewerLabels, title });
+        // скрины прототипов бывают портретными — cover обрезал бы их,
+        // модификатор переключает .mv-stage img на object-fit: contain
+        // (см. src/styles/global.css)
+        root.classList.add('media-viewer--contain');
+        viewerEl.appendChild(root);
+        // renderFirst: первый слайд (обычно клип) рисуется сразу с
+        // autoplay+mutedAuto — так же, как раньше играл pm-video при открытии
+        viewerHandle = attachViewer(root, { slideshowMs: 3000, renderFirst: true });
       }
     };
 
@@ -839,12 +813,9 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
     });
 
     modal.addEventListener('close', () => {
-      if (videoEl) {
-        videoEl.pause();
-        videoEl.removeAttribute('src');
-        videoEl.load();
-      }
-      if (extraClipsEl) extraClipsEl.innerHTML = '';
+      viewerHandle?.destroy();
+      viewerHandle = null;
+      if (viewerEl) viewerEl.innerHTML = '';
       document.body.style.overflow = previousOverflow;
       if (lastCard) {
         const v = lastCard.querySelector('video');
