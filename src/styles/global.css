@@ -28,7 +28,9 @@ body {
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
 }
-section[id], footer { scroll-margin-top: calc(var(--header-h) + 8px); }
+/* #prototypes — единственный div[id]-якорь (iter9 п.3, PrototypeGrid.astro
+   больше не section) — добавлен явно, вместо расширения на все div[id] */
+section[id], footer, #prototypes { scroll-margin-top: calc(var(--header-h) + 8px); }
 h1, h2, h3 { line-height: 1.15; margin: 0 0 .5em; font-weight: 800; }
 h1 { font-size: clamp(2.2rem, 6vw, 4rem); }
 h2 { font-size: clamp(1.6rem, 4vw, 2.4rem); }
@@ -163,6 +165,39 @@ h1 { text-shadow: 0 0 24px rgba(255,92,26,.25); }
 .icon-link svg { width: 20px; height: 20px; fill: currentColor; }
 .icon-link:focus-visible, .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
+/* iter9 п.8: периодический пробегающий блик по кнопкам контактов (CV +
+   социконки) — по очереди, ненавязчиво. Общий цикл 9с, каждый элемент
+   стартует со своим сдвигом var(--sheen-i); сам пробег занимает ~12% цикла. */
+.sheen { position: relative; overflow: hidden; }
+.sheen::after {
+  content: "";
+  position: absolute;
+  top: -20%;
+  bottom: -20%;
+  left: 0;
+  width: 55%;
+  background: linear-gradient(115deg, transparent 0%, rgba(255, 255, 255, .22) 50%, transparent 100%);
+  transform: translateX(-140%) skewX(-18deg);
+  pointer-events: none;
+  animation: sheen-run 9s linear infinite;
+  animation-delay: calc(var(--sheen-i, 0) * 1.1s);
+}
+@keyframes sheen-run {
+  0% { transform: translateX(-140%) skewX(-18deg); }
+  12% { transform: translateX(320%) skewX(-18deg); }
+  100% { transform: translateX(320%) skewX(-18deg); }
+}
+.hero-cta .btn { --sheen-i: 0; }
+.hero-cta .icon-link:nth-of-type(1) { --sheen-i: 1; }
+.hero-cta .icon-link:nth-of-type(2) { --sheen-i: 2; }
+.hero-cta .icon-link:nth-of-type(3) { --sheen-i: 3; }
+.hero-cta .icon-link:nth-of-type(4) { --sheen-i: 4; }
+.contact-card .btn-contact { --sheen-i: 0; }
+.contact-card .icon-link:nth-of-type(1) { --sheen-i: 1; }
+.contact-card .icon-link:nth-of-type(2) { --sheen-i: 2; }
+.contact-card .icon-link:nth-of-type(3) { --sheen-i: 3; }
+.contact-card .icon-link:nth-of-type(4) { --sheen-i: 4; }
+
 /* --- iter4 (R.1): бейджи платформ (PC / Mobile); iter5 (5.3): тил → оранж
    (бренд-акцент), темная полупрозрачная подложка остается; iter6 (Stellar,
    п.12): оранж посветлел до --accent-2 (#ffb01a) — иконка+текст, темная
@@ -217,11 +252,24 @@ h1 { text-shadow: 0 0 24px rgba(255,92,26,.25); }
 
 /* --- iter3: шапка с монограммой --- */
 .brand { display: inline-flex; align-items: center; gap: 10px; color: var(--text); }
-.brand-mark { flex: none; display: block; border-radius: 8px; }
+.brand-mark { flex: none; display: block; }
 /* iter5 (V): текст «Kandakov» убран из шапки — только монограмма AK
    (aria-label остается на ссылке для a11y). Взамен — glow на hover. */
-.brand svg { transition: filter .2s; }
-.brand:hover svg { filter: drop-shadow(0 0 8px rgba(255,92,26,.6)); }
+/* iter9 п.9: без квадратной подложки — свечение изнутри самих букв:
+   постоянный мягкий glow + медленная пульсация, на hover ярче */
+.brand svg {
+  filter: drop-shadow(0 0 5px rgba(255, 92, 26, .55));
+  animation: brand-glow 4s ease-in-out infinite;
+  transition: filter .2s;
+}
+.brand:hover svg {
+  filter: drop-shadow(0 0 10px rgba(255, 92, 26, .9));
+  animation: none;
+}
+@keyframes brand-glow {
+  0%, 100% { filter: drop-shadow(0 0 4px rgba(255, 92, 26, .4)); }
+  50% { filter: drop-shadow(0 0 9px rgba(255, 92, 26, .75)); }
+}
 
 /* --- iter4 (N.1): header v2 — fixed, blur-подложка, auto-hide --- */
 /* iter6 (Stellar, п.5): в состоянии "top" шапка раньше сливалась с фоном
@@ -301,4 +349,213 @@ h1 { text-shadow: 0 0 24px rgba(255,92,26,.25); }
 }
 @media (max-width: 360px) {
   .site-nav { font-size: .64rem; gap: 4px; }
+}
+
+/* iter9 (п.5 YE): вьювер MediaViewer.astro — стили лежат в общем global.css,
+   а не в <style is:global> самого компонента. Причина: Astro бандлит стили
+   компонента только на те страницы, где этот компонент реально отрендерен —
+   MediaViewer.astro используется на страницах проектов, но НЕ на главной, а
+   та же разметка (media-viewer/mv-*) намеренно переиспользуется в модалке
+   прототипов PrototypeGrid.astro на главной (см. buildViewer() в
+   src/scripts/media-viewer.js). Если оставить стили в MediaViewer.astro,
+   главная страница их вообще не получит — импорт сюда, в файл, который
+   Base.astro подключает на каждой странице, решает это раз и навсегда.
+   Изначальная причина перевода в global/is:global (не scoped) отдельная:
+   динамически созданные в media-viewer.js элементы (document.createElement)
+   не несут Astro-scoped атрибут data-astro-cid-*, поэтому scoped-правила на
+   них не действовали бы (баг "картинка жмется в угол стейджа"). Конфликтов
+   не будет — все селекторы неймспейснуты классами .media-viewer/.mv-*. */
+.media-viewer {
+  margin-bottom: 24px;
+}
+
+.mv-stage {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #000;
+  overflow: hidden;
+}
+.mv-stage:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.mv-stage video,
+.mv-stage iframe,
+.mv-stage img {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+/* скрины проектов — фикс 16:9, заполняют сцену без черных полос */
+.mv-stage img {
+  object-fit: cover;
+}
+/* видео не кропаем — контент важнее заполнения сцены */
+.mv-stage video {
+  object-fit: contain;
+}
+/* модалка прототипов (PrototypeGrid.astro): скрины прототипов бывают
+   портретными — там cover обрезал бы содержимое, нужен contain */
+.media-viewer--contain .mv-stage img {
+  object-fit: contain;
+  background: #000;
+}
+
+.mv-strip-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+.mv-strip {
+  flex: 1;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  scroll-behavior: smooth;
+  padding: 2px;
+}
+.mv-strip::-webkit-scrollbar {
+  display: none;
+}
+.mv-thumb {
+  position: relative;
+  flex: 0 0 auto;
+  width: 160px;
+  height: 90px;
+  padding: 0;
+  overflow: hidden;
+  border: 2px solid var(--border);
+  border-radius: calc(var(--radius) - 4px);
+  background: var(--surface);
+  cursor: pointer;
+  filter: brightness(.65);
+  transition: filter .15s, border-color .15s, transform .15s;
+}
+.mv-thumb img,
+.mv-thumb-blank {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: var(--surface-2);
+}
+.mv-thumb:hover {
+  filter: brightness(.9);
+}
+.mv-thumb.is-active {
+  border-color: var(--accent);
+  filter: brightness(1);
+}
+.mv-thumb:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.mv-play {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 1.15rem;
+  text-shadow: 0 0 6px rgba(0, 0, 0, .8);
+  background: radial-gradient(circle, rgba(0, 0, 0, .3), transparent 70%);
+  pointer-events: none;
+}
+
+.mv-arrow {
+  display: none;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1.15rem;
+  cursor: pointer;
+  transition: transform .15s, border-color .15s, box-shadow .15s;
+}
+@media (hover: hover) and (pointer: fine) {
+  .mv-arrow.has-overflow {
+    display: inline-flex;
+  }
+}
+.mv-arrow:hover,
+.mv-arrow:focus-visible {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+  box-shadow: 0 0 14px rgba(255, 92, 26, .3);
+  outline: none;
+}
+
+.mv-lightbox {
+  border: none;
+  padding: 0;
+  background: transparent;
+  max-width: none;
+  max-height: none;
+  width: 100%;
+  height: 100%;
+  position: fixed;
+  inset: 0;
+  margin: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+.mv-lightbox[open] {
+  display: flex;
+}
+.mv-lightbox::backdrop {
+  background: rgba(4, 5, 8, .88);
+}
+.mv-lb-image {
+  max-width: 92vw;
+  max-height: 85vh;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .5);
+}
+.mv-lb-close, .mv-lb-prev, .mv-lb-next {
+  position: fixed;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1.4rem;
+  cursor: pointer;
+  transition: transform .15s, border-color .15s, box-shadow .15s;
+}
+.mv-lb-close:hover, .mv-lb-prev:hover, .mv-lb-next:hover,
+.mv-lb-close:focus-visible, .mv-lb-prev:focus-visible, .mv-lb-next:focus-visible {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+  box-shadow: 0 0 14px rgba(255, 92, 26, .3);
+  outline: none;
+}
+.mv-lb-close { top: 16px; right: 16px; }
+.mv-lb-prev { left: 16px; top: 50%; transform: translateY(-50%); font-size: 1.8rem; }
+.mv-lb-next { right: 16px; top: 50%; transform: translateY(-50%); font-size: 1.8rem; }
+.mv-lb-prev:hover, .mv-lb-next:hover { transform: translateY(-50%) translateY(-2px); }
+
+@media (max-width: 640px) {
+  .mv-lb-prev, .mv-lb-next { min-width: 44px; min-height: 44px; }
+  .mv-lb-prev { left: 6px; }
+  .mv-lb-next { right: 6px; }
+  .mv-lb-close { top: 10px; right: 10px; }
+  .mv-lb-image { max-width: calc(100vw - 108px); }
 }

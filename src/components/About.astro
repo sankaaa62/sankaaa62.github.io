@@ -5,8 +5,8 @@ const { locale } = Astro.props as { locale: Locale };
 
 // iter8 (п.8): текст по вехам — один абзац на компанию/этап, а не сплошным
 // потоком. Каждый абзац: моно-префикс годов + акцентированное название вехи +
-// сам текст. Легкий космический флер в формулировках (не более 1-2 метафор
-// на весь текст суммарно) — без перебора.
+// сам текст. Без космических метафор в текстах — космос только в дизайне
+// (решение пользователя, iter9 п.1).
 type Milestone = { years: string; label: string; text: string };
 
 const milestones: Record<Locale, Milestone[]> = {
@@ -14,12 +14,12 @@ const milestones: Record<Locale, Milestone[]> = {
     {
       years: '2020–2023',
       label: 'Black Games',
-      text: 'Joined a startup as its first developer — the first orbit of my career. Over three years I built the dev team from scratch, led up to 8 programmers, set up the processes, and shipped 200+ prototypes plus releases with millions of installs. Later I led the technical side of Last Wish: released on Steam and VK Play, finalist of the Start Game accelerator.',
+      text: 'Joined a startup as its first developer. Over three years I built the dev team from scratch, led up to 8 programmers, set up the processes, and shipped 200+ prototypes plus releases with millions of installs. Later I led the technical side of Last Wish: released on Steam and VK Play, finalist of the Start Game accelerator.',
     },
     {
       years: '2023–2026',
       label: 'Reaction Games',
-      text: 'One of the developers of Dead Impact, a co-op action-RPG on ECS/DOTS with an 800K+ line codebase. Carried the project from tech launch to a global release, putting it into orbit with 500K+ installs.',
+      text: 'One of the developers of Dead Impact, a co-op action-RPG on ECS/DOTS with an 800K+ line codebase. Carried the project from tech launch to a global release with 500K+ installs.',
     },
     {
       years: '2026',
@@ -36,12 +36,12 @@ const milestones: Record<Locale, Milestone[]> = {
     {
       years: '2020–2023',
       label: 'Black Games',
-      text: 'Пришел первым разработчиком в стартап — стартовая орбита карьеры. За три года собрал отдел разработки с нуля, руководил командой до 8 программистов, выстроил процессы и выпустил 200+ прототипов, а также релизы с миллионами установок. Позже вел техническую часть «Last Wish»: релиз в Steam и VK Play, финалист акселератора «Start Game».',
+      text: 'Пришел первым разработчиком в стартап. За три года собрал отдел разработки с нуля, руководил командой до 8 программистов, выстроил процессы и выпустил 200+ прототипов, а также релизы с миллионами установок. Позже вел техническую часть «Last Wish»: релиз в Steam и VK Play, финалист акселератора «Start Game».',
     },
     {
       years: '2023–2026',
       label: 'Reaction Games',
-      text: 'Один из разработчиков Dead Impact — кооперативной action-RPG на ECS/DOTS с кодовой базой 800K+ строк. Провел проект от tech launch до глобального релиза, выведя его на орбиту 500K+ установок.',
+      text: 'Один из разработчиков Dead Impact — кооперативной action-RPG на ECS/DOTS с кодовой базой 800K+ строк. Провел проект от tech launch до глобального релиза с 500K+ установок.',
     },
     {
       years: '2026',

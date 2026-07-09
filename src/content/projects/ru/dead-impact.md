@@ -1,7 +1,7 @@
 ---
 title: "Dead Impact"
 tagline: "От tech launch до глобального самиздат-релиза — 500K+ установок"
-role: "Разработчик"
+role: "Developer"
 period: "2023 — 2026"
 genre: "Кооперативная Action-RPG"
 platforms: ["Android", "iOS"]

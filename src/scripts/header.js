@@ -3,7 +3,7 @@
 // у порога). rAF-троттлинг + passive listener (функциональный transition, не
 // декоративный — оставляем и под reduced-motion).
 // N.2: scroll-spy — активный пункт nav подсвечивается тиловой полоской (только
-// на главной, где есть секции #about/#projects/#prototypes/#skills/#contact).
+// на главной, где есть секции #about/#skills/#projects/#contact).
 // На страницах проектов секций нет — IntersectionObserver просто не находит
 // целей и ничего не делает; скрипт не должен ошибаться в этом случае.
 
@@ -65,10 +65,10 @@ if (header) {
 }
 
 // N.2: scroll-spy (только там, где есть секции — homepage)
-// RR.6 (iter8): 'skills' убран из списка — у раздела больше нет пункта nav
-// (см. Base.astro), подсвечивать в nav нечего, а сама секция теперь не между
-// prototypes и contact, а между about и projects (см. HomePage.astro).
-const sectionIds = ['about', 'projects', 'prototypes', 'contact'];
+// iter9 (п.2): 'skills' возвращен в список — у раздела снова есть пункт nav
+// (см. Base.astro); 'prototypes' убран — прототипы больше не своя секция,
+// а хвост #projects (см. HomePage.astro).
+const sectionIds = ['about', 'skills', 'projects', 'contact'];
 const sections = sectionIds
   .map((id) => document.getElementById(id))
   .filter((el) => el !== null);

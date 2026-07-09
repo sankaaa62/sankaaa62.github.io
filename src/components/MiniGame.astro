@@ -3,7 +3,7 @@ import { t, type Locale } from '../i18n/ui';
 const { locale } = Astro.props as { locale: Locale };
 ---
 <footer class="section container footer-wrap" style="text-align:center;border-top:1px solid var(--border);position:relative;">
-  <button id="mg-start" class="footer-copy mono" aria-label={t(locale, 'footer.game')}>© 2026 Aleksandr Kandakov. All rights reserved.</button>
+  <button id="mg-start" class="footer-copy mono" aria-label={t(locale, 'footer.game')}>© 2026 Aleksandr Kandakov</button>
   <div id="mg-wrap" hidden style="margin-top:16px;">
     <canvas id="mg" width="320" height="420" style="margin:0 auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);touch-action:none;"></canvas>
     <div class="mono" style="color:var(--muted);font-size:.8rem;margin-top:8px;">← → / swipe</div>
