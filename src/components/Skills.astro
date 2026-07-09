@@ -63,6 +63,23 @@ const mixed = interleave(categories);
 const marqueeRows: string[][] = [[], [], []];
 mixed.forEach((s, i) => marqueeRows[i % 3].push(s));
 
+// iter9 п.6, фикс зацикливания: трек = 2 группы .marquee-group, анимация
+// -50% (ширина одной группы). Если группа уже вьюпорта, к концу цикла справа
+// появляется пустота и контент "прыгает" на reset. Гарантируем ширину группы
+// >= самых широких экранов (4К/ультравайд), повторяя контент ряда внутри
+// группы: оценка ширины та же, что в estimateDuration, с запасом на
+// неточность шрифтовой оценки.
+const MIN_GROUP_PX = 4200;
+function rowPx(row: string[]): number {
+  return row.reduce((sum, s) => sum + s.length * 7.4 + 34, 0);
+}
+const repeatedRows = marqueeRows.map((row) => {
+  const repeats = Math.max(1, Math.ceil(MIN_GROUP_PX / rowPx(row)));
+  const out: string[] = [];
+  for (let r = 0; r < repeats; r++) out.push(...row);
+  return out;
+});
+
 // RR.4: у каждого ряда своя скорость и свой промежуток между чипами —
 // усиливает ощущение "разных орбит пояса", а не трех одинаковых лент.
 // Направление чередуется через marquee-row--rev (см. стили) — соседние
@@ -70,12 +87,11 @@ mixed.forEach((s, i) => marqueeRows[i % 3].push(s));
 const ROW_SPEED = [28, 36, 24]; // px/s
 const ROW_GAP = [10, 14, 8]; // px
 
-// ~ROW_SPEED px/s: длительность оценивается по контенту ленты (в % от
+// ~ROW_SPEED px/s: длительность оценивается по контенту ГРУППЫ (в % от
 // ширины трека — см. keyframes ниже), реальные px не считаем, но целимся
 // в похожую скорость для каждого ряда отдельно.
 function estimateDuration(row: string[], speedPxS: number): number {
-  const px = row.reduce((sum, s) => sum + s.length * 7.4 + 34, 0);
-  return Math.max(14, Math.round(px / speedPxS));
+  return Math.max(14, Math.round(rowPx(row) / speedPxS));
 }
 
 // Плоский список всех навыков в порядке категорий — .sr-only fallback.
@@ -84,14 +100,14 @@ const allSkillsFlat = categories.flatMap((c) => c.skills);
 <section id="skills" class="skills-band" aria-label={t(locale, 'skills.title')}>
   <div class="marquee-wrap">
     <div class="marquee-fade marquee-fade--left" aria-hidden="true"></div>
-    {marqueeRows.map((row, ri) => (
+    {repeatedRows.map((row, ri) => (
       <div class={`marquee-row${ri % 2 === 1 ? ' marquee-row--rev' : ''}`}>
         <div class="marquee-track" style={`--duration:${estimateDuration(row, ROW_SPEED[ri])}s;--gap:${ROW_GAP[ri]}px`}>
           <div class="marquee-group">
-            {row.map((s) => <span class={`tag${CORE_SKILLS.has(s) ? ' skill-core' : ''}`}>{s}</span>)}
+            {row.map((s, si) => <span class={`tag size-${si % 3}${CORE_SKILLS.has(s) ? ' skill-core' : ''}`} data-off={si % 2}>{s}</span>)}
           </div>
           <div class="marquee-group" aria-hidden="true">
-            {row.map((s) => <span class={`tag${CORE_SKILLS.has(s) ? ' skill-core' : ''}`}>{s}</span>)}
+            {row.map((s, si) => <span class={`tag size-${si % 3}${CORE_SKILLS.has(s) ? ' skill-core' : ''}`} data-off={si % 2}>{s}</span>)}
           </div>
         </div>
       </div>
@@ -143,16 +159,18 @@ const allSkillsFlat = categories.flatMap((c) => c.skills);
     to { transform: translateX(0); }
   }
 
-  /* RR.4: астероиды разных калибров — 3 размера чипа по позиции в ленте,
-     детерминированно (nth-child, без RNG) и одинаково в обеих дублированных
-     группах ленты (та же структура — тот же вид, шов бесшовной прокрутки не
-     заметен). Легкие вертикальные офсеты вперемешку — рой, а не ровная
-     строка. */
-  .marquee-group .tag:nth-child(3n+1) { font-size: .72rem; }
-  .marquee-group .tag:nth-child(3n+2) { font-size: .82rem; }
-  .marquee-group .tag:nth-child(3n) { font-size: .94rem; }
-  .marquee-group .tag:nth-child(odd) { transform: translateY(-4px); }
-  .marquee-group .tag:nth-child(even) { transform: translateY(4px); }
+  /* RR.4/iter9 п.6: астероиды разных калибров — 3 размера чипа по позиции
+     в ПОВТОРЕННОМ ряду, детерминированно (индекс элемента, без RNG и без
+     nth-child). nth-child ломался на швах: длина ряда не кратна 3 —
+     на стыке двух групп и между повторами внутри группы паттерн размеров
+     "мигал". Классы size-N/data-off считаются от индекса в разметке —
+     обе группы построены идентично, поэтому стык групп всегда бесшовный.
+     Легкие вертикальные офсеты вперемешку — рой, а не ровная строка. */
+  .marquee-group .tag.size-0 { font-size: .72rem; }
+  .marquee-group .tag.size-1 { font-size: .82rem; }
+  .marquee-group .tag.size-2 { font-size: .94rem; }
+  .marquee-group .tag[data-off="0"] { transform: translateY(-4px); }
+  .marquee-group .tag[data-off="1"] { transform: translateY(4px); }
 
   /* RR.5: ядро стека — акцент цветом, читаемо на темном фоне поверхности. */
   .tag.skill-core {
