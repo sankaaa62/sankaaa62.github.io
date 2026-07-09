@@ -28,7 +28,9 @@ body {
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
 }
-section[id], footer { scroll-margin-top: calc(var(--header-h) + 8px); }
+/* #prototypes — единственный div[id]-якорь (iter9 п.3, PrototypeGrid.astro
+   больше не section) — добавлен явно, вместо расширения на все div[id] */
+section[id], footer, #prototypes { scroll-margin-top: calc(var(--header-h) + 8px); }
 h1, h2, h3 { line-height: 1.15; margin: 0 0 .5em; font-weight: 800; }
 h1 { font-size: clamp(2.2rem, 6vw, 4rem); }
 h2 { font-size: clamp(1.6rem, 4vw, 2.4rem); }
