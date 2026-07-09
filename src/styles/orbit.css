@@ -515,6 +515,17 @@ button.reset {
 .mv-lb-prev { left: 16px; top: 50%; transform: translateY(-50%); font-size: 1.8rem; }
 .mv-lb-next { right: 16px; top: 50%; transform: translateY(-50%); font-size: 1.8rem; }
 .mv-lb-prev:hover, .mv-lb-next:hover { transform: translateY(-50%) translateY(-2px); }
+/* мобильный override лайтбокса — тоже скопирован из global.css (см.
+   комментарий у ".media-viewer (mv-*)" выше): без него стрелки лайтбокса
+   на телефонах перекрывают картинку (стрелки прижаты к 16px от края, а
+   картинка растянута на всю ширину — на узких экранах не остается места) */
+@media (max-width: 640px) {
+  .mv-lb-prev, .mv-lb-next { min-width: 44px; min-height: 44px; }
+  .mv-lb-prev { left: 6px; }
+  .mv-lb-next { right: 6px; }
+  .mv-lb-close { top: 10px; right: 10px; }
+  .mv-lb-image { max-width: calc(100vw - 108px); }
+}
 
 /* --- responsive ------------------------------------------------------------- */
 @media (max-width: 720px) {
