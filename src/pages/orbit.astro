@@ -1,24 +1,32 @@
 ---
-// ОРБИТЫ — экспериментальная альтернативная страница портфолио.
+// ОРБИТЫ v2 — экспериментальная альтернативная страница портфолио.
 // Полностью изолирована от основного сайта: свой layout (не Base.astro), свой
 // css (styles/orbit.css, не импортирует global.css), свои скрипты
-// (scripts/orbit.js, scripts/orbit-stars.js — звездный фон скопирован, а не
-// импортирован, см. комментарий в файле). Ссылок на основной сайт и обратно —
-// нет. См. docs/superpowers/specs/2026-07-02-portfolio-site-design.md,
-// раздел «Эксперимент «Орбиты»».
+// (scripts/orbit*.js). Ссылок на основной сайт и обратно нет (внешние ссылки
+// на сторы/соцсети — можно). См. docs/superpowers/specs/2026-07-02-portfolio-
+// site-design.md, раздел «Эксперимент «Орбиты»».
 //
-// Концепция: карьера как планетная система в хронологическом порядке.
-// Скролл сверху вниз = путешествие от текущей орбиты («Сейчас») к звезде,
-// с которой все началось (Black Games, 2020 — первый разработчик стартапа).
-// Данные вех/дат/компаний взяты из существующих content collections
-// (src/content/projects/ru/*.md, src/content/prototypes/prototypes.json) —
-// структура вех захардкожена здесь по ТЗ, сам контент — переиспользован.
+// Концепция v2 (по заданию владельца): не скролл-рассказ, а ИНТЕРАКТИВНАЯ
+// КАРТА звездной системы. Камера (pan/zoom + клик-фокус) вместо прокрутки.
+// Звезда в центре — визитка (портрет, контакты), а не первое место работы.
+// Орбиты раскручиваются от последней к первой: ближняя — "Сейчас", дальняя —
+// исток (Black Games). Вся математика позиционирования — в мировых
+// координатах сцены (0,0 = звезда), камера — CSS-transform translate+scale
+// на #orbit-scene, детали в orbit.js.
+//
+// Данные вех/дат/компаний согласованы с основной версией сайта:
+// - вехи (kicker/range/milestone-текст) — из src/components/About.astro
+// - проекты — из content-коллекции projects (ru/*.md)
+// - прототипы — из content-коллекции prototypes (prototypes.json)
+// - навыки — из src/components/Skills.astro (плоский список категорий)
+// - визитка (имя/роль/hero.about/контакты) — из src/i18n/ui.ts + SocialIcons.astro
 import { getCollection } from 'astro:content';
 import { existsSync } from 'node:fs';
 import '@fontsource-variable/inter';
 import '@fontsource-variable/jetbrains-mono';
 import '../styles/orbit.css';
 import { platformBadges } from '../lib/platforms';
+import SocialIcons from '../components/SocialIcons.astro';
 
 const allProjects = await getCollection('projects', (p) => p.id.startsWith('ru/'));
 const bySlug = Object.fromEntries(allProjects.map((p) => [p.id.split('/')[1], p.data]));
@@ -29,24 +37,44 @@ function coverFor(slug: string): string {
   return `/media/projects/${slug}/shot-1.webp`;
 }
 
-type PlanetSpec = { slug: string; size: number; ring: 'solid' | 'dashed' };
+// --- переводит "мировой" угол (0 = север/верх, по часовой) + радиус в
+// координаты сцены (px от звезды) — та же система, в которой работает
+// орбитальный CSS-поворот (rotate(angleDeg) на элементе, заякоренном сверху) ---
+function polar(radius: number, angleDeg: number): { x: number; y: number } {
+  const rad = (angleDeg * Math.PI) / 180;
+  return { x: Math.round(radius * Math.sin(rad)), y: Math.round(-radius * Math.cos(rad)) };
+}
+
+type PlanetSpec = { slug: string; size: number; angle: number };
 type Era = {
   id: string;
   kicker: string;
   range: string;
   color: string;
+  radius: number;
+  duration: number;
+  milestone: string;
   planets: PlanetSpec[];
 };
 
+// Радиусы растут от "Сейчас" к истоку — раскрутка орбит от последней к первой
+// (п.3 задания). Периоды обращения — как у настоящих планет: ближе к звезде
+// = быстрее (Меркурий облетает Солнце быстрее Земли), но сильно замедлено
+// (десятки-сотни секунд), чтобы движение читалось как медленный фон, а не
+// отвлекало.
 const eras: Era[] = [
   {
     id: 'now',
     kicker: 'Сейчас',
     range: '2026 — н.в.',
     color: 'var(--accent)',
+    radius: 300,
+    duration: 62,
+    milestone:
+      'Лайвопс Days After в Reaction Games (10M+ установок) и парт-тайм — единственный программист roguelite-автобатлера Forsaken Kingdom для Steam.',
     planets: [
-      { slug: 'days-after', size: 210, ring: 'solid' },
-      { slug: 'forsaken-kingdom', size: 120, ring: 'dashed' },
+      { slug: 'days-after', size: 168, angle: 68 },
+      { slug: 'forsaken-kingdom', size: 122, angle: 252 },
     ],
   },
   {
@@ -54,46 +82,51 @@ const eras: Era[] = [
     kicker: 'Taptap Studio',
     range: '2026',
     color: 'var(--violet)',
-    planets: [{ slug: 'mafia-stories', size: 160, ring: 'solid' }],
+    radius: 480,
+    duration: 92,
+    milestone:
+      'На lead-позиции стабилизировал мобильный idle-тайкун и вывел его из техдолга, выстроил инженерную культуру и перевел команду на агентскую разработку (Claude Code, Codex) со строгим ревью — фичи стали выходить примерно в 2 раза быстрее.',
+    planets: [{ slug: 'mafia-stories', size: 140, angle: 145 }],
   },
   {
     id: 'reaction',
     kicker: 'Reaction Games',
     range: '2023 — 2026',
     color: 'var(--teal)',
-    planets: [{ slug: 'dead-impact', size: 190, ring: 'solid' }],
+    radius: 660,
+    duration: 128,
+    milestone:
+      'Один из разработчиков Dead Impact — кооперативной action-RPG на ECS/DOTS с кодовой базой 800K+ строк. Провел проект от tech launch до глобального релиза с 500K+ установок.',
+    planets: [{ slug: 'dead-impact', size: 156, angle: 312 }],
   },
   {
     id: 'blackgames',
     kicker: 'Black Games',
     range: '2020 — 2023',
     color: 'var(--gold)',
-    planets: [{ slug: 'last-wish', size: 165, ring: 'solid' }],
+    radius: 860,
+    duration: 176,
+    milestone:
+      'Пришел первым разработчиком в стартап. За три года собрал отдел разработки с нуля, руководил командой до 8 программистов, выстроил процессы и выпустил 200+ прототипов, а также релизы с миллионами установок. Позже вел техническую часть «Last Wish»: релиз в Steam и VK Play, финалист акселератора «Start Game».',
+    planets: [{ slug: 'last-wish', size: 142, angle: 198 }],
   },
 ];
+const maxOrbitRadius = Math.max(...eras.map((e) => e.radius));
 
-// --- пояс навыков: тот же расширенный набор, что и на основном сайте
-// (Skills.astro), но здесь — собственная, более простая двухрядная лента
-// (без переиспользования компонента — только данные-константы). ---
+// --- пояс навыков: астероидный пояс между орбитами Reaction и Black Games ---
+// (между 3-й и 4-й орбитой — как настоящий пояс астероидов между Марсом и
+// Юпитером). Список навыков — из Skills.astro, без деления на marquee-ряды:
+// здесь это статичное кольцо, а не бегущая лента.
 const skillCategories = [
   { skills: ['Unity', 'C#', 'ECS/DOTS', 'Jobs/Burst'], core: true },
-  { skills: ['Client-Server', 'Multiplayer', 'Event Sourcing', 'Clean Architecture', 'SOLID', 'DI'], core: false },
+  { skills: ['Client-Server', 'Multiplayer', 'Event Sourcing', 'Clean Architecture', 'SOLID', 'DI', 'Unit Testing', 'Data Migrations', 'Meta/F2P systems'], core: false },
   { skills: ['Profiling', 'Mobile Optimization', 'Addressables', 'AssetBundles', 'URP'], core: false },
-  { skills: ['Team Leadership', 'Hiring & Interviews', 'Mentoring', 'Code Review', 'Agile', 'CI/CD', 'Live-ops'], core: false },
+  { skills: ['Team Leadership', 'Hiring & Interviews', 'Mentoring', 'Code Review', 'Sprint Planning', 'Agile', 'Git', 'CI/CD', 'Live-ops', 'Prototyping', 'Analytics'], core: false },
   { skills: ['AI-assisted development', 'Claude Code', 'Codex', 'AI pipeline'], core: false },
 ];
 const coreSkills = new Set(skillCategories.find((c) => c.core)!.skills);
 const flatSkills = skillCategories.flatMap((c) => c.skills);
-const beltRows: string[][] = [[], []];
-flatSkills.forEach((s, i) => beltRows[i % 2].push(s));
-const beltSpeed = [30, 24];
-function beltDuration(row: string[], speed: number) {
-  const px = row.reduce((sum, s) => sum + s.length * 7.4 + 34, 0);
-  return Math.max(16, Math.round(px / speed));
-}
 
-// --- рой прототипов: детерминированные псевдослучайные позиции по id, чтобы
-// раскладка была стабильной между сборками и не прыгала на клиенте. ---
 function hashStr(s: string): number {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
@@ -109,215 +142,322 @@ function mulberry32(seed: number) {
   };
 }
 
+const BELT_R_MIN = 720;
+const BELT_R_MAX = 800;
+const beltChips = flatSkills.map((label) => {
+  const rand = mulberry32(hashStr(`belt-${label}`));
+  const radius = BELT_R_MIN + rand() * (BELT_R_MAX - BELT_R_MIN);
+  const angle = rand() * 360;
+  const duration = 90 + rand() * 130;
+  const dir = rand() < 0.5 ? 'cw' : 'ccw';
+  // угол на кольце задается ИСКЛЮЧИТЕЛЬНО через отрицательный delay
+  // (фаза старта анимации ротора) — та же техника, что и у планет. Статичный
+  // rotate() на анкоре тут не годится: translate(-50%,-50%) в том же
+  // transform-списке считается ДО rotate и не поворачивается вместе с ним
+  // (проверено), так что rotate() только наклонил бы саму плашку на угол,
+  // а не переместил ее по кругу.
+  const delay = -(angle / 360) * duration;
+  return { label, radius, angle, duration, dir, delay: delay.toFixed(2), core: coreSkills.has(label) };
+});
+
+// --- рой прототипов: за орбитой Black Games (истока), детерминированные
+// псевдослучайные позиции по id — раскладка стабильна между сборками. ---
+const SWARM_R_MIN = 940;
+const SWARM_R_MAX = 1300;
 const prototypes = (await getCollection('prototypes')).sort((a, b) => a.data.year - b.data.year || a.data.id.localeCompare(b.data.id));
 const asteroids = prototypes.map((p) => {
   const rand = mulberry32(hashStr(p.data.id));
+  const radius = SWARM_R_MIN + rand() * (SWARM_R_MAX - SWARM_R_MIN);
+  const angle = rand() * 360;
+  const pos = polar(radius, angle);
   return {
     id: p.data.id,
     title: p.data.title,
     genre: p.data.genre.ru,
     year: p.data.year,
     clip: p.data.clip,
+    clipFull: p.data.clipFull,
+    shots: p.data.shots,
+    extraClips: p.data.extraClips ?? 0,
+    link: p.data.link,
     badge: p.data.badge?.ru,
-    x: (4 + rand() * 92).toFixed(1),
-    y: (6 + rand() * 88).toFixed(1),
-    size: Math.round(34 + rand() * 30),
+    x: pos.x,
+    y: pos.y,
+    size: Math.round(38 + rand() * 30),
     delay: (rand() * 6).toFixed(2),
   };
 });
-const fillerDots = Array.from({ length: 55 }, (_, i) => {
+const fillerDots = Array.from({ length: 70 }, (_, i) => {
   const rand = mulberry32(hashStr(`filler-${i}`));
-  return {
-    x: (2 + rand() * 96).toFixed(1),
-    y: (2 + rand() * 96).toFixed(1),
-    size: (2 + rand() * 4).toFixed(1),
-  };
+  const radius = SWARM_R_MIN * 0.6 + rand() * (SWARM_R_MAX * 1.05 - SWARM_R_MIN * 0.6);
+  const angle = rand() * 360;
+  const pos = polar(radius, angle);
+  return { x: pos.x, y: pos.y, size: (2 + rand() * 4).toFixed(1) };
 });
 
+const heroAbout =
+  'Уже больше шести лет с удовольствием делаю игры: от многомиллионных F2P-хитов до ламповых инди, от MMO до гиперказуалок, под мобильные и ПК, в больших командах и соло. Выстраивал процессы и собирал команду, менторил новичков, налаживал AI-пайплайн, оптимизировал сетевой код и строил конвейер прототипов.';
+
+// данные для orbit.js (камера/фокус/HUD) — без дублирования на клиенте того,
+// что уже посчитано здесь на сервере
+const orbitData = {
+  maxOrbitRadius,
+  eras: eras.map((e) => ({ id: e.id, kicker: e.kicker, range: e.range, radius: e.radius, milestone: e.milestone })),
+};
+
 const title = 'Орбиты — Александр Кандаков';
-const description = 'Экспериментальная альтернативная версия портфолио: карьера как планетная система.';
+const description = 'Экспериментальная альтернативная версия портфолио: карьера как интерактивная карта звездной системы.';
 ---
 <!doctype html>
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <title>{title}</title>
   <meta name="description" content={description} />
   <meta name="robots" content="noindex" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 </head>
 <body class="orbit-body">
+  <!-- фон: аврора + звездное поле (canvas, адаптирован под camera-parallax, см. orbit-stars.js) -->
   <div class="orbit-depth-fade" aria-hidden="true"></div>
   <div id="orbit-bg-a" aria-hidden="true"><div class="bg-inner"></div></div>
   <div id="orbit-bg-b" aria-hidden="true"><div class="bg-inner"></div></div>
   <canvas id="orbit-stars-canvas" aria-hidden="true"></canvas>
-  <div class="orbit-spine" aria-hidden="true"></div>
 
-  <!-- intro -->
-  <section class="orbit-intro">
-    <p class="orbit-kicker mono">Эксперимент · альтернативная версия портфолио</p>
-    <h1 class="orbit-title">Орбиты</h1>
-    <p class="orbit-subtitle">
-      Профессиональный путь как планетная система: от текущей орбиты — вниз,
-      к звезде, с которой все началось.
-    </p>
-    <a href="#now" class="orbit-scroll-cue">
-      <span>Листайте вниз</span>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 4v16M6 14l6 6 6-6" /></svg>
-    </a>
-  </section>
+  <!-- камера: viewport (слушает pan/zoom-жесты) содержит сцену (transform) -->
+  <div id="orbit-viewport" class="orbit-viewport">
+    <div id="orbit-scene" class="orbit-scene">
+      <!-- орбитальные кольца (SVG — pointer-events:stroke дает клик именно по
+           линии кольца, не по всей внутренней площади круга) -->
+      <svg class="orbit-rings" viewBox="-1000 -1000 2000 2000" aria-hidden="true">
+        {eras.map((era) => (
+          <g class="ring-group" data-focus-era={era.id}>
+            <circle class="ring-hit" cx="0" cy="0" r={era.radius} />
+            <circle class="ring-line" cx="0" cy="0" r={era.radius} style={`--era-color:${era.color}`} />
+          </g>
+        ))}
+      </svg>
 
-  {eras.map((era, eraIndex) => (
-    <>
-      <section class="orbit-stage" id={era.id} style={`--era-color:${era.color}`}>
-        <div class="orbit-stage-inner">
-          <div class="orbit-stage-head">
-            <p class="orbit-era-kicker mono">{era.kicker}</p>
-            <p class="orbit-era-range mono">{era.range}</p>
+      <!-- подписи орбит: статичные точки на севере каждого кольца (не
+           вращаются вместе с планетами) — приглушены, пока орбита не в фокусе -->
+      {eras.map((era) => (
+        <div class="orbit-label" style={`left:0px;top:${-era.radius}px`} data-era-label={era.id}>
+          <div class="orbit-counter-zoom">
+            <p class="mono era-label-kicker" style={`--era-color:${era.color}`}>{era.kicker}</p>
+            <p class="mono era-label-range">{era.range}</p>
           </div>
-          <div class={`orbit-planets${era.planets.length === 1 ? ' single' : ''}`}>
-            {era.planets.map((planet) => {
-              const d = bySlug[planet.slug];
-              const badges = platformBadges(d.platforms, { pc: 'PC', mobile: 'Mobile' });
-              const detailId = `detail-${planet.slug}`;
-              return (
-                <div class="planet-card" style={`--era-color:${era.color}`}>
-                  <div class="planet-orbit-wrap" style={`--size:${planet.size}px`}>
-                    <div class={`ring ring--r1${planet.ring === 'dashed' ? ' ring--dashed' : ''}`} aria-hidden="true"></div>
-                    <div class={`ring ring--r2${planet.ring === 'dashed' ? ' ring--dashed' : ''}`} aria-hidden="true"></div>
-                    <button
-                      type="button"
-                      class="planet reset"
-                      data-planet-toggle
-                      aria-expanded="false"
-                      aria-controls={detailId}
-                      aria-label={`${d.title} — показать детали`}
-                    >
-                      <img src={coverFor(planet.slug)} alt={d.title} loading="lazy" />
-                    </button>
-                    <div class="planet-tooltip" aria-hidden="true">{d.tagline}</div>
-                  </div>
-                  <div class="planet-label">
-                    <h3>{d.title}</h3>
-                    <p class="mono planet-meta">{d.genre}</p>
-                    <p class="planet-role mono">{d.role}</p>
-                  </div>
-                  <button type="button" class="planet-expand-btn reset" data-planet-toggle aria-expanded="false" aria-controls={detailId}>
-                    <span>Подробнее</span>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
-                  </button>
-                  <div class="planet-detail" id={detailId}>
-                    <div class="planet-detail-inner">
-                      <div class="planet-detail-content">
-                        <p>{d.tagline}</p>
-                        <div class="chip-row">
-                          {d.metrics.map((m: string) => <span class="chip chip-ok">{m}</span>)}
-                          {badges.map((b) => (
-                            <span class="chip" set:html={b.svg + `<span>${b.label}</span>`} />
-                          ))}
-                        </div>
-                        <div class="link-row">
-                          {d.links.map((l: { label: string; url: string }) => (
-                            <a class="pill-link" href={l.url} target="_blank" rel="noopener" style={`--era-color:${era.color}`}>{l.label} →</a>
-                          ))}
-                        </div>
+        </div>
+      ))}
+
+      <!-- звезда-визитка: якорь мировой системы координат (0,0) -->
+      <div class="star-anchor" style="left:0px;top:0px">
+        <div class="orbit-counter-zoom">
+          <button type="button" class="orbit-star" data-star-open aria-label="Визитка Александра Кандакова — открыть">
+            <span class="star-halo" aria-hidden="true"></span>
+            <img src="/media/me.webp" alt="" loading="eager" />
+          </button>
+          <div class="star-label">
+            <p class="star-name">Александр Кандаков</p>
+            <p class="star-role mono">Senior Unity Developer</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- планеты-проекты -->
+      {eras.map((era) => (
+        <>
+          {era.planets.map((planet) => {
+            const d = bySlug[planet.slug];
+            const delay = (-(planet.angle / 360) * era.duration).toFixed(2);
+            return (
+              <div
+                class="orbit-rotor"
+                style={`--r:${era.radius}px;--dur:${era.duration}s;--delay:${delay}s`}
+              >
+                <div class="orbit-anchor">
+                  <div class="orbit-counter-rotate">
+                    <div class="orbit-counter-zoom planet-wrap">
+                      <button
+                        type="button"
+                        class="planet reset"
+                        data-planet-open
+                        data-era={era.id}
+                        data-tpl={`tpl-${planet.slug}`}
+                        style={`--size:${planet.size}px;--era-color:${era.color}`}
+                        aria-label={`${d.title} — открыть карточку проекта`}
+                      >
+                        <img src={coverFor(planet.slug)} alt="" loading="lazy" />
+                      </button>
+                      <div class="planet-label">
+                        <p class="planet-title">{d.title}</p>
+                        <p class="planet-role mono" style={`--era-color:${era.color}`}>{d.role}</p>
                       </div>
                     </div>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-
-          {era.id === 'blackgames' && (
-            <>
-              <div class="orbit-genesis">
-                <div class="genesis-star" aria-hidden="true"></div>
-                <h3>Исток — первая орбита</h3>
-                <p>
-                  2020 год. Пришел первым разработчиком в стартап Black Games.
-                  За три года собрал отдел с нуля, руководил командой до 8
-                  программистов, выстроил процессы разработки и построил
-                  конвейер из 200+ прототипов — вокруг этой звезды и родилась
-                  вся система, которую вы только что пролистали.
-                </p>
               </div>
-
-              <div>
-                <p class="orbit-swarm-note mono">200+ прототипов отдела · рой из тех, что собирал лично:</p>
-                <div class="orbit-swarm" aria-label="Облако прототипов Black Games">
-                  {fillerDots.map((f) => (
-                    <span class="asteroid-dot" style={`--x:${f.x}%;--y:${f.y}%;--size:${f.size}px`}></span>
-                  ))}
-                  {asteroids.map((a) => (
-                    <button
-                      type="button"
-                      class="asteroid reset"
-                      style={`--x:${a.x}%;--y:${a.y}%;--size:${a.size}px;--delay:${a.delay}s`}
-                      data-title={a.title}
-                      data-genre={a.genre}
-                      data-year={a.year}
-                      data-icon={`/media/prototypes/${a.id}/icon.webp`}
-                      data-clip={a.clip ? `/media/prototypes/${a.id}/clip.webm` : ''}
-                      data-poster={a.clip ? `/media/prototypes/${a.id}/poster.jpg` : ''}
-                      data-badge={a.badge ?? ''}
-                      aria-label={`${a.title} — открыть`}
-                    >
-                      <img src={`/media/prototypes/${a.id}/icon.webp`} alt="" loading="lazy" draggable="false" />
-                      {a.badge && <span class="asteroid-badge mono">{a.badge}</span>}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-      </section>
-
-      {eraIndex === 0 && (
-        <div class="orbit-belt">
-          <p class="orbit-belt-kicker mono">Пояс навыков</p>
-          <div class="orbit-belt-wrap">
-            <div class="orbit-fade orbit-fade--left" aria-hidden="true"></div>
-            {beltRows.map((row, ri) => (
-              <div class={`orbit-belt-row${ri === 1 ? ' orbit-belt-row--rev' : ''}`}>
-                <div class="orbit-belt-track" style={`--duration:${beltDuration(row, beltSpeed[ri])}s`}>
-                  <div class="orbit-belt-group">
-                    {row.map((s) => <span class={`chip${coreSkills.has(s) ? ' chip-ok' : ''}`}>{s}</span>)}
-                  </div>
-                  <div class="orbit-belt-group" aria-hidden="true">
-                    {row.map((s) => <span class={`chip${coreSkills.has(s) ? ' chip-ok' : ''}`}>{s}</span>)}
+            );
+          })}
+          {/* шаблон карточки — клонируется в общую модалку по клику планеты, см. orbit.js */}
+          {era.planets.map((planet) => {
+            const d = bySlug[planet.slug];
+            const badges = platformBadges(d.platforms, { pc: 'PC', mobile: 'Mobile' });
+            return (
+              <template id={`tpl-${planet.slug}`}>
+                <div class="pcard">
+                  <img class="pcard-cover" src={coverFor(planet.slug)} alt={d.title} loading="lazy" />
+                  <div class="pcard-body">
+                    <div class="pcard-head">
+                      <h3>{d.title}</h3>
+                      <span class="pcard-role mono" style={`--era-color:${era.color}`}>{d.role}</span>
+                    </div>
+                    <p class="pcard-meta mono">{d.company} · {d.period} · {d.genre}</p>
+                    <p class="pcard-tagline">{d.tagline}</p>
+                    <div class="chip-row">
+                      {d.metrics.map((m: string) => <span class="chip chip-ok">{m}</span>)}
+                      {badges.map((b) => (
+                        <span class="chip" set:html={b.svg + `<span>${b.label}</span>`} />
+                      ))}
+                    </div>
+                    <div class="link-row">
+                      {d.links.map((l: { label: string; url: string }) => (
+                        <a class="pill-link" href={l.url} target="_blank" rel="noopener" style={`--era-color:${era.color}`}>{l.label} →</a>
+                      ))}
+                    </div>
                   </div>
                 </div>
+              </template>
+            );
+          })}
+        </>
+      ))}
+
+      <!-- пояс навыков (астероидный пояс между Reaction и Black Games) -->
+      {beltChips.map((chip) => (
+        <div
+          class="orbit-rotor belt-rotor"
+          data-dir={chip.dir}
+          style={`--r:${chip.radius}px;--dur:${chip.duration}s;--delay:${chip.delay}s`}
+        >
+          <div class="orbit-anchor">
+            <div class="orbit-counter-rotate">
+              <div class="orbit-counter-zoom">
+                <span class={`chip belt-chip${chip.core ? ' chip-ok' : ''}`}>{chip.label}</span>
               </div>
-            ))}
-            <div class="orbit-fade orbit-fade--right" aria-hidden="true"></div>
+            </div>
           </div>
         </div>
-      )}
-    </>
-  ))}
+      ))}
 
-  <footer class="orbit-footer">
-    <a href="#" class="back-to-top mono">↑ К началу системы</a>
-    <p class="mono">© 2026 Aleksandr Kandakov. Экспериментальная страница /orbit/.</p>
-  </footer>
+      <!-- рой прототипов: фоновая пыль (декор, без взаимодействия) -->
+      {fillerDots.map((f) => (
+        <span class="filler-dot" style={`left:${f.x}px;top:${f.y}px;width:${f.size}px;height:${f.size}px`}></span>
+      ))}
+      <!-- рой прототипов: кликабельные астероиды -->
+      {asteroids.map((a) => (
+        <div class="debris-anchor" style={`left:${a.x}px;top:${a.y}px`}>
+          <div class="orbit-counter-zoom">
+            <button
+              type="button"
+              class="asteroid reset"
+              style={`--size:${a.size}px;--delay:${a.delay}s`}
+              data-id={a.id}
+              data-title={a.title}
+              data-genre={a.genre}
+              data-year={a.year}
+              data-clip={a.clip ? '1' : '0'}
+              data-clip-full={a.clipFull ? '1' : '0'}
+              data-shots={a.shots}
+              data-extra-clips={a.extraClips}
+              data-link={a.link ?? ''}
+              data-badge={a.badge ?? ''}
+              aria-label={`${a.title} — открыть`}
+            >
+              <img src={`/media/prototypes/${a.id}/icon.webp`} alt="" loading="lazy" draggable="false" />
+              {a.badge && <span class="asteroid-badge mono">{a.badge}</span>}
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
 
-  <dialog id="orbit-proto-modal">
-    <button type="button" class="opm-close" aria-label="Закрыть">✕</button>
-    <div class="opm-body">
-      <div class="opm-media">
-        <video class="opm-video" muted loop playsinline controls style="display:none;"></video>
-        <img class="opm-icon" alt="" />
+  <!-- HUD: заголовок/легенда/зум — фиксированные слои поверх камеры -->
+  <div class="hud" aria-hidden="false">
+    <div class="hud-panel hud-panel--top">
+      <p class="hud-kicker mono">Эксперимент · интерактивная карта</p>
+      <h1 class="hud-title">Орбиты</h1>
+      <p class="hud-subtitle">Профессиональный путь как карта звездной системы. Перетаскивайте сцену, приближайте, кликайте по объектам.</p>
+      <nav class="hud-legend" aria-label="Навигация по системе">
+        <button type="button" class="legend-item legend-star" data-focus-star>
+          <span class="legend-dot legend-dot--star" aria-hidden="true"></span>
+          <span class="legend-label">Визитка</span>
+        </button>
+        {eras.map((era) => (
+          <button type="button" class="legend-item" data-focus-era={era.id} style={`--era-color:${era.color}`}>
+            <span class="legend-dot" aria-hidden="true"></span>
+            <span class="legend-label">{era.kicker}</span>
+            <span class="legend-range mono">{era.range}</span>
+          </button>
+        ))}
+      </nav>
+      <div class="hud-era-detail" data-era-detail aria-live="polite"></div>
+    </div>
+
+    <div class="hud-zoom">
+      <button type="button" class="hud-zoom-btn" data-zoom="in" aria-label="Приблизить">+</button>
+      <button type="button" class="hud-zoom-btn" data-zoom="out" aria-label="Отдалить">−</button>
+      <button type="button" class="hud-zoom-btn hud-zoom-btn--fit" data-zoom="fit" aria-label="Показать всю систему">⤢</button>
+    </div>
+
+    <p class="hud-footer mono">© 2026 Aleksandr Kandakov · эксперимент /orbit/</p>
+
+    <div class="hud-hint" id="orbit-hint">
+      <span>Перетащите сцену или нажмите на объект карты</span>
+    </div>
+  </div>
+
+  <!-- модалка визитки -->
+  <dialog id="orbit-star-modal" class="orbit-modal orbit-modal--star">
+    <button type="button" class="modal-close" data-modal-close aria-label="Закрыть">✕</button>
+    <div class="star-modal-body">
+      <img src="/media/me.webp" alt="Александр Кандаков" class="star-modal-portrait" width="160" height="160" />
+      <h2>Александр Кандаков</h2>
+      <p class="mono star-modal-role">Senior Unity Developer</p>
+      <p class="star-modal-about">{heroAbout}</p>
+      <div class="star-modal-actions">
+        <a class="star-cv-btn sheen" href="/cv/Kandakov_CV_ru.pdf" download>Скачать CV</a>
+        <SocialIcons />
       </div>
-      <h3 class="opm-title"></h3>
-      <div class="opm-meta mono"></div>
-      <span class="opm-badge mono" style="display:none;"></span>
     </div>
   </dialog>
 
+  <!-- модалка карточки проекта (наполняется из <template> кликнутой планеты) -->
+  <dialog id="orbit-project-modal" class="orbit-modal orbit-modal--project">
+    <button type="button" class="modal-close" data-modal-close aria-label="Закрыть">✕</button>
+    <div class="modal-slot" data-project-slot></div>
+  </dialog>
+
+  <!-- модалка прототипа (вьювер собирается на клиенте через media-viewer.js) -->
+  <dialog id="orbit-proto-modal" class="orbit-modal orbit-modal--proto">
+    <button type="button" class="modal-close" data-modal-close aria-label="Закрыть">✕</button>
+    <div class="opm-body">
+      <div class="opm-head">
+        <h3 class="opm-title"></h3>
+        <span class="opm-badge mono" style="display:none;"></span>
+      </div>
+      <p class="opm-meta mono"></p>
+      <a class="opm-link pill-link" target="_blank" rel="noopener" style="display:none;"></a>
+      <div class="opm-viewer"></div>
+    </div>
+  </dialog>
+
+  <script define:vars={{ orbitData }} is:inline>
+    window.__ORBIT_DATA__ = orbitData;
+  </script>
   <script src="../scripts/orbit-stars.js"></script>
   <script src="../scripts/orbit.js"></script>
+  <script src="../scripts/orbit-prototypes.js"></script>
 </body>
 </html>

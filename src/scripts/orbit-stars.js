@@ -1,11 +1,15 @@
-// Орбиты: полностраничный звездный фон. АДАПТИРОВАНО (не импортировано) из
+// Орбиты v2: полностраничный звездный фон. АДАПТИРОВАНО (не импортировано) из
 // src/scripts/stars.js основного сайта — сознательно скопировано, чтобы
-// /orbit/ оставался полностью изолированной страницей (см. задание: "copy,
-// don't import, to keep isolation"). Логика звезд/пружины/твинкла идентична
-// оригиналу (уже настроена и проверена там); отличия: свой canvas id, свой
-// глобальный хук для метеора (чтобы не пересекаться с основным сайтом,
-// хотя обе страницы никогда не грузятся одновременно), и вызов метеора
-// используется здесь при смене активной "эпохи" (см. orbit.js).
+// /orbit/ оставался полностью изолированной страницей. Логика звезд/пружины/
+// твинкла идентична оригиналу; отличия для карты v2:
+//  - вместо вертикального scroll-параллакса (страница v2 не скроллится, это
+//    неподвижный "canvas" с камерой) — параллакс от камеры: читает
+//    window.__orbitCamera (мутирует его orbit.js на каждый кадр движения
+//    камеры) и сдвигает звезды на долю pan'а, пропорциональную глубине
+//    звезды — те, что "дальше" (меньше depth), двигаются меньше, создавая
+//    ощущение объема при перетаскивании сцены.
+//  - свой canvas id, свой глобальный хук метеора __spawnOrbitMeteor —
+//    вызывается из orbit.js при смене фокуса на эпоху и по таймеру ambience.
 
 const canvas = /** @type {HTMLCanvasElement | null} */ (document.getElementById('orbit-stars-canvas'));
 
@@ -119,10 +123,16 @@ if (canvas) {
     return CENTER_MUL_MIN + (1 - CENTER_MUL_MIN) * smoothstep(t);
   };
 
+  const PARALLAX_FACTOR = 0.16; // доля camera.pan, на которую сдвигается звезда глубины 1.0
+
   const tick = (now) => {
     const dt = Math.min(48, now - lastFrameTime);
     lastFrameTime = now;
-    const scrollY = window.scrollY;
+    // камера карты (orbit.js) — pan в CSS-px сцены; для фона берем малую долю,
+    // масштабированную индивидуальной глубиной звезды (ближе к 0 = дальше)
+    const cam = window.__orbitCamera;
+    const parX = cam ? cam.x * PARALLAX_FACTOR : 0;
+    const parY = cam ? cam.y * PARALLAX_FACTOR : 0;
     const centerX = w / 2, centerY = h / 2;
     const maxDist = Math.hypot(centerX, centerY);
 
@@ -146,8 +156,12 @@ if (canvas) {
       const wanderX = Math.sin(now * WANDER_SPEED + s.phase) * WANDER_AMPLITUDE;
       const wanderY = Math.cos(now * WANDER_SPEED * 0.8 + s.phase) * WANDER_AMPLITUDE;
 
-      const sx = s.homeX + s.dx + wanderX;
-      let sy = s.homeY + s.dy + wanderY + scrollY * s.depth;
+      // wrap по обеим осям (не только вертикали, как в scroll-версии) — камера
+      // карты может панорамировать в любую сторону, звезды должны "зацикливаться"
+      // по всему полю, а не только по высоте
+      let sx = s.homeX + s.dx + wanderX + parX * s.depth;
+      let sy = s.homeY + s.dy + wanderY + parY * s.depth;
+      sx = ((sx % w) + w) % w;
       sy = ((sy % h) + h) % h;
 
       s.sx = sx; s.sy = sy;
