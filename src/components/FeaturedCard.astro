@@ -124,26 +124,58 @@ const hasHoverSlideshow = !hasHoverClip && shots.length > 1;
       try { shots = JSON.parse(card.dataset.shots ?? '[]'); } catch { shots = []; }
       if (shots.length === 0) return;
 
+      // iter9 п.7: кадр сменяется только когда СЛЕДУЮЩИЙ скрин реально
+      // декодирован (img.decode), интервал отсчитывается от фактической
+      // смены - никакого хаотичного пролистывания на первом ховере, пока
+      // кадры догружаются.
+      const INTERVAL_MS = 1100;
       let index = 0;
       let front = 0;
-      let timer: ReturnType<typeof setInterval> | null = null;
+      let hovering = false;
+      let session = 0;
+      let timer: ReturnType<typeof setTimeout> | null = null;
+      let preloaded = false;
 
-      const showNext = () => {
-        index = (index + 1) % shots.length;
-        const back = front === 0 ? 1 : 0;
-        layers[back].src = shots[index];
-        layers[back].classList.add('is-visible');
-        layers[front].classList.remove('is-visible');
-        front = back;
+      const scheduleNext = () => {
+        if (timer !== null) clearTimeout(timer);
+        timer = setTimeout(advance, INTERVAL_MS);
       };
 
+      function advance() {
+        if (!hovering) return;
+        const mySession = session;
+        const nextIndex = (index + 1) % shots.length;
+        const back = front === 0 ? 1 : 0;
+        const img = layers[back];
+        img.src = shots[nextIndex];
+        const swap = () => {
+          if (!hovering || mySession !== session) return;
+          index = nextIndex;
+          img.classList.add('is-visible');
+          layers[front].classList.remove('is-visible');
+          front = back;
+          scheduleNext();
+        };
+        // decode() ждет фактической готовности кадра; на отказе (редкие
+        // форматные косяки) все равно меняем - хуже застывшего слайдшоу
+        // ничего нет
+        img.decode ? img.decode().then(swap).catch(swap) : ((img.onload = swap), (img.onerror = swap));
+      }
+
       card.addEventListener('pointerenter', () => {
-        if (timer !== null) return;
-        showNext();
-        timer = setInterval(showNext, 1100);
+        if (hovering) return;
+        hovering = true;
+        session++;
+        if (!preloaded) {
+          preloaded = true;
+          shots.forEach((s) => { const p = new Image(); p.src = s; });
+        }
+        advance();
       });
       card.addEventListener('pointerleave', () => {
-        if (timer !== null) { clearInterval(timer); timer = null; }
+        hovering = false;
+        session++;
+        if (timer !== null) { clearTimeout(timer); timer = null; }
         layers.forEach((l) => l.classList.remove('is-visible'));
       });
     });
