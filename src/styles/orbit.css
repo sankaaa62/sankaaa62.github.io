@@ -1,9 +1,26 @@
 /* ============================================================================
-   ОРБИТЫ — экспериментальная альтернативная страница портфолио (/orbit/).
+   ОРБИТЫ v2 — интерактивная карта звездной системы (/orbit/).
    Полностью изолированный стиль: палитра скопирована из global.css (не
-   импортируется), чтобы страница не зависела от основного сайта и не тянула
-   его хедер/секции/анимации. См. docs/superpowers/specs — раздел «Эксперимент
-   «Орбиты»».
+   импортируется), чтобы страница не зависела от основного сайта. См.
+   docs/superpowers/specs — раздел «Эксперимент «Орбиты»».
+
+   Архитектура камеры: #orbit-viewport (fixed, overflow:hidden, слушает
+   pan/zoom-жесты в orbit.js) содержит #orbit-scene — единственный
+   transform: translate(panX,panY) scale(zoom), с transform-origin 0 0.
+   Все объекты сцены — потомки #orbit-scene, позиционированы в "мировых"
+   px-координатах (0,0 = звезда) через left/top на 0-размерном контейнере.
+
+   Механика "планета на орбите" — три независимых слоя transform на трех
+   вложенных элементах (разделены, чтобы не биться в одном transform-списке):
+     .orbit-rotor          — вращается (CSS-анимация rotate), радиус R задан
+                              шириной/высотой, планета на верхней точке круга
+       .orbit-anchor       — translate(-50%,-50%), только центрирование точки
+         .orbit-counter-rotate — вращается ОБРАТНО, той же длительностью и
+                              задержкой (унаследованы через CSS custom props) —
+                              гасит вращение родителя, картинка не крутится
+           .orbit-counter-zoom — scale(1/var(--zoom)) — компенсирует зум камеры,
+                              планета всегда одного экранного размера
+                              (как маркер на карте — прием из Miro/Figma/Maps)
    ========================================================================= */
 
 :root {
@@ -23,37 +40,35 @@
   --font-sans: 'Inter Variable', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
   --radius: 14px;
-  --container: 880px;
 }
 
 * { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
+html, body { height: 100%; margin: 0; }
 body.orbit-body {
-  margin: 0;
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-sans);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
-  position: relative;
+  overflow: hidden;
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
 }
 img, video { max-width: 100%; display: block; }
 .mono { font-family: var(--font-mono); }
-.container { max-width: var(--container); margin: 0 auto; padding: 0 20px; }
 
-/* Убираем нативные стили у button/a, где используем их как интерактивные обертки */
 button.reset {
   appearance: none; border: none; background: none; padding: 0; margin: 0;
   color: inherit; font: inherit; cursor: pointer; text-align: left;
 }
 
-/* --- фон: глубина космоса --------------------------------------------- */
-/* Плавный переход фона от «сейчас» (чуть светлее) к «истоку» (почти черный) —
-   единый вертикальный градиент по всей высоте документа, под звездами. */
+/* --- фон: глубина космоса (те же слои, что у v1, но без scroll-параллакса —
+   страница больше не скроллится, звезды дышат от камеры, см. orbit-stars.js) */
 .orbit-depth-fade {
   position: fixed; inset: 0; z-index: -4; pointer-events: none;
-  background: linear-gradient(to bottom, var(--bg) 0%, var(--bg) 40%, var(--bg-deep) 100%);
+  background: radial-gradient(140% 100% at 50% 40%, var(--bg) 0%, var(--bg-deep) 100%);
 }
 #orbit-bg-a, #orbit-bg-b {
   position: fixed; inset: -20%; pointer-events: none; z-index: -3; will-change: transform;
@@ -61,13 +76,13 @@ button.reset {
 #orbit-bg-a .bg-inner, #orbit-bg-b .bg-inner { position: absolute; inset: 0; }
 #orbit-bg-a .bg-inner {
   background:
-    radial-gradient(620px 420px at 20% 8%, rgba(255,92,26,.22), transparent 70%),
-    radial-gradient(600px 500px at 60% 60%, rgba(45,212,191,.16), transparent 70%);
-  animation: orbit-aurora 22s ease-in-out infinite alternate;
+    radial-gradient(620px 420px at 20% 8%, rgba(255,92,26,.16), transparent 70%),
+    radial-gradient(600px 500px at 60% 60%, rgba(45,212,191,.12), transparent 70%);
+  animation: orbit-aurora 26s ease-in-out infinite alternate;
 }
 #orbit-bg-b .bg-inner {
-  background: radial-gradient(700px 520px at 85% 85%, rgba(124,92,255,.22), transparent 70%);
-  animation: orbit-aurora-violet 26s ease-in-out infinite alternate;
+  background: radial-gradient(700px 520px at 85% 85%, rgba(124,92,255,.16), transparent 70%);
+  animation: orbit-aurora-violet 30s ease-in-out infinite alternate;
 }
 @keyframes orbit-aurora {
   0% { transform: translate(-8%, -5%) scale(1); }
@@ -83,176 +98,308 @@ button.reset {
   position: fixed; inset: 0; z-index: -2; width: 100%; height: 100%; pointer-events: none;
 }
 
-/* --- intro / titlecard --------------------------------------------------- */
-.orbit-intro {
-  min-height: 100vh;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
+/* --- камера ---------------------------------------------------------- */
+.orbit-viewport {
+  position: fixed; inset: 0; overflow: hidden;
+  cursor: grab;
+  touch-action: none; /* жесты пина/пана обрабатываем сами, см. orbit.js */
+}
+.orbit-viewport.is-panning { cursor: grabbing; }
+.orbit-scene {
+  position: absolute; left: 50%; top: 50%; width: 0; height: 0;
+  transform-origin: 0 0;
+  /* transform: translate(...) scale(...) выставляется инлайново из orbit.js
+     на каждый кадр камеры; zoom дублируется в --zoom для counter-zoom детей */
+}
+
+/* --- кольца орбит (SVG) ------------------------------------------------ */
+.orbit-rings {
+  position: absolute; left: 0; top: 0; width: 2000px; height: 2000px;
+  margin-left: -1000px; margin-top: -1000px;
+  overflow: visible; pointer-events: none;
+}
+.ring-group { pointer-events: none; }
+.ring-hit { fill: none; stroke: transparent; stroke-width: 28; pointer-events: stroke; cursor: pointer; }
+.ring-line {
+  fill: none; stroke-width: 1.4; pointer-events: none;
+  stroke: color-mix(in srgb, var(--era-color, var(--accent)) 55%, transparent);
+  opacity: .55;
+  transition: opacity .35s ease, stroke-width .35s ease;
+}
+.ring-group.is-focused .ring-line { opacity: 1; stroke-width: 2.2; }
+.ring-group:hover .ring-line { opacity: .85; }
+
+/* --- подписи орбит ------------------------------------------------------ */
+.orbit-label {
+  position: absolute; pointer-events: none;
+}
+.orbit-label .orbit-counter-zoom {
+  transform: translate(-50%, -100%) scale(calc(1 / var(--zoom, 1)));
+  transform-origin: 50% 100%;
+  padding-bottom: 14px;
   text-align: center;
-  padding: 40px 20px;
-  position: relative;
+  white-space: nowrap;
+  opacity: .45;
+  transition: opacity .35s ease;
 }
-.orbit-kicker {
-  font-size: .78rem; letter-spacing: .18em; text-transform: uppercase;
-  color: var(--accent-2); margin-bottom: 18px;
+.orbit-label[data-focused] .orbit-counter-zoom { opacity: 1; }
+.era-label-kicker { color: var(--era-color, var(--accent)); font-size: .82rem; letter-spacing: .06em; margin: 0; }
+.era-label-range { color: var(--muted); font-size: .72rem; margin: 2px 0 0; }
+
+/* --- механика орбитального вращения (общая для планет и пояса) --------- */
+.orbit-rotor {
+  position: absolute; left: 0; top: 0;
+  width: calc(var(--r) * 2); height: calc(var(--r) * 2);
+  margin-left: calc(var(--r) * -1); margin-top: calc(var(--r) * -1);
+  animation: orbit-spin-cw var(--dur, 90s) linear infinite;
+  animation-delay: var(--delay, 0s);
+  pointer-events: none;
 }
-.orbit-title {
-  font-size: clamp(3rem, 12vw, 6.5rem);
-  font-weight: 800; margin: 0 0 .3em;
-  letter-spacing: .02em;
-  background: linear-gradient(135deg, #fff 0%, var(--accent-2) 45%, var(--violet) 100%);
-  -webkit-background-clip: text; background-clip: text; color: transparent;
-  text-shadow: 0 0 60px rgba(255, 176, 26, .25);
+.orbit-rotor[data-dir="ccw"] { animation-name: orbit-spin-ccw; }
+@keyframes orbit-spin-cw { to { transform: rotate(360deg); } }
+@keyframes orbit-spin-ccw { to { transform: rotate(-360deg); } }
+
+.orbit-anchor {
+  position: absolute; left: 50%; top: 0;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
 }
-.orbit-subtitle {
-  max-width: 46ch; color: var(--muted); font-size: 1.05rem; margin: 0 auto;
+.orbit-counter-rotate {
+  animation: orbit-spin-ccw var(--dur, 90s) linear infinite;
+  animation-delay: var(--delay, 0s);
+  pointer-events: auto;
 }
-.orbit-noindex-hint { display: none; } /* просто держатель класса, ничего не рендерит */
-.orbit-scroll-cue {
-  margin-top: 56px; display: flex; flex-direction: column; align-items: center; gap: 8px;
-  color: var(--muted); font-size: .8rem; text-decoration: none;
-  font-family: var(--font-mono);
-}
-.orbit-scroll-cue svg { animation: orbit-bounce 2s ease-in-out infinite; }
-@keyframes orbit-bounce {
-  0%, 100% { transform: translateY(0); opacity: .5; }
-  50% { transform: translateY(8px); opacity: 1; }
+.orbit-rotor[data-dir="ccw"] .orbit-counter-rotate { animation-name: orbit-spin-cw; }
+
+.orbit-counter-zoom {
+  transform: scale(calc(1 / var(--zoom, 1)));
+  transform-origin: 50% 50%;
 }
 
-/* --- центральная орбитальная ось, идущая через всю страницу ------------- */
-.orbit-spine {
-  position: absolute; left: 50%; top: 0; bottom: 0; width: 1px;
-  background: linear-gradient(to bottom, rgba(255,176,26,.5), rgba(124,92,255,.35) 45%, rgba(232,193,90,.5) 100%);
-  transform: translateX(-50%);
-  pointer-events: none; z-index: 0;
-  opacity: .35;
+/* --- звезда-визитка ------------------------------------------------------ */
+.star-anchor { position: absolute; transform: translate(-50%, -50%); z-index: 5; }
+.star-anchor .orbit-counter-zoom {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
 }
-@media (max-width: 780px) { .orbit-spine { display: none; } }
-
-/* --- секция-эпоха (веха) -------------------------------------------------- */
-.orbit-stage {
-  position: relative;
-  min-height: 88vh;
-  display: flex; align-items: center;
-  padding: 90px 20px;
-  z-index: 1;
+.orbit-star {
+  position: relative; width: 132px; height: 132px; border-radius: 50%;
+  overflow: visible; cursor: pointer;
 }
-.orbit-stage-inner {
-  max-width: var(--container); margin: 0 auto; width: 100%;
-  display: grid; gap: 48px;
+.star-halo {
+  position: absolute; inset: -26px; border-radius: 50%; z-index: 0;
+  background: radial-gradient(circle at 38% 32%, rgba(255,255,255,.5), rgba(255,176,26,.35) 40%, transparent 72%);
+  box-shadow: 0 0 70px 18px rgba(255,146,26,.4), 0 0 140px 40px rgba(255,92,26,.2);
+  animation: star-pulse 5s ease-in-out infinite;
 }
-.orbit-stage-head {
-  text-align: center; margin-bottom: 8px;
+@keyframes star-pulse {
+  0%, 100% { transform: scale(1); filter: brightness(1); }
+  50% { transform: scale(1.07); filter: brightness(1.18); }
 }
-.orbit-era-kicker {
-  font-size: .82rem; letter-spacing: .12em; text-transform: uppercase;
-  color: var(--era-color, var(--accent));
-  margin-bottom: 4px;
-}
-.orbit-era-range { color: var(--muted); font-size: .95rem; }
-
-.orbit-planets {
-  display: grid; gap: 56px;
-  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
-  justify-items: center;
-}
-.orbit-planets.single { grid-template-columns: minmax(0, 1fr); }
-
-/* Общая дымка/приглушение неактивных эпох — усиливает ощущение
-   "путешествия": текущая веха ярче и крупнее, соседние — тише. */
-.orbit-stage .planet-card { opacity: .55; transform: scale(.92); transition: opacity .6s ease, transform .6s ease; }
-.orbit-stage.is-active .planet-card { opacity: 1; transform: scale(1); }
-.orbit-stage .orbit-stage-head { opacity: .5; transition: opacity .6s ease; }
-.orbit-stage.is-active .orbit-stage-head { opacity: 1; }
-
-/* --- планета + орбитальные кольца --------------------------------------- */
-.planet-card {
-  display: flex; flex-direction: column; align-items: center; text-align: center;
-  max-width: 340px;
-}
-.planet-orbit-wrap {
-  position: relative;
-  width: var(--size, 160px); height: var(--size, 160px);
-  display: grid; place-items: center;
-  margin-bottom: 22px;
-}
-.ring {
-  position: absolute;
-  border-radius: 50%;
-  border: 1px solid color-mix(in srgb, var(--era-color, var(--accent)) 55%, transparent);
-  animation: orbit-spin 46s linear infinite;
-}
-.ring--dashed { border-style: dashed; animation-duration: 60s; animation-direction: reverse; }
-.ring--r1 { inset: -18px; }
-.ring--r2 { inset: -40px; opacity: .55; animation-duration: 70s; }
-.ring::after {
-  content: ""; position: absolute; top: -3px; left: calc(50% - 3px);
-  width: 6px; height: 6px; border-radius: 50%;
-  background: var(--era-color, var(--accent));
-  box-shadow: 0 0 8px 2px color-mix(in srgb, var(--era-color, var(--accent)) 70%, transparent);
-}
-.ring--r2::after { width: 4px; height: 4px; opacity: .7; }
-@keyframes orbit-spin { to { transform: rotate(360deg); } }
-
-.planet {
+.orbit-star img {
   position: relative; z-index: 1;
-  width: calc(var(--size, 160px) * .74); height: calc(var(--size, 160px) * .74);
+  width: 100%; height: 100%; border-radius: 50%; object-fit: cover;
+  border: 3px solid var(--accent-2);
+  box-shadow: 0 0 0 5px rgba(6,7,16,.7), 0 0 46px rgba(255,176,26,.4);
+  transition: transform .3s ease, box-shadow .3s ease;
+}
+.orbit-star:hover img, .orbit-star:focus-visible img {
+  transform: scale(1.05);
+  box-shadow: 0 0 0 5px rgba(6,7,16,.7), 0 0 64px rgba(255,176,26,.6);
+}
+.orbit-star:focus-visible { outline: none; }
+.orbit-star:focus-visible img { outline: 2px solid var(--accent-2); outline-offset: 4px; }
+.star-label { text-align: center; pointer-events: none; }
+.star-name { margin: 0; font-size: 1.05rem; font-weight: 800; text-shadow: 0 0 18px rgba(0,0,0,.7); }
+.star-role { margin: 2px 0 0; color: var(--accent-2); font-size: .78rem; text-shadow: 0 0 12px rgba(0,0,0,.7); }
+
+/* --- планеты -------------------------------------------------------------- */
+.planet-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.planet {
+  position: relative; z-index: 2;
+  width: var(--size, 140px); height: var(--size, 140px);
   border-radius: 50%; overflow: hidden;
   border: 2px solid var(--era-color, var(--accent));
-  box-shadow: 0 0 0 4px rgba(6,7,16,.6), 0 0 30px -4px color-mix(in srgb, var(--era-color, var(--accent)) 65%, transparent);
-  transition: transform .3s ease, box-shadow .3s ease;
+  box-shadow: 0 0 0 4px rgba(6,7,16,.65), 0 0 30px -4px color-mix(in srgb, var(--era-color, var(--accent)) 65%, transparent);
+  transition: transform .25s ease, box-shadow .25s ease;
   cursor: pointer;
 }
 .planet img { width: 100%; height: 100%; object-fit: cover; }
 .planet:hover, .planet:focus-visible {
-  transform: scale(1.06);
-  box-shadow: 0 0 0 4px rgba(6,7,16,.6), 0 0 46px 2px color-mix(in srgb, var(--era-color, var(--accent)) 85%, transparent);
+  transform: scale(1.08);
+  box-shadow: 0 0 0 4px rgba(6,7,16,.65), 0 0 48px 2px color-mix(in srgb, var(--era-color, var(--accent)) 88%, transparent);
 }
 .planet:focus-visible { outline: 2px solid var(--era-color, var(--accent)); outline-offset: 4px; }
-/* пауза вращения колец при наведении/фокусе — читается как "система замерла,
-   чтобы показать деталь" */
-.planet-orbit-wrap:hover .ring, .planet:focus-visible ~ .ring { animation-play-state: paused; }
+.planet-label { text-align: center; pointer-events: none; max-width: 22ch; }
+.planet-title { margin: 0; font-size: .92rem; font-weight: 700; text-shadow: 0 0 14px rgba(0,0,0,.8); }
+.planet-role { margin: 2px 0 0; font-size: .68rem; color: var(--era-color, var(--accent-2)); text-shadow: 0 0 12px rgba(0,0,0,.8); }
 
-/* hover-тултип: краткая подсказка (tagline), чистый CSS, без JS */
-.planet-tooltip {
-  position: absolute; bottom: calc(100% + 14px); left: 50%; transform: translateX(-50%) translateY(6px);
-  width: max-content; max-width: 240px;
-  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
-  padding: 10px 12px; font-size: .82rem; color: var(--muted);
-  opacity: 0; pointer-events: none; transition: opacity .2s ease, transform .2s ease;
-  z-index: 4;
+/* --- пояс навыков --------------------------------------------------------- */
+.belt-chip {
+  display: inline-flex; align-items: center;
+  padding: 4px 11px; border-radius: 999px; font-family: var(--font-mono); font-size: .74rem;
+  border: 1px solid var(--border); color: var(--muted); background: rgba(18,19,29,.7);
+  -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+  white-space: nowrap; pointer-events: none;
 }
-@media (hover: hover) and (pointer: fine) {
-  .planet-orbit-wrap:hover .planet-tooltip { opacity: 1; transform: translateX(-50%) translateY(0); }
+.belt-chip.chip-ok { color: var(--ok); border-color: rgba(93,202,165,.45); }
+
+/* --- рой прототипов -------------------------------------------------------- */
+.filler-dot {
+  position: absolute; transform: translate(-50%, -50%);
+  border-radius: 50%; background: rgba(154,151,163,.35); pointer-events: none;
+}
+.debris-anchor { position: absolute; transform: translate(-50%, -50%); }
+.asteroid {
+  position: relative;
+  width: var(--size); height: var(--size);
+  border-radius: 50%; overflow: hidden;
+  border: 1.5px solid rgba(232,193,90,.5);
+  box-shadow: 0 0 12px -3px rgba(232,193,90,.5);
+  animation: asteroid-drift 7s ease-in-out infinite;
+  animation-delay: var(--delay, 0s);
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.asteroid img { width: 100%; height: 100%; object-fit: cover; }
+.asteroid:hover, .asteroid:focus-visible {
+  transform: scale(1.22);
+  box-shadow: 0 0 22px -2px rgba(232,193,90,.9);
+  z-index: 5;
+}
+@keyframes asteroid-drift {
+  0%, 100% { margin-top: 0; }
+  50% { margin-top: -6px; }
+}
+.asteroid-badge {
+  position: absolute; bottom: -2px; left: 50%; transform: translateX(-50%);
+  font-size: .5rem; padding: 1px 5px; border-radius: 999px; white-space: nowrap;
+  background: rgba(6,7,16,.85); color: var(--gold); border: 1px solid rgba(232,193,90,.5);
 }
 
-.planet-label h3 { margin: 0 0 4px; font-size: 1.3rem; font-weight: 800; }
-.planet-meta { color: var(--muted); font-size: .82rem; margin: 0 0 4px; }
-.planet-role { color: var(--era-color, var(--accent-2)); font-size: .8rem; }
+/* --- HUD ------------------------------------------------------------------- */
+.hud { position: fixed; inset: 0; z-index: 20; pointer-events: none; }
+.hud-panel {
+  pointer-events: auto;
+  position: fixed; top: 20px; left: 20px; max-width: 300px;
+  background: rgba(10,11,18,.62); border: 1px solid var(--border); border-radius: var(--radius);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  padding: 16px 18px;
+}
+.hud-kicker { font-size: .68rem; letter-spacing: .14em; text-transform: uppercase; color: var(--accent-2); margin: 0 0 6px; }
+.hud-title {
+  font-size: 1.7rem; font-weight: 800; margin: 0 0 8px; letter-spacing: .01em;
+  background: linear-gradient(135deg, #fff 0%, var(--accent-2) 55%, var(--violet) 120%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.hud-subtitle { margin: 0 0 14px; color: var(--muted); font-size: .8rem; line-height: 1.5; }
+.hud-legend { display: flex; flex-direction: column; gap: 4px; }
+.legend-item {
+  display: flex; align-items: baseline; gap: 8px;
+  padding: 6px 8px; border-radius: 8px; cursor: pointer;
+  background: none; border: 1px solid transparent; color: var(--text);
+  transition: background .2s ease, border-color .2s ease;
+}
+.legend-item:hover, .legend-item:focus-visible { background: rgba(255,255,255,.05); border-color: var(--border); outline: none; }
+.legend-item.is-active { background: rgba(255,255,255,.07); border-color: color-mix(in srgb, var(--era-color, var(--accent)) 55%, transparent); }
+.legend-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--era-color, var(--accent)); box-shadow: 0 0 8px var(--era-color, var(--accent)); }
+.legend-dot--star { background: #fff; box-shadow: 0 0 8px #fff; }
+.legend-label { font-size: .84rem; font-weight: 600; }
+.legend-range { margin-left: auto; color: var(--muted); font-size: .68rem; }
+.hud-era-detail {
+  margin-top: 4px; font-size: .78rem; line-height: 1.55; color: var(--muted);
+  max-height: 0; overflow: hidden; transition: max-height .4s ease, margin-top .4s ease;
+}
+.hud-era-detail.is-open { max-height: 220px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
 
-.planet-expand-btn {
-  margin-top: 10px; font-family: var(--font-mono); font-size: .74rem;
-  color: var(--muted); letter-spacing: .04em; text-transform: uppercase;
-  display: inline-flex; align-items: center; gap: 6px;
+.hud-zoom {
+  pointer-events: auto;
+  position: fixed; right: 18px; bottom: 18px;
+  display: flex; flex-direction: column; gap: 8px;
 }
-.planet-expand-btn svg { width: 12px; height: 12px; transition: transform .25s ease; }
-.planet-card.is-expanded .planet-expand-btn svg { transform: rotate(180deg); }
-.planet-expand-btn:hover { color: var(--text); }
+.hud-zoom-btn {
+  width: 40px; height: 40px; border-radius: 10px;
+  border: 1px solid var(--border); background: rgba(10,11,18,.7); color: var(--text);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  font-size: 1.2rem; line-height: 1; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: transform .15s, border-color .15s, box-shadow .15s;
+}
+.hud-zoom-btn--fit { font-size: 1rem; }
+.hud-zoom-btn:hover, .hud-zoom-btn:focus-visible {
+  transform: translateY(-2px); border-color: var(--accent); box-shadow: 0 0 14px rgba(255,92,26,.3); outline: none;
+}
 
-/* Детальная карточка — плавный expand через grid-template-rows 0fr → 1fr */
-.planet-detail {
-  display: grid; grid-template-rows: 0fr; transition: grid-template-rows .4s ease;
-  width: 100%; margin-top: 14px;
+.hud-footer {
+  pointer-events: none;
+  position: fixed; left: 20px; bottom: 16px;
+  color: var(--muted); font-size: .68rem; opacity: .7;
 }
-.planet-card.is-expanded .planet-detail { grid-template-rows: 1fr; }
-.planet-detail-inner {
-  overflow: hidden; min-height: 0;
+
+.hud-hint {
+  pointer-events: none;
+  position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%);
+  padding: 9px 16px; border-radius: 999px;
+  background: rgba(10,11,18,.7); border: 1px solid var(--border);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  color: var(--muted); font-size: .8rem; white-space: nowrap;
+  opacity: 0; animation: hint-pulse-in .5s ease .4s forwards, hint-pulse 2.4s ease-in-out 1s infinite;
+  transition: opacity .5s ease;
 }
-.planet-detail-content {
-  border: 1px solid var(--border); background: var(--surface); border-radius: var(--radius);
-  padding: 18px 20px; text-align: left; margin-top: 4px;
+.hud-hint.is-dismissed { opacity: 0 !important; animation: none; }
+@keyframes hint-pulse-in { to { opacity: 1; } }
+@keyframes hint-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,176,26,.35); }
+  50% { box-shadow: 0 0 0 8px rgba(255,176,26,0); }
 }
-.planet-detail-content p { color: var(--muted); margin: 0 0 12px; font-size: .92rem; }
-.chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+
+/* --- модалки ---------------------------------------------------------------- */
+.orbit-modal {
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--surface); color: var(--text); padding: 0;
+  width: min(560px, 92vw); max-width: 560px; max-height: 88vh;
+  position: fixed; inset: 0; margin: auto;
+}
+.orbit-modal[open] { display: flex; flex-direction: column; }
+.orbit-modal::backdrop { background: rgba(2,2,8,.78); backdrop-filter: blur(3px); }
+.orbit-modal--project, .orbit-modal--proto { width: min(680px, 92vw); max-width: 680px; }
+.modal-close {
+  position: fixed; top: 16px; right: 16px; z-index: 2;
+  width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border);
+  background: rgba(6,7,16,.7); color: var(--text); cursor: pointer; font-size: 1.05rem;
+  transition: transform .15s, border-color .15s, box-shadow .15s;
+}
+.modal-close:hover, .modal-close:focus-visible {
+  transform: translateY(-2px); border-color: var(--accent); box-shadow: 0 0 14px rgba(255,92,26,.3); outline: none;
+}
+
+/* визитка */
+.star-modal-body { padding: 30px 26px; overflow-y: auto; text-align: center; }
+.star-modal-portrait {
+  width: 110px; height: 110px; border-radius: 50%; object-fit: cover; margin: 0 auto 16px;
+  border: 3px solid var(--accent); box-shadow: 0 0 40px rgba(255,92,26,.3);
+}
+.star-modal-body h2 { margin: 0 0 4px; font-size: 1.4rem; }
+.star-modal-role { color: var(--accent-2); margin: 0 0 16px; font-size: .85rem; }
+.star-modal-about { color: var(--muted); font-size: .92rem; line-height: 1.6; max-width: 52ch; margin: 0 auto 22px; }
+.star-modal-actions { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; }
+.star-cv-btn {
+  display: inline-flex; align-items: center; padding: 10px 20px; border-radius: 10px;
+  background: var(--accent); color: #0a0a0a; font-weight: 700; font-size: .88rem; text-decoration: none;
+  transition: filter .2s, transform .2s;
+}
+.star-cv-btn:hover { filter: brightness(1.12); transform: translateY(-1px); }
+
+/* карточка проекта */
+.pcard-cover { width: 100%; aspect-ratio: 16/9; object-fit: cover; }
+.pcard-body { padding: 20px 24px 26px; overflow-y: auto; }
+.pcard-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pcard-head h3 { margin: 0; font-size: 1.3rem; }
+.pcard-role {
+  font-size: .68rem; padding: 3px 9px; border-radius: 999px; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--era-color, var(--accent-2)); border: 1px solid color-mix(in srgb, var(--era-color, var(--accent)) 55%, transparent);
+}
+.pcard-meta { color: var(--muted); font-size: .8rem; margin: 6px 0 0; }
+.pcard-tagline { color: var(--text); font-size: .95rem; margin: 12px 0 14px; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 .chip {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 3px 10px; border-radius: 999px; font-family: var(--font-mono); font-size: .74rem;
@@ -269,122 +416,134 @@ button.reset {
 }
 .pill-link:hover { filter: brightness(1.12); transform: translateY(-1px); }
 
-/* --- пояс навыков (астероидный пояс) ------------------------------------- */
-.orbit-belt {
-  position: relative; z-index: 1;
-  width: 100vw; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw;
-  padding-block: 46px; overflow: hidden;
-}
-.orbit-belt-kicker {
-  text-align: center; font-size: .74rem; letter-spacing: .1em; text-transform: uppercase;
-  color: var(--violet); margin: 0 0 18px;
-}
-.orbit-belt-wrap { position: relative; display: flex; flex-direction: column; gap: 12px; }
-.orbit-belt-row { overflow: hidden; padding-block: 6px; }
-.orbit-belt-track { display: flex; width: max-content; animation: orbit-belt-left var(--duration, 40s) linear infinite; gap: var(--gap, 10px); }
-.orbit-belt-row--rev .orbit-belt-track { animation-name: orbit-belt-right; }
-.orbit-belt-row:hover .orbit-belt-track { animation-play-state: paused; }
-.orbit-belt-group { display: flex; flex: 0 0 auto; align-items: center; gap: var(--gap, 10px); padding-right: var(--gap, 10px); }
-@keyframes orbit-belt-left { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-@keyframes orbit-belt-right { from { transform: translateX(-50%); } to { transform: translateX(0); } }
-.orbit-belt-group .chip:nth-child(odd) { transform: translateY(-3px); }
-.orbit-belt-group .chip:nth-child(even) { transform: translateY(3px); }
-.orbit-fade { position: absolute; top: 0; bottom: 0; width: 100px; pointer-events: none; z-index: 1; }
-.orbit-fade--left { left: 0; background: linear-gradient(to right, rgb(6,7,16) 0%, rgba(6,7,16,.9) 30%, transparent 100%); }
-.orbit-fade--right { right: 0; background: linear-gradient(to left, rgb(6,7,16) 0%, rgba(6,7,16,.9) 30%, transparent 100%); }
+/* прототип */
+.opm-body { padding: 22px 24px 26px; overflow-y: auto; }
+.opm-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.opm-head h3 { margin: 0; font-size: 1.15rem; }
+.opm-badge { font-size: .7rem; padding: 3px 9px; border-radius: 999px; background: var(--gold); color: #0a0a0a; font-weight: 700; }
+.opm-meta { color: var(--muted); font-size: .82rem; margin: 4px 0 14px; }
+.opm-link { margin-bottom: 14px; }
+.opm-viewer { margin-top: 4px; }
 
-/* --- рой прототипов (астероидное облако) --------------------------------- */
-.orbit-swarm-note { text-align: center; color: var(--muted); font-size: .9rem; margin: 0 0 8px; }
-.orbit-swarm {
-  position: relative; width: 100%; height: 460px; margin-top: 8px;
+/* iter: визитка/контакты — sheen и icon-link скопированы (упрощенный
+   поднабор) из global.css основного сайта, т.к. orbit.css его не
+   импортирует (изоляция). Оригинал: src/styles/global.css, классы
+   .icon-link/.sheen, используются через переиспользуемый SocialIcons.astro. */
+.icon-link {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; border-radius: 12px;
+  border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
+  transition: transform .15s, border-color .15s, box-shadow .15s;
 }
-.asteroid {
-  position: absolute; left: var(--x); top: var(--y);
-  width: var(--size); height: var(--size);
-  transform: translate(-50%, -50%);
-  border-radius: 50%; overflow: hidden;
-  border: 1.5px solid rgba(232,193,90,.5);
-  box-shadow: 0 0 12px -3px rgba(232,193,90,.5);
-  animation: asteroid-drift 7s ease-in-out infinite;
-  animation-delay: var(--delay, 0s);
-  transition: transform .2s ease, box-shadow .2s ease;
-}
-.asteroid img { width: 100%; height: 100%; object-fit: cover; }
-.asteroid:hover, .asteroid:focus-visible {
-  transform: translate(-50%, -50%) scale(1.25);
-  box-shadow: 0 0 20px -2px rgba(232,193,90,.85);
-  z-index: 5;
-}
-@keyframes asteroid-drift {
-  0%, 100% { margin-top: 0; }
-  50% { margin-top: -6px; }
-}
-.asteroid-badge {
-  position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%);
-  font-size: .5rem; padding: 1px 5px; border-radius: 999px; white-space: nowrap;
-  background: rgba(6,7,16,.85); color: var(--gold); border: 1px solid rgba(232,193,90,.5);
-}
-.asteroid-dot {
-  position: absolute; left: var(--x); top: var(--y);
-  width: var(--size); height: var(--size); border-radius: 50%;
-  background: rgba(154,151,163,.4);
-  transform: translate(-50%, -50%);
+.icon-link:hover { transform: translateY(-2px); border-color: var(--accent); box-shadow: 0 0 14px rgba(255,92,26,.3); }
+.icon-link svg { width: 20px; height: 20px; fill: currentColor; }
+.sheen { position: relative; overflow: hidden; }
+.sheen::after {
+  content: "";
+  position: absolute; top: -20%; bottom: -20%; left: 0; width: 55%;
+  background: linear-gradient(115deg, transparent 0%, rgba(255,255,255,.22) 50%, transparent 100%);
+  transform: translateX(-140%) skewX(-18deg);
   pointer-events: none;
+  animation: sheen-run 9s linear infinite;
+}
+@keyframes sheen-run {
+  0% { transform: translateX(-140%) skewX(-18deg); }
+  12% { transform: translateX(320%) skewX(-18deg); }
+  100% { transform: translateX(320%) skewX(-18deg); }
 }
 
-/* --- звезда-исток --------------------------------------------------------- */
-.orbit-genesis {
-  display: flex; flex-direction: column; align-items: center; text-align: center;
-  margin-top: 40px; position: relative; z-index: 1;
-}
-.genesis-star {
-  width: 90px; height: 90px; border-radius: 50%; margin-bottom: 22px;
-  background: radial-gradient(circle at 35% 30%, #fff, var(--gold) 45%, rgba(232,193,90,.15) 75%);
-  box-shadow: 0 0 60px 12px rgba(232,193,90,.55), 0 0 120px 30px rgba(232,193,90,.25);
-  animation: genesis-pulse 5s ease-in-out infinite;
-}
-@keyframes genesis-pulse {
-  0%, 100% { transform: scale(1); filter: brightness(1); }
-  50% { transform: scale(1.08); filter: brightness(1.15); }
-}
-.orbit-genesis h3 { font-size: 1.5rem; margin: 0 0 12px; color: var(--gold); }
-.orbit-genesis p { max-width: 56ch; color: var(--muted); font-size: .95rem; }
-
-/* --- модалка прототипа ---------------------------------------------------- */
-#orbit-proto-modal {
+/* --- media-viewer (mv-*): подмножество стилей, скопированное из
+   global.css основного сайта для модалки прототипов (media-viewer.js
+   переиспользуется импортом — см. orbit-prototypes.js, но его CSS живет
+   в global.css, который orbit.css сознательно не импортирует ради
+   изоляции — см. хардконстрейнт задания). Скопирован минимум: сцена,
+   лента миниатюр, стрелки, лайтбокс. */
+.media-viewer { margin-bottom: 4px; }
+.mv-stage {
+  position: relative; aspect-ratio: 16/9;
   border: 1px solid var(--border); border-radius: var(--radius);
-  background: var(--surface); color: var(--text); padding: 0;
-  max-width: min(560px, 92vw); width: 100%;
+  background: #000; overflow: hidden;
 }
-#orbit-proto-modal::backdrop { background: rgba(2,2,8,.75); backdrop-filter: blur(3px); }
-.opm-close {
-  position: absolute; top: 10px; right: 10px; z-index: 2;
-  width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--border);
-  background: rgba(6,7,16,.6); color: var(--text); cursor: pointer; font-size: 1rem;
+.mv-stage:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mv-stage video, .mv-stage iframe, .mv-stage img { width: 100%; height: 100%; border: 0; display: block; }
+.mv-stage img { object-fit: cover; }
+.mv-stage video { object-fit: contain; }
+.media-viewer--contain .mv-stage img { object-fit: contain; background: #000; }
+.mv-strip-wrap { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.mv-strip { flex: 1; display: flex; gap: 8px; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; scroll-behavior: smooth; padding: 2px; }
+.mv-strip::-webkit-scrollbar { display: none; }
+.mv-thumb {
+  position: relative; flex: 0 0 auto; width: 130px; height: 74px; padding: 0; overflow: hidden;
+  border: 2px solid var(--border); border-radius: calc(var(--radius) - 4px); background: var(--surface);
+  cursor: pointer; filter: brightness(.65); transition: filter .15s, border-color .15s, transform .15s;
 }
-.opm-body { padding: 22px; }
-.opm-media { position: relative; border-radius: 10px; overflow: hidden; background: var(--bg); margin-bottom: 16px; aspect-ratio: 1; max-width: 260px; margin-inline: auto; }
-.opm-media img, .opm-media video { width: 100%; height: 100%; object-fit: cover; }
-.opm-title { margin: 0 0 6px; text-align: center; font-size: 1.15rem; }
-.opm-meta { text-align: center; color: var(--muted); font-size: .85rem; }
-.opm-badge { display: block; text-align: center; margin-top: 8px; color: var(--gold); font-size: .8rem; }
-
-/* --- футер ------------------------------------------------------------- */
-.orbit-footer {
-  position: relative; z-index: 1;
-  text-align: center; padding: 60px 20px 80px; color: var(--muted); font-size: .82rem;
+.mv-thumb img, .mv-thumb-blank { display: block; width: 100%; height: 100%; object-fit: cover; background: var(--surface-2); }
+.mv-thumb:hover { filter: brightness(.9); }
+.mv-thumb.is-active { border-color: var(--accent); filter: brightness(1); }
+.mv-thumb:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mv-play {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 1.1rem; text-shadow: 0 0 6px rgba(0,0,0,.8);
+  background: radial-gradient(circle, rgba(0,0,0,.3), transparent 70%); pointer-events: none;
 }
-.orbit-footer .back-to-top {
-  display: inline-block; margin-bottom: 16px; color: var(--muted); font-family: var(--font-mono); font-size: .78rem;
+.mv-arrow {
+  display: none; flex: 0 0 auto; align-items: center; justify-content: center;
+  width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text); font-size: 1.1rem; cursor: pointer;
+  transition: transform .15s, border-color .15s, box-shadow .15s;
 }
-.orbit-footer .back-to-top:hover { color: var(--text); }
-
-/* --- responsive ---------------------------------------------------------- */
+@media (hover: hover) and (pointer: fine) { .mv-arrow.has-overflow { display: inline-flex; } }
+.mv-arrow:hover, .mv-arrow:focus-visible { transform: translateY(-2px); border-color: var(--accent); box-shadow: 0 0 14px rgba(255,92,26,.3); outline: none; }
+.mv-lightbox {
+  border: none; padding: 0; background: transparent; max-width: none; max-height: none;
+  width: 100%; height: 100%; position: fixed; inset: 0; margin: 0; display: none; align-items: center; justify-content: center;
+}
+.mv-lightbox[open] { display: flex; }
+.mv-lightbox::backdrop { background: rgba(4,5,8,.88); }
+.mv-lb-image { max-width: 92vw; max-height: 85vh; border-radius: var(--radius); border: 1px solid var(--border); box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+.mv-lb-close, .mv-lb-prev, .mv-lb-next {
+  position: fixed; display: inline-flex; align-items: center; justify-content: center;
+  min-width: 44px; min-height: 44px; border-radius: 12px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text); font-size: 1.4rem; cursor: pointer;
+  transition: transform .15s, border-color .15s, box-shadow .15s;
+}
+.mv-lb-close:hover, .mv-lb-prev:hover, .mv-lb-next:hover,
+.mv-lb-close:focus-visible, .mv-lb-prev:focus-visible, .mv-lb-next:focus-visible {
+  transform: translateY(-2px); border-color: var(--accent); box-shadow: 0 0 14px rgba(255,92,26,.3); outline: none;
+}
+.mv-lb-close { top: 16px; right: 16px; }
+.mv-lb-prev { left: 16px; top: 50%; transform: translateY(-50%); font-size: 1.8rem; }
+.mv-lb-next { right: 16px; top: 50%; transform: translateY(-50%); font-size: 1.8rem; }
+.mv-lb-prev:hover, .mv-lb-next:hover { transform: translateY(-50%) translateY(-2px); }
+/* мобильный override лайтбокса — тоже скопирован из global.css (см.
+   комментарий у ".media-viewer (mv-*)" выше): без него стрелки лайтбокса
+   на телефонах перекрывают картинку (стрелки прижаты к 16px от края, а
+   картинка растянута на всю ширину — на узких экранах не остается места) */
 @media (max-width: 640px) {
-  .orbit-title { font-size: clamp(2.4rem, 14vw, 3.6rem); }
-  .orbit-stage { padding: 60px 16px; min-height: auto; }
-  .orbit-stage-inner { gap: 32px; }
-  .orbit-planets { gap: 40px; }
-  .planet-orbit-wrap { --size: 130px !important; }
-  .orbit-swarm { height: 340px; }
+  .mv-lb-prev, .mv-lb-next { min-width: 44px; min-height: 44px; }
+  .mv-lb-prev { left: 6px; }
+  .mv-lb-next { right: 6px; }
+  .mv-lb-close { top: 10px; right: 10px; }
+  .mv-lb-image { max-width: calc(100vw - 108px); }
+}
+
+/* --- responsive ------------------------------------------------------------- */
+@media (max-width: 720px) {
+  .hud-panel--top { max-width: calc(100vw - 40px); padding: 13px 15px; }
+  .hud-title { font-size: 1.35rem; }
+  .hud-subtitle { display: none; }
+  .hud-legend { flex-direction: row; flex-wrap: wrap; gap: 6px; }
+  .legend-item { padding: 9px 10px; min-height: 40px; }
+  .legend-range { display: none; }
+  .hud-era-detail.is-open { max-height: 160px; }
+  .hud-zoom-btn { width: 42px; height: 42px; }
+  .hud-hint { font-size: .74rem; padding: 8px 13px; max-width: calc(100vw - 32px); white-space: normal; text-align: center; }
+  .orbit-modal, .orbit-modal--project, .orbit-modal--proto { width: 100vw; max-width: 100vw; height: 100%; max-height: 100%; border-radius: 0; }
+  .mv-thumb { width: 104px; height: 60px; }
+}
+@media (max-width: 420px) {
+  .hud-panel--top { top: 12px; left: 12px; padding: 11px 13px; }
+  .hud-title { font-size: 1.2rem; }
+  .hud-footer { display: none; }
+  .hud-zoom { right: 12px; bottom: 12px; }
 }
