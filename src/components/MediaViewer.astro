@@ -34,9 +34,23 @@ interface PlaylistItem {
   label: string;
 }
 
-const localVideos: PlaylistItem[] = ['trailer.webm', 'trailer-2.webm']
-  .filter((name) => hasFile(name))
-  .map((name) => ({ kind: 'video', src: webPath(name), id: '', poster: localPoster, label: '' }));
+// iter10 (п.9): скан по паттерну (не жесткий список ['trailer.webm',
+// 'trailer-2.webm']), т.к. у forsaken-kingdom теперь 4 ролика
+// (trailer.webm..trailer-4.webm). Порядок не localeCompare(numeric) как у
+// shots ниже: там имена всегда 'shot-N.webp', а у trailer.webm нет суффикса
+// -N, из-за чего символ '-' (0x2D) лексикографически меньше '.' (0x2E) и
+// localeCompare ставит trailer.webm ПОСЛЕ trailer-2..4 — обратный порядок.
+// Извлекаем номер явно (trailer.webm = 1) и сортируем по нему числом.
+const trailerOrder = (name: string) => {
+  const match = name.match(/^trailer-(\d+)\.webm$/);
+  return match ? Number(match[1]) : 1;
+};
+const localVideos: PlaylistItem[] = existsSync(mediaDir)
+  ? readdirSync(mediaDir)
+      .filter((f) => /^trailer(-\d+)?\.webm$/.test(f))
+      .sort((a, b) => trailerOrder(a) - trailerOrder(b))
+      .map((f) => ({ kind: 'video', src: webPath(f), id: '', poster: localPoster, label: '' }))
+  : [];
 
 const youtubeItems: PlaylistItem[] = youtube
   ? [{ kind: 'youtube', src: '', id: youtube, poster: `https://i.ytimg.com/vi/${youtube}/mqdefault.jpg`, label: '' }]
