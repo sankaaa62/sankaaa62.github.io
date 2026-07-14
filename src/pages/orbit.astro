@@ -1,10 +1,13 @@
 ---
-// ОРБИТЫ v2 — экспериментальная альтернативная страница портфолио.
-// Полностью изолирована от основного сайта: свой layout (не Base.astro), свой
-// css (styles/orbit.css, не импортирует global.css), свои скрипты
-// (scripts/orbit*.js). Ссылок на основной сайт и обратно нет (внешние ссылки
-// на сторы/соцсети — можно). См. docs/superpowers/specs/2026-07-02-portfolio-
-// site-design.md, раздел «Эксперимент «Орбиты»».
+// Интерактивная карта опыта (/orbit/) — официальный раздел портфолио,
+// встроенный на главную как виджет-миникарта (см. OrbitMapCard.astro) и со
+// страниц проектов (кнопка "Показать на карте"). Технически изолирована от
+// основного сайта: свой layout (не Base.astro), свой css (styles/orbit.css,
+// не импортирует global.css), свои скрипты (scripts/orbit*.js) — единственная
+// связь с основным сайтом на уровне разметки - обратная ссылка в HUD и
+// deep-link #focus=<slug> с карточек проектов (внешние ссылки на сторы/
+// соцсети — тоже можно). См. docs/superpowers/specs/2026-07-02-portfolio-
+// site-design.md, раздел «Итерация 10».
 //
 // Концепция v2 (по заданию владельца): не скролл-рассказ, а ИНТЕРАКТИВНАЯ
 // КАРТА звездной системы. Камера (pan/zoom + клик-фокус) вместо прокрутки.
@@ -20,8 +23,8 @@
 // - прототипы — из content-коллекции prototypes (prototypes.json)
 // - навыки — из src/components/Skills.astro (плоский список категорий)
 // - визитка (имя/роль/hero.about/контакты) — из src/i18n/ui.ts + SocialIcons.astro
-import { getCollection } from 'astro:content';
-import { existsSync } from 'node:fs';
+import { getCollection, render } from 'astro:content';
+import { existsSync, readdirSync } from 'node:fs';
 import '@fontsource-variable/inter';
 import '@fontsource-variable/jetbrains-mono';
 import '../styles/orbit.css';
@@ -35,6 +38,59 @@ function coverFor(slug: string): string {
   const cover = `public/media/projects/${slug}/cover.webp`;
   if (existsSync(cover)) return `/media/projects/${slug}/cover.webp`;
   return `/media/projects/${slug}/shot-1.webp`;
+}
+
+// --- итерация 10 (п.6e): карточка проекта на карте получает тот же
+// Steam-стиль вьювер, что и страница проекта основной версии
+// (ProjectPage.astro/MediaViewer.astro) — плейлист [локальные трейлеры,
+// youtube, скрины], собранный fs-сканом на этапе SSG. Не импортируем
+// MediaViewer.astro (он тянет i18n main-сайта и рендерит свою SSR-разметку) —
+// здесь только данные, сама разметка вьювера строится на клиенте через
+// buildViewer()/attachViewer() из media-viewer.js (тот же прием, что и у
+// роя прототипов, см. orbit-prototypes.js). Скан трейлеров — по паттерну
+// (не жесткий список ['trailer.webm','trailer-2.webm']), т.к. у
+// forsaken-kingdom теперь 4 ролика (trailer.webm..trailer-4.webm).
+type ViewerPlaylistItem = { kind: 'video' | 'youtube' | 'image'; src: string; id: string; poster: string };
+function buildProjectPlaylist(slug: string, youtube?: string): ViewerPlaylistItem[] {
+  const mediaDir = `public/media/projects/${slug}`;
+  const webPath = (name: string) => `/media/projects/${slug}/${name}`;
+  const hasFile = (name: string) => existsSync(`${mediaDir}/${name}`);
+  const localPoster = hasFile('cover.webp') ? webPath('cover.webp') : hasFile('shot-1.webp') ? webPath('shot-1.webp') : '';
+  // порядок НЕ localeCompare(numeric), как у скринов ниже: там имена всегда
+  // 'shot-N.webp', а у trailer.webm нет суффикса -N, из-за чего символ '-'
+  // (0x2D) лексикографически меньше '.' (0x2E) и localeCompare ставит
+  // trailer.webm ПОСЛЕ trailer-2..4 — обратный порядок (тот же баг уже был
+  // найден и исправлен в MediaViewer.astro). Извлекаем номер явно
+  // (trailer.webm = 1) и сортируем по нему числом.
+  const trailerOrder = (name: string) => {
+    const match = name.match(/^trailer-(\d+)\.webm$/);
+    return match ? Number(match[1]) : 1;
+  };
+  const localVideos: ViewerPlaylistItem[] = existsSync(mediaDir)
+    ? readdirSync(mediaDir)
+        .filter((f) => /^trailer(-\d+)?\.webm$/.test(f))
+        .sort((a, b) => trailerOrder(a) - trailerOrder(b))
+        .map((f) => ({ kind: 'video', src: webPath(f), id: '', poster: localPoster }))
+    : [];
+  const youtubeItems: ViewerPlaylistItem[] = youtube
+    ? [{ kind: 'youtube', src: '', id: youtube, poster: `https://i.ytimg.com/vi/${youtube}/mqdefault.jpg` }]
+    : [];
+  const shots: ViewerPlaylistItem[] = existsSync(mediaDir)
+    ? readdirSync(mediaDir)
+        .filter((f) => /^shot-\d+\.webp$/.test(f))
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+        .map((f) => ({ kind: 'image', src: webPath(f), id: '', poster: '' }))
+    : [];
+  return [...localVideos, ...youtubeItems, ...shots];
+}
+
+// краткое описание проекта (тело .md-файла) — рендерится тем же способом,
+// что ProjectPage.astro (Astro 7: import { render } из astro:content, НЕ
+// устаревший entry.render()). Считается один раз на все планеты.
+const contentBySlug: Record<string, Awaited<ReturnType<typeof render>>['Content']> = {};
+for (const p of allProjects) {
+  const { Content } = await render(p);
+  contentBySlug[p.id.split('/')[1]] = Content;
 }
 
 // --- переводит "мировой" угол (0 = север/верх, по часовой) + радиус в
@@ -57,24 +113,59 @@ type Era = {
   planets: PlanetSpec[];
 };
 
+function hashStr(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return h;
+}
+function mulberry32(seed: number) {
+  let a = seed;
+  return function () {
+    a |= 0; a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+// джиттер [1-spread, 1+spread], детерминированный от строки-семени (без
+// Math.random — стабильность SSR и повторяемость между сборками)
+function jitterFactor(seed: string, spread: number): number {
+  const rand = mulberry32(hashStr(seed));
+  return 1 + (rand() * 2 - 1) * spread;
+}
+
+// --- итерация 10 (п.1): стартовые углы планет разведены константами, чтобы
+// планеты не накладывались друг на друга и не садились ровно под подпись
+// орбиты (та на angle=0/север, см. .orbit-label ниже). ERA_ANGLE_STEP —
+// шаг фазы между соседними орбитами, в пределах 70-110 градусов по фидбеку;
+// PLANET_PAIR_OFFSET — противофаза для двух планет одной орбиты (Days After
+// и Forsaken Kingdom на орбите "Сейчас"). ---
+const ERA_ANGLE_OFFSET = 50; // сдвиг от подписи орбиты
+const ERA_ANGLE_STEP = 90; // шаг между соседними орбитами (70-110 по ТЗ)
+const PLANET_PAIR_OFFSET = 180; // противофаза двух планет на одной орбите
+// итерация 10 (п.3): скорость планет замедлена вдвое относительно v2 —
+// движение читалось слишком суетливым. Джиттер +-15% на планету (по slug),
+// чтобы соседи не двигались синхронно даже с одинаковой базовой скоростью.
+const PLANET_DURATION_JITTER = 0.15;
+
 // Радиусы растут от "Сейчас" к истоку — раскрутка орбит от последней к первой
 // (п.3 задания). Периоды обращения — как у настоящих планет: ближе к звезде
 // = быстрее (Меркурий облетает Солнце быстрее Земли), но сильно замедлено
 // (десятки-сотни секунд), чтобы движение читалось как медленный фон, а не
 // отвлекало.
-const eras: Era[] = [
+const eraDefs: Era[] = [
   {
     id: 'now',
     kicker: 'Сейчас',
     range: '2026 — н.в.',
     color: 'var(--accent)',
     radius: 300,
-    duration: 62,
+    duration: 124,
     milestone:
       'Лайвопс Days After в Reaction Games (10M+ установок) и парт-тайм — единственный программист roguelite-автобатлера Forsaken Kingdom для Steam.',
     planets: [
-      { slug: 'days-after', size: 168, angle: 68 },
-      { slug: 'forsaken-kingdom', size: 122, angle: 252 },
+      { slug: 'days-after', size: 168, angle: 0 },
+      { slug: 'forsaken-kingdom', size: 122, angle: 0 },
     ],
   },
   {
@@ -83,10 +174,10 @@ const eras: Era[] = [
     range: '2026',
     color: 'var(--violet)',
     radius: 480,
-    duration: 92,
+    duration: 184,
     milestone:
       'На lead-позиции стабилизировал мобильный idle-тайкун и вывел его из техдолга, выстроил инженерную культуру и перевел команду на агентскую разработку (Claude Code, Codex) со строгим ревью — фичи стали выходить примерно в 2 раза быстрее.',
-    planets: [{ slug: 'mafia-stories', size: 140, angle: 145 }],
+    planets: [{ slug: 'mafia-stories', size: 140, angle: 0 }],
   },
   {
     id: 'reaction',
@@ -94,10 +185,10 @@ const eras: Era[] = [
     range: '2023 — 2026',
     color: 'var(--teal)',
     radius: 660,
-    duration: 128,
+    duration: 256,
     milestone:
       'Один из разработчиков Dead Impact — кооперативной action-RPG на ECS/DOTS с кодовой базой 800K+ строк. Провел проект от tech launch до глобального релиза с 500K+ установок.',
-    planets: [{ slug: 'dead-impact', size: 156, angle: 312 }],
+    planets: [{ slug: 'dead-impact', size: 156, angle: 0 }],
   },
   {
     id: 'blackgames',
@@ -105,12 +196,22 @@ const eras: Era[] = [
     range: '2020 — 2023',
     color: 'var(--gold)',
     radius: 860,
-    duration: 176,
+    duration: 352,
     milestone:
       'Пришел первым разработчиком в стартап. За три года собрал отдел разработки с нуля, руководил командой до 8 программистов, выстроил процессы и выпустил 200+ прототипов, а также релизы с миллионами установок. Позже вел техническую часть «Last Wish»: релиз в Steam и VK Play, финалист акселератора «Start Game».',
-    planets: [{ slug: 'last-wish', size: 142, angle: 198 }],
+    planets: [{ slug: 'last-wish', size: 142, angle: 0 }],
   },
 ];
+// углы проставляются программно по формуле ERA_ANGLE_OFFSET + eraIndex*ERA_ANGLE_STEP
+// (вторая планета орбиты — та же фаза + PLANET_PAIR_OFFSET), а не захардкожены
+// по одному — так значения гарантированно следуют константам выше
+const eras: Era[] = eraDefs.map((era, eraIndex) => {
+  const base = ERA_ANGLE_OFFSET + eraIndex * ERA_ANGLE_STEP;
+  return {
+    ...era,
+    planets: era.planets.map((p, i) => ({ ...p, angle: base + i * PLANET_PAIR_OFFSET })),
+  };
+});
 const maxOrbitRadius = Math.max(...eras.map((e) => e.radius));
 
 // --- пояс навыков: астероидный пояс между орбитами Reaction и Black Games ---
@@ -126,21 +227,6 @@ const skillCategories = [
 ];
 const coreSkills = new Set(skillCategories.find((c) => c.core)!.skills);
 const flatSkills = skillCategories.flatMap((c) => c.skills);
-
-function hashStr(s: string): number {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
-  return h;
-}
-function mulberry32(seed: number) {
-  let a = seed;
-  return function () {
-    a |= 0; a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 
 const BELT_R_MIN = 720;
 const BELT_R_MAX = 800;
@@ -164,6 +250,11 @@ const beltChips = flatSkills.map((label) => {
 // псевдослучайные позиции по id — раскладка стабильна между сборками. ---
 const SWARM_R_MIN = 940;
 const SWARM_R_MAX = 1300;
+// итерация 10 (п.3): дрейф астероидов был еле заметен (7s, амплитуда 6px) —
+// ускорено в ~2.9 раза (в пределах требуемых 2-4х), джиттер шире, чем у
+// планет (0.45 против 0.15), т.к. рой должен выглядеть более хаотично
+const ASTEROID_DRIFT_BASE = 2.4;
+const ASTEROID_DRIFT_JITTER = 0.45;
 const prototypes = (await getCollection('prototypes')).sort((a, b) => a.data.year - b.data.year || a.data.id.localeCompare(b.data.id));
 const asteroids = prototypes.map((p) => {
   const rand = mulberry32(hashStr(p.data.id));
@@ -185,6 +276,7 @@ const asteroids = prototypes.map((p) => {
     y: pos.y,
     size: Math.round(38 + rand() * 30),
     delay: (rand() * 6).toFixed(2),
+    driftDuration: (ASTEROID_DRIFT_BASE * jitterFactor(`drift-${p.data.id}`, ASTEROID_DRIFT_JITTER)).toFixed(2),
   };
 });
 const fillerDots = Array.from({ length: 70 }, (_, i) => {
@@ -205,8 +297,8 @@ const orbitData = {
   eras: eras.map((e) => ({ id: e.id, kicker: e.kicker, range: e.range, radius: e.radius, milestone: e.milestone })),
 };
 
-const title = 'Орбиты — Александр Кандаков';
-const description = 'Экспериментальная альтернативная версия портфолио: карьера как интерактивная карта звездной системы.';
+const title = 'Интерактивная карта опыта — Александр Кандаков';
+const description = 'Интерактивная карта опыта: карьера Александра Кандакова как карта звездной системы. Орбиты-вехи, планеты-проекты, звезда-визитка.';
 ---
 <!doctype html>
 <html lang="ru">
@@ -215,7 +307,6 @@ const description = 'Экспериментальная альтернативн
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <title>{title}</title>
   <meta name="description" content={description} />
-  <meta name="robots" content="noindex" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 </head>
 <body class="orbit-body">
@@ -250,16 +341,27 @@ const description = 'Экспериментальная альтернативн
         </div>
       ))}
 
-      <!-- звезда-визитка: якорь мировой системы координат (0,0) -->
+      <!-- звезда-визитка: якорь мировой системы координат (0,0). Постоянная
+           подпись — только имя (п.5); роль ушла в hover-блок (п.6, данные —
+           в data-атрибутах, читает orbit.js). Диск-заглушка за фоткой убран
+           (п.4) — .star-halo теперь чистое box-shadow свечение без заливки,
+           см. orbit.css. -->
       <div class="star-anchor" style="left:0px;top:0px">
         <div class="orbit-counter-zoom">
-          <button type="button" class="orbit-star" data-star-open aria-label="Визитка Александра Кандакова — открыть">
+          <button
+            type="button"
+            class="orbit-star reset"
+            data-star-open
+            data-hover-role="Senior Unity Developer"
+            data-hover-years="6+ лет в геймдеве"
+            data-hover-cta="Нажмите, чтобы открыть визитку"
+            aria-label="Визитка Александра Кандакова — открыть"
+          >
             <span class="star-halo" aria-hidden="true"></span>
             <img src="/media/me.webp" alt="" loading="eager" />
           </button>
           <div class="star-label">
             <p class="star-name">Александр Кандаков</p>
-            <p class="star-role mono">Senior Unity Developer</p>
           </div>
         </div>
       </div>
@@ -269,11 +371,15 @@ const description = 'Экспериментальная альтернативн
         <>
           {era.planets.map((planet) => {
             const d = bySlug[planet.slug];
-            const delay = (-(planet.angle / 360) * era.duration).toFixed(2);
+            // итерация 10 (п.3): у каждой планеты своя скорость — джиттер
+            // +-15% от базовой длительности орбиты, детерминированный по slug
+            const planetDuration = era.duration * jitterFactor(planet.slug, PLANET_DURATION_JITTER);
+            const delay = (-(planet.angle / 360) * planetDuration).toFixed(2);
             return (
               <div
                 class="orbit-rotor"
-                style={`--r:${era.radius}px;--dur:${era.duration}s;--delay:${delay}s`}
+                data-era={era.id}
+                style={`--r:${era.radius}px;--dur:${planetDuration.toFixed(2)}s;--delay:${delay}s`}
               >
                 <div class="orbit-anchor">
                   <div class="orbit-counter-rotate">
@@ -284,14 +390,17 @@ const description = 'Экспериментальная альтернативн
                         data-planet-open
                         data-era={era.id}
                         data-tpl={`tpl-${planet.slug}`}
+                        data-hover-role={d.role}
+                        data-hover-period={d.period}
+                        data-hover-metric={d.metrics[0]}
                         style={`--size:${planet.size}px;--era-color:${era.color}`}
                         aria-label={`${d.title} — открыть карточку проекта`}
                       >
                         <img src={coverFor(planet.slug)} alt="" loading="lazy" />
                       </button>
+                      <!-- п.5: только название — роль/период/метрика теперь в hover-блоке -->
                       <div class="planet-label">
                         <p class="planet-title">{d.title}</p>
-                        <p class="planet-role mono" style={`--era-color:${era.color}`}>{d.role}</p>
                       </div>
                     </div>
                   </div>
@@ -299,14 +408,20 @@ const description = 'Экспериментальная альтернативн
               </div>
             );
           })}
-          {/* шаблон карточки — клонируется в общую модалку по клику планеты, см. orbit.js */}
+          {/* шаблон карточки — клонируется в общую модалку по клику планеты,
+               см. orbit.js. .pcard-viewer пуст в SSR-разметке (только
+               data-playlist/data-title) — сам Steam-стиль вьювер собирает
+               orbit.js на клиенте через buildViewer()/attachViewer(), тем же
+               приемом, что и модалка прототипов (orbit-prototypes.js) */}
           {era.planets.map((planet) => {
             const d = bySlug[planet.slug];
             const badges = platformBadges(d.platforms, { pc: 'PC', mobile: 'Mobile' });
+            const playlist = buildProjectPlaylist(planet.slug, d.youtube);
+            const DescriptionCmp = contentBySlug[planet.slug];
             return (
               <template id={`tpl-${planet.slug}`}>
                 <div class="pcard">
-                  <img class="pcard-cover" src={coverFor(planet.slug)} alt={d.title} loading="lazy" />
+                  <div class="pcard-viewer" data-playlist={JSON.stringify(playlist)} data-title={d.title} data-cover={coverFor(planet.slug)}></div>
                   <div class="pcard-body">
                     <div class="pcard-head">
                       <h3>{d.title}</h3>
@@ -320,10 +435,14 @@ const description = 'Экспериментальная альтернативн
                         <span class="chip" set:html={b.svg + `<span>${b.label}</span>`} />
                       ))}
                     </div>
+                    <div class="pcard-description">
+                      <DescriptionCmp />
+                    </div>
                     <div class="link-row">
                       {d.links.map((l: { label: string; url: string }) => (
                         <a class="pill-link" href={l.url} target="_blank" rel="noopener" style={`--era-color:${era.color}`}>{l.label} →</a>
                       ))}
+                      <a class="pill-link pill-link--ghost" href={`/ru/projects/${planet.slug}/`} style={`--era-color:${era.color}`}>Страница проекта →</a>
                     </div>
                   </div>
                 </div>
@@ -361,7 +480,7 @@ const description = 'Экспериментальная альтернативн
             <button
               type="button"
               class="asteroid reset"
-              style={`--size:${a.size}px;--delay:${a.delay}s`}
+              style={`--size:${a.size}px;--delay:${a.delay}s;--drift-dur:${a.driftDuration}s`}
               data-id={a.id}
               data-title={a.title}
               data-genre={a.genre}
@@ -386,10 +505,24 @@ const description = 'Экспериментальная альтернативн
   <!-- HUD: заголовок/легенда/зум — фиксированные слои поверх камеры -->
   <div class="hud" aria-hidden="false">
     <div class="hud-panel hud-panel--top">
-      <p class="hud-kicker mono">Эксперимент · интерактивная карта</p>
+      <!-- итерация 10 (задача ZB, п.1): обратная ссылка на основной сайт -
+           карта теперь официальный раздел портфолио. /ru/, т.к. сама
+           карта на русском -->
+      <a href="/ru/" class="hud-backlink mono">
+        <span class="hud-backlink-arrow" aria-hidden="true">&larr;</span>
+        На основной сайт
+      </a>
+      <p class="hud-kicker mono">Интерактивная карта опыта</p>
       <h1 class="hud-title">Орбиты</h1>
       <p class="hud-subtitle">Профессиональный путь как карта звездной системы. Перетаскивайте сцену, приближайте, кликайте по объектам.</p>
       <nav class="hud-legend" aria-label="Навигация по системе">
+        <!-- итерация 10 (п.6c): пункт-обзор — активен по умолчанию, снимает
+             фокус-режим (приглушение остальных орбит) и возвращает камеру
+             ко всей системе целиком -->
+        <button type="button" class="legend-item legend-overview" data-focus-overview>
+          <span class="legend-dot legend-dot--overview" aria-hidden="true"></span>
+          <span class="legend-label">Вся система</span>
+        </button>
         <button type="button" class="legend-item legend-star" data-focus-star>
           <span class="legend-dot legend-dot--star" aria-hidden="true"></span>
           <span class="legend-label">Визитка</span>
@@ -411,12 +544,19 @@ const description = 'Экспериментальная альтернативн
       <button type="button" class="hud-zoom-btn hud-zoom-btn--fit" data-zoom="fit" aria-label="Показать всю систему">⤢</button>
     </div>
 
-    <p class="hud-footer mono">© 2026 Aleksandr Kandakov · эксперимент /orbit/</p>
+    <p class="hud-footer mono">© 2026 Aleksandr Kandakov</p>
 
     <div class="hud-hint" id="orbit-hint">
       <span>Перетащите сцену или нажмите на объект карты</span>
     </div>
   </div>
+
+  <!-- итерация 10 (п.6): один общий hover-блок на всю страницу, а не по
+       одному на планету/звезду — orbit.js наполняет и двигает его на
+       pointerenter (только на устройствах с honest hover, см. гейт в JS).
+       Вне #orbit-scene: позиция считается в экранных координатах, камера
+       его не панорамирует/не зумит. -->
+  <div class="hover-card" id="orbit-hover-card" aria-hidden="true"></div>
 
   <!-- модалка визитки -->
   <dialog id="orbit-star-modal" class="orbit-modal orbit-modal--star">

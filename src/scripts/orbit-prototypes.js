@@ -48,8 +48,20 @@ import { buildViewer, attachViewer } from '../scripts/media-viewer.js';
       else { linkEl.style.display = 'none'; linkEl.removeAttribute('href'); }
     }
 
-    document.querySelectorAll('.orbit-modal[open]').forEach((d) => { if (d !== modal) /** @type {HTMLDialogElement} */ (d).close(); });
-    if (!modal.open) modal.showModal();
+    // итерация 10 (п.6d): варп-прыжок к астероиду + появление окна —
+    // общий движок камеры/модалки, экспортирован orbit.js на window
+    // (порядок скриптов: orbit.js гарантированно загружен раньше)
+    const rect = el.getBoundingClientRect();
+    if (window.__orbitScreenToWorld && window.__orbitWarpFocus && window.__orbitCamera) {
+      const world = window.__orbitScreenToWorld(rect.left + rect.width / 2, rect.top + rect.height / 2);
+      window.__orbitWarpFocus(world.x, world.y, Math.max(window.__orbitCamera.zoom, 1.05));
+    }
+    if (window.__orbitOpenModalWarped) {
+      window.__orbitOpenModalWarped(modal);
+    } else {
+      document.querySelectorAll('.orbit-modal[open]').forEach((d) => { if (d !== modal) /** @type {HTMLDialogElement} */ (d).close(); });
+      if (!modal.open) modal.showModal();
+    }
 
     if (viewerEl) {
       viewerHandle?.destroy();
