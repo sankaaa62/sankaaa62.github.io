@@ -24,11 +24,24 @@ const badges = platformBadges(d.platforms, { pc: t(locale, 'platform.pc'), mobil
         <span class="platform-badge lg" set:html={b.svg + `<span>${b.label}</span>`} />
       ))}
     </div>
-    {d.links.length > 0 && (
-      <p style="display:flex;gap:12px;flex-wrap:wrap;margin:0 0 24px;">
-        {d.links.map((l: any) => <a class="btn ghost" href={l.url}>{l.label}</a>)}
-      </p>
-    )}
+    <p style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:0 0 24px;">
+      {d.links.map((l: any) => <a class="btn ghost" href={l.url}>{l.label}</a>)}
+      <!-- iter10 (задача ZB, п.3): вторичная навигация на интерактивную карту,
+           фокус сразу на этом проекте (deep-link #focus=<slug>, парсится в
+           orbit.js: /^#focus=([a-z0-9-]+)$/) -->
+      <a
+        class="orbit-pin-link mono"
+        href={`/orbit/#focus=${slug}`}
+        title={locale === 'en' ? 'The map is in Russian' : undefined}
+      >
+        <svg class="orbit-pin-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <ellipse cx="12" cy="12" rx="9.5" ry="4.2" fill="none" stroke="currentColor" stroke-width="1.3" />
+          <ellipse cx="12" cy="12" rx="4.2" ry="9.5" fill="none" stroke="currentColor" stroke-width="1.3" transform="rotate(55 12 12)" />
+          <circle cx="12" cy="12" r="1.8" fill="currentColor" />
+        </svg>
+        {t(locale, 'project.showOnMap')}
+      </a>
+    </p>
     <MediaViewer locale={locale} slug={slug} title={d.title} youtube={d.youtube} />
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-bottom:24px;">
       <div class="info-card" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;">
@@ -44,3 +57,19 @@ const badges = platformBadges(d.platforms, { pc: t(locale, 'platform.pc'), mobil
     <Content />
   </article>
 </Base>
+
+<style>
+  /* iter10 (задача ZB, п.3): деликатная пилюля вторичной навигации - тот же
+     язык, что .icon-link (боковая иконка), но с подписью, приглушеннее btn.ghost */
+  .orbit-pin-link {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 16px; border-radius: var(--radius);
+    border: 1px solid var(--border); color: var(--muted);
+    font-size: .82rem; transition: border-color .2s, color .2s, transform .2s;
+  }
+  .orbit-pin-link:hover {
+    color: var(--accent); border-color: var(--accent);
+    transform: translateY(-2px); text-decoration: none;
+  }
+  .orbit-pin-icon { width: 18px; height: 18px; flex: none; }
+</style>

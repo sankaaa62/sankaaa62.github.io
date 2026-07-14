@@ -38,6 +38,11 @@ export const ui = {
     'carousel.prev': 'Previous',
     'carousel.next': 'Next',
     'viewer.video': 'Video',
+    'orbitmap.title': 'Interactive experience map',
+    'orbitmap.copy': 'The whole journey in one scene: orbit milestones, planet projects',
+    'orbitmap.cta': 'Open the map',
+    'orbitmap.note': 'RU',
+    'project.showOnMap': 'Show on the map',
   },
   ru: {
     'nav.about': 'Обо мне',
@@ -75,6 +80,11 @@ export const ui = {
     'carousel.prev': 'Назад',
     'carousel.next': 'Вперед',
     'viewer.video': 'Видео',
+    'orbitmap.title': 'Интерактивная карта опыта',
+    'orbitmap.copy': 'Весь путь одной сценой: орбиты-вехи, планеты-проекты',
+    'orbitmap.cta': 'Открыть карту',
+    'orbitmap.note': 'RU',
+    'project.showOnMap': 'Показать на карте',
   },
 } as const;
 

@@ -1,0 +1,166 @@
+---
+// Итерация 10 (задача ZB, п.2): виджет-миникарта на главной, в стиле
+// встраиваемых карт Google Maps ("embed"-превью) — ведет на /orbit/
+// (полноценную интерактивную карту опыта). Сама сцена здесь ДЕКОРАТИВНАЯ
+// стилизация (кольца+точки на чистом CSS/SVG, без реальных данных вех) —
+// настоящая карта строится в orbit.astro из контент-коллекций.
+//
+// Техника вращения — тот же "ротор"-паттерн, что и в orbit.astro/orbit.css
+// (.orbit-rotor/.orbit-anchor): бокс diameter=2r, центрированный
+// отрицательными margin, крутится через CSS-анимацию rotate(). Здесь радиус
+// задан в процентах (не px), т.к. виджет адаптивный — SVG-кольца (viewBox
+// 400x400, preserveAspectRatio meet) и CSS-роторы используют одну и ту же
+// координатную сетку в долях ширины квадратной "сцены", поэтому визуально
+// планеты остаются ровно на линиях колец при любом размере карточки.
+import { t, type Locale } from '../i18n/ui';
+
+const { locale } = Astro.props as { locale: Locale };
+
+// кольца: радиус в единицах viewBox (0-400, центр 200,200) и он же в
+// процентах ширины квадратной сцены (radius / 400 * 100)
+const rings = [50, 90, 130, 170];
+
+type MiniPlanet = { ringPx: number; color: string; dur: number; delay: number; size: number };
+const planets: MiniPlanet[] = [
+  { ringPx: 50, color: 'var(--accent)', dur: 22, delay: 0, size: 9 },
+  { ringPx: 90, color: 'var(--violet)', dur: 34, delay: -10, size: 7 },
+  { ringPx: 130, color: 'var(--teal)', dur: 46, delay: -5, size: 8 },
+  { ringPx: 130, color: 'var(--accent-2)', dur: 46, delay: -28, size: 6 },
+  { ringPx: 170, color: 'var(--accent)', dur: 58, delay: -20, size: 7 },
+];
+const pct = (px: number) => `${(px / 400) * 100}%`;
+---
+<section id="orbit-map" class="section container">
+  <a class="reveal lift orbitmap-card" href="/orbit/">
+    <div class="orbitmap-scene" aria-hidden="true">
+      <div class="orbitmap-grain"></div>
+      <div class="orbitmap-stage">
+        <svg class="orbitmap-rings" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid meet">
+          {rings.map((r) => <circle class="ring" cx="200" cy="200" r={r} />)}
+        </svg>
+        <span class="orbitmap-star"></span>
+        {planets.map((p) => (
+          <div class="orbitmap-rotor" style={`--r:${pct(p.ringPx)};--dur:${p.dur}s;--delay:${p.delay}s`}>
+            <span class="orbitmap-anchor">
+              <span class="orbitmap-planet" style={`--color:${p.color};--size:${p.size}px`}></span>
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+    <div class="orbitmap-overlay">
+      <div class="orbitmap-text">
+        <p class="orbitmap-title">{t(locale, 'orbitmap.title')}</p>
+        <p class="orbitmap-copy mono">{t(locale, 'orbitmap.copy')}</p>
+      </div>
+      <span class="orbitmap-cta-row">
+        {locale === 'en' && (
+          <span class="orbitmap-note mono" title="The map is in Russian">RU</span>
+        )}
+        <span class="orbitmap-cta">{t(locale, 'orbitmap.cta')} →</span>
+      </span>
+    </div>
+  </a>
+</section>
+
+<style>
+  #orbit-map { padding-block: 0 24px; }
+  .orbitmap-card {
+    display: block;
+    position: relative;
+    max-width: 760px;
+    margin: 0 auto;
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    text-decoration: none;
+  }
+  .orbitmap-scene {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 20 / 9;
+    overflow: hidden;
+    background:
+      radial-gradient(600px 360px at 50% 40%, rgba(255,92,26,.10), transparent 70%),
+      var(--bg);
+  }
+  /* звездное зерно — набор мелких радиальных точек, тайлится, дешевле canvas */
+  .orbitmap-grain {
+    position: absolute; inset: 0; pointer-events: none; opacity: .55;
+    background-image:
+      radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,.55), transparent 60%),
+      radial-gradient(1px 1px at 70% 65%, rgba(255,255,255,.4), transparent 60%),
+      radial-gradient(1px 1px at 40% 82%, rgba(255,255,255,.3), transparent 60%),
+      radial-gradient(1px 1px at 85% 18%, rgba(255,255,255,.45), transparent 60%),
+      radial-gradient(1px 1px at 55% 50%, rgba(255,255,255,.28), transparent 60%),
+      radial-gradient(1px 1px at 12% 60%, rgba(255,255,255,.35), transparent 60%);
+    background-repeat: repeat;
+    background-size: 140px 140px, 160px 160px, 120px 120px, 180px 180px, 100px 100px, 150px 150px;
+  }
+  /* квадратная сцена, вписанная по высоте (как SVG preserveAspectRatio="meet")
+     и центрированная по горизонтали — кольца и роторы делят одну сетку */
+  .orbitmap-stage {
+    position: absolute; inset: 0; margin: auto;
+    height: 100%; aspect-ratio: 1 / 1;
+  }
+  .orbitmap-rings { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .ring { fill: none; stroke: var(--border); stroke-width: 1; opacity: .8; transition: stroke .3s, opacity .3s; }
+  .orbitmap-card:hover .ring { stroke: var(--accent); opacity: .55; }
+
+  .orbitmap-star {
+    position: absolute; left: 50%; top: 50%; width: 12px; height: 12px;
+    border-radius: 50%; background: var(--accent);
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 18px 6px rgba(255,92,26,.55);
+  }
+
+  /* ротор: бокс диаметром 2r (в % ширины сцены), крутится целиком; планета
+     сидит на "северной" точке бокса — тот же прием, что .orbit-rotor/
+     .orbit-anchor в orbit.css */
+  .orbitmap-rotor {
+    position: absolute; left: 50%; top: 50%;
+    width: calc(var(--r) * 2); height: calc(var(--r) * 2);
+    margin-left: calc(var(--r) * -1); margin-top: calc(var(--r) * -1);
+    animation: orbitmap-spin var(--dur, 40s) linear infinite;
+    animation-delay: var(--delay, 0s);
+    transition: animation-duration .3s;
+  }
+  .orbitmap-card:hover .orbitmap-rotor { animation-duration: calc(var(--dur, 40s) * .55); }
+  @keyframes orbitmap-spin { to { transform: rotate(360deg); } }
+  .orbitmap-anchor { position: absolute; left: 50%; top: 0; transform: translate(-50%, -50%); }
+  .orbitmap-planet {
+    display: block; width: var(--size, 8px); height: var(--size, 8px);
+    border-radius: 50%; background: var(--color, var(--accent));
+    box-shadow: 0 0 10px 2px color-mix(in srgb, var(--color, var(--accent)) 70%, transparent);
+  }
+
+  /* оверлей: панель снизу поверх сцены, как подпись в embed-виджетах карт */
+  .orbitmap-overlay {
+    position: absolute; inset: 0; z-index: 1;
+    display: flex; align-items: flex-end; justify-content: space-between;
+    gap: 16px; flex-wrap: wrap;
+    padding: 18px 20px;
+    background: linear-gradient(0deg, rgba(14,15,19,.92) 0%, rgba(14,15,19,.55) 65%, transparent 100%);
+  }
+  .orbitmap-title { margin: 0; font-weight: 800; font-size: 1.15rem; }
+  .orbitmap-copy { margin: 4px 0 0; color: var(--muted); font-size: .82rem; max-width: 44ch; }
+  .orbitmap-cta-row { display: inline-flex; align-items: center; gap: 8px; flex: none; }
+  .orbitmap-cta {
+    display: inline-block; padding: 10px 18px; border-radius: var(--radius);
+    border: 1px solid var(--accent); color: var(--accent); font-weight: 700;
+    font-size: .88rem; white-space: nowrap; transition: background .2s, color .2s;
+  }
+  .orbitmap-card:hover .orbitmap-cta { background: var(--accent); color: #fff; }
+  .orbitmap-note {
+    display: inline-block; padding: 2px 8px; border-radius: 999px;
+    border: 1px solid var(--border); color: var(--muted); font-size: .68rem;
+    letter-spacing: .04em;
+  }
+
+  @media (max-width: 480px) {
+    .orbitmap-overlay { flex-direction: column; align-items: flex-start; }
+    .orbitmap-scene { aspect-ratio: 4 / 3; }
+  }
+</style>

@@ -371,6 +371,15 @@ button.reset {
   -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
   padding: 16px 18px;
 }
+/* итерация 10 (задача ZB, п.1): обратная ссылка на основной сайт - компактная,
+   в языке навигационных иконок HUD (mono, приглушенная, подсветка на hover) */
+.hud-backlink {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin: 0 0 10px; font-size: .72rem; color: var(--muted);
+  text-decoration: none; transition: color .15s, transform .15s;
+}
+.hud-backlink:hover, .hud-backlink:focus-visible { color: var(--accent-2); transform: translateX(-2px); outline: none; }
+.hud-backlink-arrow { font-size: .9rem; line-height: 1; }
 .hud-kicker { font-size: .68rem; letter-spacing: .14em; text-transform: uppercase; color: var(--accent-2); margin: 0 0 6px; }
 .hud-title {
   font-size: 1.7rem; font-weight: 800; margin: 0 0 8px; letter-spacing: .01em;

@@ -1,10 +1,13 @@
 ---
-// ОРБИТЫ v2 — экспериментальная альтернативная страница портфолио.
-// Полностью изолирована от основного сайта: свой layout (не Base.astro), свой
-// css (styles/orbit.css, не импортирует global.css), свои скрипты
-// (scripts/orbit*.js). Ссылок на основной сайт и обратно нет (внешние ссылки
-// на сторы/соцсети — можно). См. docs/superpowers/specs/2026-07-02-portfolio-
-// site-design.md, раздел «Эксперимент «Орбиты»».
+// Интерактивная карта опыта (/orbit/) — официальный раздел портфолио,
+// встроенный на главную как виджет-миникарта (см. OrbitMapCard.astro) и со
+// страниц проектов (кнопка "Показать на карте"). Технически изолирована от
+// основного сайта: свой layout (не Base.astro), свой css (styles/orbit.css,
+// не импортирует global.css), свои скрипты (scripts/orbit*.js) — единственная
+// связь с основным сайтом на уровне разметки - обратная ссылка в HUD и
+// deep-link #focus=<slug> с карточек проектов (внешние ссылки на сторы/
+// соцсети — тоже можно). См. docs/superpowers/specs/2026-07-02-portfolio-
+// site-design.md, раздел «Итерация 10».
 //
 // Концепция v2 (по заданию владельца): не скролл-рассказ, а ИНТЕРАКТИВНАЯ
 // КАРТА звездной системы. Камера (pan/zoom + клик-фокус) вместо прокрутки.
@@ -284,8 +287,8 @@ const orbitData = {
   eras: eras.map((e) => ({ id: e.id, kicker: e.kicker, range: e.range, radius: e.radius, milestone: e.milestone })),
 };
 
-const title = 'Орбиты — Александр Кандаков';
-const description = 'Экспериментальная альтернативная версия портфолио: карьера как интерактивная карта звездной системы.';
+const title = 'Интерактивная карта опыта — Александр Кандаков';
+const description = 'Интерактивная карта опыта: карьера Александра Кандакова как карта звездной системы. Орбиты-вехи, планеты-проекты, звезда-визитка.';
 ---
 <!doctype html>
 <html lang="ru">
@@ -294,7 +297,6 @@ const description = 'Экспериментальная альтернативн
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <title>{title}</title>
   <meta name="description" content={description} />
-  <meta name="robots" content="noindex" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 </head>
 <body class="orbit-body">
@@ -493,7 +495,14 @@ const description = 'Экспериментальная альтернативн
   <!-- HUD: заголовок/легенда/зум — фиксированные слои поверх камеры -->
   <div class="hud" aria-hidden="false">
     <div class="hud-panel hud-panel--top">
-      <p class="hud-kicker mono">Эксперимент · интерактивная карта</p>
+      <!-- итерация 10 (задача ZB, п.1): обратная ссылка на основной сайт -
+           карта теперь официальный раздел портфолио. /ru/, т.к. сама
+           карта на русском -->
+      <a href="/ru/" class="hud-backlink mono">
+        <span class="hud-backlink-arrow" aria-hidden="true">&larr;</span>
+        На основной сайт
+      </a>
+      <p class="hud-kicker mono">Интерактивная карта опыта</p>
       <h1 class="hud-title">Орбиты</h1>
       <p class="hud-subtitle">Профессиональный путь как карта звездной системы. Перетаскивайте сцену, приближайте, кликайте по объектам.</p>
       <nav class="hud-legend" aria-label="Навигация по системе">
@@ -525,7 +534,7 @@ const description = 'Экспериментальная альтернативн
       <button type="button" class="hud-zoom-btn hud-zoom-btn--fit" data-zoom="fit" aria-label="Показать всю систему">⤢</button>
     </div>
 
-    <p class="hud-footer mono">© 2026 Aleksandr Kandakov · эксперимент /orbit/</p>
+    <p class="hud-footer mono">© 2026 Aleksandr Kandakov</p>
 
     <div class="hud-hint" id="orbit-hint">
       <span>Перетащите сцену или нажмите на объект карты</span>
