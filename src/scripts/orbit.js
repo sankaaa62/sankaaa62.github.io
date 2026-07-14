@@ -230,9 +230,30 @@ import { buildViewer, attachViewer } from '../scripts/media-viewer.js';
   }
 
   // --- модалки ---------------------------------------------------------------
+  // Гонка (найдена ревью): requestCloseModal откладывает dialog.close() на
+  // 150мс (ждет CSS fade-out), но раньше не хранила id таймера — если ТОТ ЖЕ
+  // dialog программно открывался заново внутри этого окна (openModalWarped
+  // отменяет через requestCloseModal только ДРУГИЕ открытые диалоги, "d !==
+  // dialog"), отложенный close() все равно срабатывал через ~150мс и убивал
+  // только что открытую карточку. С мышью недостижимо (пока dialog открыт,
+  // backdrop перехватывает клики по сцене), но незащищено против любого
+  // будущего программного перехода между карточками того же диалога.
+  // Фикс — оба слоя защиты: (1) id таймера хранится в pendingCloseTimers и
+  // отменяется при любом открытии того же dialog; (2) сам колбэк таймера
+  // перепроверяет, что .is-closing все еще висит, и не закрывает, если нет.
+  const pendingCloseTimers = new WeakMap();
+  function cancelPendingClose(dialog) {
+    const timerId = pendingCloseTimers.get(dialog);
+    if (timerId !== undefined) {
+      clearTimeout(timerId);
+      pendingCloseTimers.delete(dialog);
+    }
+    dialog.classList.remove('is-closing');
+  }
   function openModal(dialog) {
     if (!dialog) return;
     document.querySelectorAll('.orbit-modal[open]').forEach((d) => { if (d !== dialog) requestCloseModal(d); });
+    cancelPendingClose(dialog);
     if (!dialog.open) dialog.showModal();
   }
   // итерация 10 (п.6d): вариант открытия с "варп"-появлением (короткая
@@ -242,6 +263,7 @@ import { buildViewer, attachViewer } from '../scripts/media-viewer.js';
   function openModalWarped(dialog) {
     if (!dialog) return;
     document.querySelectorAll('.orbit-modal[open]').forEach((d) => { if (d !== dialog) requestCloseModal(d); });
+    cancelPendingClose(dialog);
     dialog.classList.add('is-warping');
     if (!dialog.open) dialog.showModal();
     setTimeout(() => dialog.classList.remove('is-warping'), 360);
@@ -253,11 +275,17 @@ import { buildViewer, attachViewer } from '../scripts/media-viewer.js';
   function requestCloseModal(dialog) {
     if (!dialog || !dialog.open || dialog.classList.contains('is-closing')) return;
     dialog.classList.add('is-closing');
-    setTimeout(() => {
+    const timerId = setTimeout(() => {
+      pendingCloseTimers.delete(dialog);
+      // защита №2: если за эти 150мс dialog успели переоткрыть (см.
+      // cancelPendingClose выше), класс уже снят — не закрываем то, что
+      // пользователь/код только что снова открыл
+      if (!dialog.classList.contains('is-closing')) return;
       dialog.classList.remove('is-closing');
       dialog.classList.remove('is-warping');
       dialog.close();
     }, 150);
+    pendingCloseTimers.set(dialog, timerId);
   }
   document.querySelectorAll('.orbit-modal').forEach((dialog) => {
     dialog.querySelector('[data-modal-close]')?.addEventListener('click', () => requestCloseModal(/** @type {HTMLDialogElement} */ (dialog)));
