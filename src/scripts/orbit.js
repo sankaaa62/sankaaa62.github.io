@@ -590,24 +590,45 @@ import { buildViewer, attachViewer } from '../scripts/media-viewer.js';
     btn.classList.add('is-deeplink-pulse');
     setTimeout(() => btn.classList.remove('is-deeplink-pulse'), 3400);
   }
-  function checkDeepLinkFocus() {
+  // Гонка (найдена ревью): раньше deep-link фокус планировался через
+  // setTimeout(550) "чтобы дать начальному fitToScreen отыграть", а
+  // отдельный 'load'-обработчик (подстраховка на случай, если самый первый
+  // замер viewport пришелся на неготовый layout — см. ниже) БЕЗУСЛОВНО звал
+  // fitToScreen(false) заново. 'load' ждет ВСЕ ресурсы страницы (обложки
+  // проектов, 29 иконок прототипов) и на медленной сети/диске мог сработать
+  // ПОЗЖЕ 550мс — тогда его fitToScreen(false) перезаписывал камеру обратно
+  // в обзор ПОВЕРХ уже выполненного deep-link фокуса. Легенда при этом
+  // подсвечивалась верно (setActiveEra не зависит от таймера), а камера —
+  // нет: чистая гонка порядка двух независимых таймеров.
+  //
+  // Фикс без таймеров: slug из хэша читается один раз в переменную
+  // (detectDeepLinkSlug), и ОБА места, что могут двигать камеру при
+  // старте — синхронный запуск ниже и 'load' — используют ОДНУ и ту же
+  // ветку "если есть deep-link, фокусируемся на планете, а не на fit".
+  // focusPlanetBySlug() идемпотентна (просто наводит камеру на ту же
+  // планету свежими размерами viewport), так что не важно, что из двух
+  // мест выполнится позже — результат всегда "камера на планете", а не
+  // "обзор всей системы". Для обычного захода (без hash) поведение не
+  // меняется: и синхронный старт, и 'load' по-прежнему используют
+  // fitToScreen(false), как раньше.
+  function detectDeepLinkSlug() {
     const m = /^#focus=([a-z0-9-]+)$/i.exec(location.hash);
-    if (!m) return;
-    // с задержкой — после того, как отыграет начальный fitToScreen, иначе
-    // два движения камеры подряд выглядят рвано
-    setTimeout(() => focusPlanetBySlug(m[1]), 550);
+    return m ? m[1] : null;
   }
+  const deepLinkSlug = detectDeepLinkSlug();
 
   // --- старт: вся система целиком в кадре, "Вся система" активна по умолчанию -
   refreshViewportRect();
   fitToScreen(false);
   setActiveEra(OVERVIEW_ID);
-  checkDeepLinkFocus();
-  // повторный fit после полной загрузки (шрифты/CSS/картинки) — подстраховка
-  // на случай, если самый первый замер viewport пришелся на еще не готовый
-  // layout (наблюдалось в dev-режиме)
+  if (deepLinkSlug) focusPlanetBySlug(deepLinkSlug);
+  // повторный refit/refocus после полной загрузки (шрифты/CSS/картинки) —
+  // подстраховка на случай, если самый первый замер viewport пришелся на
+  // еще не готовый layout (наблюдалось в dev-режиме); порядок относительно
+  // deep-link фокуса выше НЕ важен — см. комментарий над detectDeepLinkSlug
   window.addEventListener('load', () => {
     refreshViewportRect();
-    fitToScreen(false);
+    if (deepLinkSlug) focusPlanetBySlug(deepLinkSlug);
+    else fitToScreen(false);
   }, { once: true });
 })();
