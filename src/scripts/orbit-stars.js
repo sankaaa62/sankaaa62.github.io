@@ -89,6 +89,22 @@ if (canvas) {
   window.__spawnOrbitMeteor = spawnMeteor;
   window.addEventListener('orbit-meteor', spawnMeteor);
 
+  // итерация 10 (п.6d): "варп-прыжок" — orbit.js зовет это при открытии
+  // окна проекта/прототипа синхронно с рывком камеры. Пока идет варп,
+  // звезды рисуются не точками, а штрихами, вытянутыми от центра экрана
+  // наружу (эффект гиперпрыжка) — интенсивность warpT растет быстро (первые
+  // ~30% длительности) и плавно спадает к концу.
+  let warpStart = 0;
+  let warpDuration = 0;
+  window.__orbitWarpPulse = (durationMs) => { warpStart = performance.now(); warpDuration = durationMs || 380; };
+  const warpIntensity = (now) => {
+    if (warpDuration <= 0) return 0;
+    const t = (now - warpStart) / warpDuration;
+    if (t >= 1) { warpDuration = 0; return 0; }
+    if (t < 0) return 0;
+    return t < 0.3 ? t / 0.3 : 1 - (t - 0.3) / 0.7;
+  };
+
   const drawMeteors = (dt) => {
     for (let i = meteors.length - 1; i >= 0; i--) {
       const m = meteors[i];
@@ -135,6 +151,7 @@ if (canvas) {
     const parY = cam ? cam.y * PARALLAX_FACTOR : 0;
     const centerX = w / 2, centerY = h / 2;
     const maxDist = Math.hypot(centerX, centerY);
+    const warpT = warpIntensity(now);
 
     ctx.clearRect(0, 0, w, h);
 
@@ -169,20 +186,46 @@ if (canvas) {
       s.centerMul = centerMul;
 
       const twinkle = 0.55 + 0.45 * Math.sin(now * s.twinkleSpeed + s.twinklePhase);
-      ctx.fillStyle = `rgba(232,230,225,${(s.baseAlpha * twinkle * centerMul).toFixed(3)})`;
-      ctx.beginPath();
-      ctx.arc(sx, sy, s.r, 0, Math.PI * 2);
-      ctx.fill();
+      const alpha = s.baseAlpha * twinkle * centerMul;
+
+      if (warpT > 0.02) {
+        // штрих от звезды НАРУЖУ (от центра через звезду) — чем дальше
+        // звезда от центра и чем "ближе" она (больше depth), тем длиннее
+        // штрих, имитируя разную скорость прохождения слоев на варпе
+        const dx = sx - centerX, dy = sy - centerY;
+        const dist = Math.hypot(dx, dy) || 1;
+        const ux = dx / dist, uy = dy / dist;
+        const streak = warpT * (24 + dist * 0.55) * (0.5 + s.depth * 2.2);
+        const tailX = sx - ux * streak;
+        const tailY = sy - uy * streak;
+        const grad = ctx.createLinearGradient(tailX, tailY, sx, sy);
+        grad.addColorStop(0, 'rgba(232,230,225,0)');
+        grad.addColorStop(1, `rgba(232,230,225,${Math.min(1, alpha * (1 + warpT)).toFixed(3)})`);
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = Math.max(0.8, s.r * (0.7 + warpT * 0.8));
+        ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(tailX, tailY); ctx.lineTo(sx, sy); ctx.stroke();
+      } else {
+        ctx.fillStyle = `rgba(232,230,225,${alpha.toFixed(3)})`;
+        ctx.beginPath();
+        ctx.arc(sx, sy, s.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
 
-    for (let i = 0; i < stars.length; i++) {
-      for (let j = i + 1; j < stars.length; j++) {
-        const a = stars[i], b = stars[j];
-        const dd2 = (a.sx - b.sx) ** 2 + (a.sy - b.sy) ** 2;
-        if (dd2 < 7200) {
-          const lineMul = (a.centerMul + b.centerMul) / 2;
-          ctx.strokeStyle = `rgba(154,151,163,${((1 - dd2 / 7200) * 0.18 * lineMul).toFixed(3)})`;
-          ctx.beginPath(); ctx.moveTo(a.sx, a.sy); ctx.lineTo(b.sx, b.sy); ctx.stroke();
+    // паутина связей между близкими звездами — во время варпа отключена
+    // (штрихи уже создают направленное движение, точечные связи только
+    // замусоривали бы картинку "гиперпрыжка")
+    if (warpT < 0.15) {
+      for (let i = 0; i < stars.length; i++) {
+        for (let j = i + 1; j < stars.length; j++) {
+          const a = stars[i], b = stars[j];
+          const dd2 = (a.sx - b.sx) ** 2 + (a.sy - b.sy) ** 2;
+          if (dd2 < 7200) {
+            const lineMul = (a.centerMul + b.centerMul) / 2;
+            ctx.strokeStyle = `rgba(154,151,163,${((1 - dd2 / 7200) * 0.18 * lineMul).toFixed(3)})`;
+            ctx.beginPath(); ctx.moveTo(a.sx, a.sy); ctx.lineTo(b.sx, b.sy); ctx.stroke();
+          }
         }
       }
     }

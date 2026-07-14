@@ -5,6 +5,12 @@
 // и одному applyCamera(), который проставляет transform на #orbit-scene и
 // custom property --zoom (ее читают все .orbit-counter-zoom потомки, чтобы
 // сохранять постоянный экранный размер маркеров при любом уровне зума).
+//
+// itер10: тот же движок вьювера, что у роя прототипов (orbit-prototypes.js) —
+// нужен здесь напрямую, т.к. окно карточки проекта (п.6e) тоже получило
+// Steam-стиль вьювер (buildViewer/attachViewer) вместо статичной обложки.
+
+import { buildViewer, attachViewer } from '../scripts/media-viewer.js';
 
 (() => {
   const viewport = /** @type {HTMLElement | null} */ (document.getElementById('orbit-viewport'));
@@ -93,6 +99,32 @@
   }
   function focusWorldCenter(wx, wy, zoom, duration) {
     animateCamera(-wx * zoom, -wy * zoom, zoom, duration);
+  }
+
+  // итерация 10 (п.6d): "варп-прыжок" — резкий рывок камеры к цели (не
+  // плавный ease-in-out, как обычный фокус, а агрессивный ease-in — быстрый
+  // разгон в конце) + одновременный визуальный эффект вытянутых звезд на
+  // фоне (orbit-stars.js слушает __orbitWarpPulse). Используется при
+  // открытии окон проектов/прототипов — обычный клик-фокус (focusEra/
+  // focusStar/legend) варпом не считается, там уместнее плавность.
+  const WARP_DURATION = 380;
+  function warpToWorldPoint(wx, wy, zoom) {
+    stopCameraAnim();
+    window.__orbitWarpPulse?.(WARP_DURATION);
+    const from = { x: camera.x, y: camera.y, zoom: camera.zoom };
+    const to = { x: -wx * zoom, y: -wy * zoom, zoom: clamp(zoom, MIN_ZOOM, MAX_ZOOM) };
+    const start = performance.now();
+    const easeIn = (t) => t * t * t; // резкий разгон - ощущение рывка, не плавности
+    const step = (now) => {
+      const t = Math.min(1, (now - start) / WARP_DURATION);
+      const e = easeIn(t);
+      camera.x = from.x + (to.x - from.x) * e;
+      camera.y = from.y + (to.y - from.y) * e;
+      camera.zoom = from.zoom + (to.zoom - from.zoom) * e;
+      applyCamera();
+      cameraAnimRaf = t < 1 ? requestAnimationFrame(step) : null;
+    };
+    cameraAnimRaf = requestAnimationFrame(step);
   }
   function zoomAroundScreenCenter(factor, duration) {
     const c = screenToWorld(viewportRect.left + viewportRect.width / 2, viewportRect.top + viewportRect.height / 2);
@@ -200,17 +232,51 @@
   // --- модалки ---------------------------------------------------------------
   function openModal(dialog) {
     if (!dialog) return;
-    document.querySelectorAll('.orbit-modal[open]').forEach((d) => { if (d !== dialog) /** @type {HTMLDialogElement} */ (d).close(); });
+    document.querySelectorAll('.orbit-modal[open]').forEach((d) => { if (d !== dialog) requestCloseModal(d); });
     if (!dialog.open) dialog.showModal();
   }
+  // итерация 10 (п.6d): вариант открытия с "варп"-появлением (короткая
+  // вспышка+масштаб, см. @keyframes modal-warp-in в orbit.css) — для окон
+  // проекта и прототипа. Звезда-визитка открывается обычным openModal()
+  // (без варпа — задание просило варп именно для проектов/прототипов).
+  function openModalWarped(dialog) {
+    if (!dialog) return;
+    document.querySelectorAll('.orbit-modal[open]').forEach((d) => { if (d !== dialog) requestCloseModal(d); });
+    dialog.classList.add('is-warping');
+    if (!dialog.open) dialog.showModal();
+    setTimeout(() => dialog.classList.remove('is-warping'), 360);
+  }
+  // закрытие — быстрое затухание (не обратный варп: при частом открытии
+  // разных карточек полный реверс приедался и слегка укачивал на глаз).
+  // Перехватывает и Escape (событие 'cancel' у <dialog>), чтобы затухание
+  // проигрывалось единообразно для всех путей закрытия.
+  function requestCloseModal(dialog) {
+    if (!dialog || !dialog.open || dialog.classList.contains('is-closing')) return;
+    dialog.classList.add('is-closing');
+    setTimeout(() => {
+      dialog.classList.remove('is-closing');
+      dialog.classList.remove('is-warping');
+      dialog.close();
+    }, 150);
+  }
   document.querySelectorAll('.orbit-modal').forEach((dialog) => {
-    dialog.querySelector('[data-modal-close]')?.addEventListener('click', () => /** @type {HTMLDialogElement} */ (dialog).close());
-    dialog.addEventListener('click', (e) => { if (e.target === dialog) /** @type {HTMLDialogElement} */ (dialog).close(); });
+    dialog.querySelector('[data-modal-close]')?.addEventListener('click', () => requestCloseModal(/** @type {HTMLDialogElement} */ (dialog)));
+    dialog.addEventListener('click', (e) => { if (e.target === dialog) requestCloseModal(/** @type {HTMLDialogElement} */ (dialog)); });
+    dialog.addEventListener('cancel', (e) => { e.preventDefault(); requestCloseModal(/** @type {HTMLDialogElement} */ (dialog)); });
   });
+  // используется orbit-prototypes.js (модалка прототипа варпится так же)
+  window.__orbitOpenModalWarped = openModalWarped;
+  window.__orbitScreenToWorld = screenToWorld;
+  window.__orbitWarpFocus = warpToWorldPoint;
 
   const starModal = /** @type {HTMLDialogElement | null} */ (document.getElementById('orbit-star-modal'));
   const projectModal = /** @type {HTMLDialogElement | null} */ (document.getElementById('orbit-project-modal'));
   const projectSlot = document.querySelector('[data-project-slot]');
+  projectModal?.addEventListener('close', () => {
+    projectViewerHandle?.destroy();
+    projectViewerHandle = null;
+    if (projectSlot) projectSlot.innerHTML = '';
+  });
 
   function openStar() {
     hideHoverCard();
@@ -219,20 +285,47 @@
     dismissHint();
   }
 
+  // итерация 10 (п.6e): вьювер карточки проекта — тот же buildViewer()/
+  // attachViewer(), что и у роя прототипов, наполняется из data-playlist
+  // (JSON, посчитан на SSR в orbit.astro: локальные трейлеры + youtube +
+  // скрины, см. buildProjectPlaylist там же)
+  const VIEWER_LABELS = {
+    prev: 'Назад', next: 'Вперед', close: 'Закрыть',
+    prevShot: 'Предыдущий скриншот', nextShot: 'Следующий скриншот',
+    video: 'Видео', screenshot: 'скриншот',
+  };
+  let projectViewerHandle = /** @type {{ destroy: () => void } | null} */ (null);
+
   function openPlanetCard(btn) {
     hideHoverCard();
     const tplId = btn.dataset.tpl;
     const eraId = btn.dataset.era;
     const tpl = tplId ? /** @type {HTMLTemplateElement | null} */ (document.getElementById(tplId)) : null;
-    if (tpl && projectSlot) projectSlot.replaceChildren(tpl.content.cloneNode(true));
+    projectViewerHandle?.destroy();
+    projectViewerHandle = null;
+    if (tpl && projectSlot) {
+      projectSlot.replaceChildren(tpl.content.cloneNode(true));
+      const viewerHost = /** @type {HTMLElement | null} */ (projectSlot.querySelector('.pcard-viewer'));
+      if (viewerHost) {
+        const cover = viewerHost.dataset.cover;
+        if (cover) viewerHost.style.backgroundImage = `url(${cover})`;
+        let playlist = [];
+        try { playlist = JSON.parse(viewerHost.dataset.playlist || '[]'); } catch { /* noop */ }
+        if (playlist.length) {
+          const root = buildViewer(playlist, { ...VIEWER_LABELS, title: viewerHost.dataset.title || '' });
+          viewerHost.appendChild(root);
+          projectViewerHandle = attachViewer(root, { slideshowMs: 3500, renderFirst: true });
+        }
+      }
+    }
     if (eraId) setActiveEra(eraId);
     // фокус на РЕАЛЬНОЙ текущей позиции планеты на экране (она непрерывно
     // движется по орбите анимацией) — читаем bounding rect в момент клика,
     // а не пытаемся вычислить фазу CSS-анимации вручную
     const rect = btn.getBoundingClientRect();
     const world = screenToWorld(rect.left + rect.width / 2, rect.top + rect.height / 2);
-    focusWorldCenter(world.x, world.y, clamp(Math.max(camera.zoom, 0.85), MIN_ZOOM, MAX_ZOOM), 550);
-    openModal(projectModal);
+    warpToWorldPoint(world.x, world.y, clamp(Math.max(camera.zoom, 0.85), MIN_ZOOM, MAX_ZOOM));
+    openModalWarped(projectModal);
     dismissHint();
   }
 
@@ -453,10 +546,35 @@
   }
   scheduleAmbientMeteor();
 
+  // --- deep-link фокус: #focus=<slug> (подготовка к кнопке "Показать на
+  // карте" со страниц проектов основной версии). Неизвестный/отсутствующий
+  // slug — тихий no-op, без ошибок в консоли. Не открывает карточку сама
+  // (пользователь и так пришел со страницы проекта с полными деталями) —
+  // только фокусирует камеру и подсвечивает планету коротким пульсом. ------
+  function focusPlanetBySlug(slug) {
+    const btn = /** @type {HTMLElement | null} */ (document.querySelector(`.planet[data-tpl="tpl-${slug}"]`));
+    if (!btn) return;
+    const eraId = btn.dataset.era;
+    if (eraId) setActiveEra(eraId);
+    const rect = btn.getBoundingClientRect();
+    const world = screenToWorld(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    focusWorldCenter(world.x, world.y, clamp(Math.max(camera.zoom, 0.9), MIN_ZOOM, MAX_ZOOM), 900);
+    btn.classList.add('is-deeplink-pulse');
+    setTimeout(() => btn.classList.remove('is-deeplink-pulse'), 3400);
+  }
+  function checkDeepLinkFocus() {
+    const m = /^#focus=([a-z0-9-]+)$/i.exec(location.hash);
+    if (!m) return;
+    // с задержкой — после того, как отыграет начальный fitToScreen, иначе
+    // два движения камеры подряд выглядят рвано
+    setTimeout(() => focusPlanetBySlug(m[1]), 550);
+  }
+
   // --- старт: вся система целиком в кадре, "Вся система" активна по умолчанию -
   refreshViewportRect();
   fitToScreen(false);
   setActiveEra(OVERVIEW_ID);
+  checkDeepLinkFocus();
   // повторный fit после полной загрузки (шрифты/CSS/картинки) — подстраховка
   // на случай, если самый первый замер viewport пришелся на еще не готовый
   // layout (наблюдалось в dev-режиме)

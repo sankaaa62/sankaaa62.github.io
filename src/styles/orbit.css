@@ -270,6 +270,14 @@ button.reset {
 .orbit-rotor.is-dimmed .planet { opacity: .32; filter: brightness(.55) saturate(.7); }
 .orbit-rotor.is-dimmed .planet:hover,
 .orbit-rotor.is-dimmed .planet:focus-visible { opacity: .6; }
+/* итерация 10 (п.deep-link): подсветка планеты, на которую сфокусировала
+   камера ссылка #focus=<slug> (пришедшая со страницы проекта основной
+   версии) — несколько пульсов, чтобы взгляд сразу зацепился за объект */
+@keyframes deeplink-pulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(6,7,16,.65), 0 0 30px -4px color-mix(in srgb, var(--era-color, var(--accent)) 65%, transparent); }
+  50% { box-shadow: 0 0 0 4px rgba(6,7,16,.65), 0 0 56px 10px color-mix(in srgb, var(--era-color, var(--accent)) 95%, transparent); }
+}
+.planet.is-deeplink-pulse { animation: deeplink-pulse 1.1s ease-in-out 3; }
 /* итерация 10 (п.5): подпись планеты — только название (роль/период/метрика
    переехали в hover-блок, см. .hover-card ниже); подпись гасится ниже
    порога зума вместе со звездой (см. #orbit-scene.labels-hidden) */
@@ -474,7 +482,23 @@ button.reset {
 }
 .orbit-modal[open] { display: flex; flex-direction: column; }
 .orbit-modal::backdrop { background: rgba(2,2,8,.78); backdrop-filter: blur(3px); }
-.orbit-modal--project, .orbit-modal--proto { width: min(680px, 92vw); max-width: 680px; }
+/* итерация 10 (п.6e): окно проекта стало крупнее — теперь несет полный
+   Steam-стиль вьювер + описание из markdown, требует больше места */
+.orbit-modal--project { width: min(760px, 94vw); max-width: 760px; max-height: 92vh; }
+.orbit-modal--proto { width: min(680px, 92vw); max-width: 680px; }
+/* итерация 10 (п.6d): варп-появление окна — короткий рывок из глубины со
+   вспышкой, вместо мгновенного showModal(). Закрытие — простое быстрое
+   затухание (не полный обратный варп — по ощущениям более отзывчиво и не
+   укачивает при частом открытии/закрытии карточек). Классы вешает/снимает
+   orbit.js (openModalWarped/requestCloseModal). */
+@keyframes modal-warp-in {
+  0% { opacity: 0; transform: scale(.8); filter: brightness(2.4) saturate(1.3); }
+  55% { opacity: 1; transform: scale(1.03); filter: brightness(1.25); }
+  100% { opacity: 1; transform: scale(1); filter: brightness(1); }
+}
+.orbit-modal.is-warping { animation: modal-warp-in .34s cubic-bezier(.2,.7,.25,1) both; }
+@keyframes modal-fade-out { to { opacity: 0; transform: scale(.94); } }
+.orbit-modal.is-closing { animation: modal-fade-out .15s ease-in both; }
 .modal-close {
   position: fixed; top: 16px; right: 16px; z-index: 2;
   width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border);
@@ -503,7 +527,18 @@ button.reset {
 .star-cv-btn:hover { filter: brightness(1.12); transform: translateY(-1px); }
 
 /* карточка проекта */
-.pcard-cover { width: 100%; aspect-ratio: 16/9; object-fit: cover; }
+/* итерация 10 (п.6e): статичная обложка заменена на Steam-стиль вьювер —
+   .pcard-viewer пуст в SSR, orbit.js строит в него buildViewer()-разметку
+   (те же .media-viewer/.mv-* стили, что у роя прототипов). Плейсхолдер-фон
+   на время сборки — обложка проекта (data-cover), чтобы не было пустого
+   черного прямоугольника долю секунды до JS. */
+.pcard-viewer {
+  width: 100%; aspect-ratio: 16/9;
+  background-size: cover; background-position: center;
+  border-bottom: 1px solid var(--border);
+}
+.pcard-viewer .media-viewer { margin-bottom: 0; }
+.pcard-viewer .mv-stage { border: none; border-radius: 0; }
 .pcard-body { padding: 20px 24px 26px; overflow-y: auto; }
 .pcard-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .pcard-head h3 { margin: 0; font-size: 1.3rem; }
@@ -513,6 +548,14 @@ button.reset {
 }
 .pcard-meta { color: var(--muted); font-size: .8rem; margin: 6px 0 0; }
 .pcard-tagline { color: var(--text); font-size: .95rem; margin: 12px 0 14px; }
+/* краткое описание — тело .md-файла проекта (см. render() в orbit.astro),
+   тот же контент, что на странице проекта основной версии, минимальный
+   prose-стиль (orbit.css не наследует global.css) */
+.pcard-description { color: var(--muted); font-size: .88rem; line-height: 1.6; margin-bottom: 16px; }
+.pcard-description p { margin: 0 0 10px; }
+.pcard-description ul { margin: 0 0 10px; padding-left: 20px; }
+.pcard-description li { margin-bottom: 4px; }
+.pcard-description :last-child { margin-bottom: 0; }
 .chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 .chip {
   display: inline-flex; align-items: center; gap: 5px;
@@ -529,6 +572,13 @@ button.reset {
   transition: filter .2s, transform .2s;
 }
 .pill-link:hover { filter: brightness(1.12); transform: translateY(-1px); }
+/* итерация 10 (п.6e): ссылка на страницу проекта основной версии — визуально
+   отделена от кнопок сторов (те залиты цветом эпохи, эта — контурная) */
+.pill-link--ghost {
+  background: none; color: var(--era-color, var(--accent-2));
+  border: 1px solid color-mix(in srgb, var(--era-color, var(--accent)) 55%, transparent);
+}
+.pill-link--ghost:hover { background: color-mix(in srgb, var(--era-color, var(--accent)) 12%, transparent); }
 
 /* прототип */
 .opm-body { padding: 22px 24px 26px; overflow-y: auto; }

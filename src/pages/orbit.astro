@@ -20,8 +20,8 @@
 // - прототипы — из content-коллекции prototypes (prototypes.json)
 // - навыки — из src/components/Skills.astro (плоский список категорий)
 // - визитка (имя/роль/hero.about/контакты) — из src/i18n/ui.ts + SocialIcons.astro
-import { getCollection } from 'astro:content';
-import { existsSync } from 'node:fs';
+import { getCollection, render } from 'astro:content';
+import { existsSync, readdirSync } from 'node:fs';
 import '@fontsource-variable/inter';
 import '@fontsource-variable/jetbrains-mono';
 import '../styles/orbit.css';
@@ -35,6 +35,49 @@ function coverFor(slug: string): string {
   const cover = `public/media/projects/${slug}/cover.webp`;
   if (existsSync(cover)) return `/media/projects/${slug}/cover.webp`;
   return `/media/projects/${slug}/shot-1.webp`;
+}
+
+// --- итерация 10 (п.6e): карточка проекта на карте получает тот же
+// Steam-стиль вьювер, что и страница проекта основной версии
+// (ProjectPage.astro/MediaViewer.astro) — плейлист [локальные трейлеры,
+// youtube, скрины], собранный fs-сканом на этапе SSG. Не импортируем
+// MediaViewer.astro (он тянет i18n main-сайта и рендерит свою SSR-разметку) —
+// здесь только данные, сама разметка вьювера строится на клиенте через
+// buildViewer()/attachViewer() из media-viewer.js (тот же прием, что и у
+// роя прототипов, см. orbit-prototypes.js). Скан трейлеров — по паттерну
+// (не жесткий список ['trailer.webm','trailer-2.webm']), т.к. у
+// forsaken-kingdom скоро появится до 4 роликов (trailer.webm..trailer-4.webm).
+type ViewerPlaylistItem = { kind: 'video' | 'youtube' | 'image'; src: string; id: string; poster: string };
+function buildProjectPlaylist(slug: string, youtube?: string): ViewerPlaylistItem[] {
+  const mediaDir = `public/media/projects/${slug}`;
+  const webPath = (name: string) => `/media/projects/${slug}/${name}`;
+  const hasFile = (name: string) => existsSync(`${mediaDir}/${name}`);
+  const localPoster = hasFile('cover.webp') ? webPath('cover.webp') : hasFile('shot-1.webp') ? webPath('shot-1.webp') : '';
+  const localVideos: ViewerPlaylistItem[] = existsSync(mediaDir)
+    ? readdirSync(mediaDir)
+        .filter((f) => /^trailer(-\d+)?\.webm$/.test(f))
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+        .map((f) => ({ kind: 'video', src: webPath(f), id: '', poster: localPoster }))
+    : [];
+  const youtubeItems: ViewerPlaylistItem[] = youtube
+    ? [{ kind: 'youtube', src: '', id: youtube, poster: `https://i.ytimg.com/vi/${youtube}/mqdefault.jpg` }]
+    : [];
+  const shots: ViewerPlaylistItem[] = existsSync(mediaDir)
+    ? readdirSync(mediaDir)
+        .filter((f) => /^shot-\d+\.webp$/.test(f))
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+        .map((f) => ({ kind: 'image', src: webPath(f), id: '', poster: '' }))
+    : [];
+  return [...localVideos, ...youtubeItems, ...shots];
+}
+
+// краткое описание проекта (тело .md-файла) — рендерится тем же способом,
+// что ProjectPage.astro (Astro 7: import { render } из astro:content, НЕ
+// устаревший entry.render()). Считается один раз на все планеты.
+const contentBySlug: Record<string, Awaited<ReturnType<typeof render>>['Content']> = {};
+for (const p of allProjects) {
+  const { Content } = await render(p);
+  contentBySlug[p.id.split('/')[1]] = Content;
 }
 
 // --- переводит "мировой" угол (0 = север/верх, по часовой) + радиус в
@@ -353,14 +396,20 @@ const description = 'Экспериментальная альтернативн
               </div>
             );
           })}
-          {/* шаблон карточки — клонируется в общую модалку по клику планеты, см. orbit.js */}
+          {/* шаблон карточки — клонируется в общую модалку по клику планеты,
+               см. orbit.js. .pcard-viewer пуст в SSR-разметке (только
+               data-playlist/data-title) — сам Steam-стиль вьювер собирает
+               orbit.js на клиенте через buildViewer()/attachViewer(), тем же
+               приемом, что и модалка прототипов (orbit-prototypes.js) */}
           {era.planets.map((planet) => {
             const d = bySlug[planet.slug];
             const badges = platformBadges(d.platforms, { pc: 'PC', mobile: 'Mobile' });
+            const playlist = buildProjectPlaylist(planet.slug, d.youtube);
+            const DescriptionCmp = contentBySlug[planet.slug];
             return (
               <template id={`tpl-${planet.slug}`}>
                 <div class="pcard">
-                  <img class="pcard-cover" src={coverFor(planet.slug)} alt={d.title} loading="lazy" />
+                  <div class="pcard-viewer" data-playlist={JSON.stringify(playlist)} data-title={d.title} data-cover={coverFor(planet.slug)}></div>
                   <div class="pcard-body">
                     <div class="pcard-head">
                       <h3>{d.title}</h3>
@@ -374,10 +423,14 @@ const description = 'Экспериментальная альтернативн
                         <span class="chip" set:html={b.svg + `<span>${b.label}</span>`} />
                       ))}
                     </div>
+                    <div class="pcard-description">
+                      <DescriptionCmp />
+                    </div>
                     <div class="link-row">
                       {d.links.map((l: { label: string; url: string }) => (
                         <a class="pill-link" href={l.url} target="_blank" rel="noopener" style={`--era-color:${era.color}`}>{l.label} →</a>
                       ))}
+                      <a class="pill-link pill-link--ghost" href={`/ru/projects/${planet.slug}/`} style={`--era-color:${era.color}`}>Страница проекта →</a>
                     </div>
                   </div>
                 </div>
