@@ -35,14 +35,35 @@ import { buildViewer, attachViewer } from '../scripts/media-viewer.js';
   const MARKER_SCALE_WEIGHT = 0.65;
   const MARKER_SCALE_MIN = 0.5;
   const MARKER_SCALE_MAX = 1.15;
-  // итерация 10 (п.5): порог zoom, ниже которого подписи планет/звезды (и
-  // не-сфокусированные подписи орбит) плавно гаснут — на сильном отдалении
-  // они превращаются в нечитаемый шум
-  const LABEL_HIDE_ZOOM = 0.5;
+  // итерация 10 (п.5, исправлено повторным ревью): порог zoom, ниже которого
+  // подписи планет/звезды (и не-сфокусированные подписи орбит) плавно гаснут.
+  // Раньше это было абсолютное число (0.5) — а фактический fit-зум обзора
+  // "Вся система" на типичных экранах ВСЕГДА ниже: на 1280x800 fit=0.352, на
+  // 1920x1080 fit=0.475 — оба меньше 0.5. Из-за этого labels-hidden был
+  // включен уже на дефолтном виде при первой загрузке страницы: пользователь
+  // видел только безымянные кружки (на десктопе это отчасти спасали
+  // hover-блоки, но на тач-устройствах ховера нет вообще). Порог теперь
+  // ОТНОСИТЕЛЬНЫЙ к текущему fit-зуму (labelHideZoom = fitZoom * k,
+  // k=0.8 — в пределах согласованных 0.75-0.85): на дефолтном обзоре
+  // camera.zoom === fitZoom > labelHideZoom всегда, подписи видны сразу;
+  // гаснут только при заметном отдалении ОТ обзора (ниже 80% от него), а не
+  // раньше. Пересчитывается вместе с viewport (fit-зум зависит от размера
+  // экрана) — см. updateLabelHideZoom()/refreshViewportRect ниже.
+  const LABEL_HIDE_ZOOM_FACTOR = 0.8;
+  let labelHideZoom = 0;
 
   const camera = { x: 0, y: 0, zoom: 1 };
   let viewportRect = viewport.getBoundingClientRect();
-  const refreshViewportRect = () => { viewportRect = viewport.getBoundingClientRect(); };
+  function updateLabelHideZoom() {
+    // тот же расчет, что и у fitToScreen()/focusOverview() (fitZoomForRadius
+    // объявлена ниже как function-декларация — доступна здесь по хойстингу,
+    // т.к. вызывается не раньше первого reflow, а не в момент объявления)
+    labelHideZoom = fitZoomForRadius(data.maxOrbitRadius + 140, 0.44) * LABEL_HIDE_ZOOM_FACTOR;
+  }
+  const refreshViewportRect = () => {
+    viewportRect = viewport.getBoundingClientRect();
+    updateLabelHideZoom();
+  };
   window.addEventListener('resize', refreshViewportRect);
 
   function applyCamera() {
@@ -54,7 +75,7 @@ import { buildViewer, attachViewer } from '../scripts/media-viewer.js';
     // сцены: screenScale = markerScale * camera.zoom => markerScale = screenScale/zoom
     const screenScale = clamp(Math.pow(camera.zoom, 1 - MARKER_SCALE_WEIGHT), MARKER_SCALE_MIN, MARKER_SCALE_MAX);
     scene.style.setProperty('--marker-scale', String(screenScale / camera.zoom));
-    scene.classList.toggle('labels-hidden', camera.zoom < LABEL_HIDE_ZOOM);
+    scene.classList.toggle('labels-hidden', camera.zoom < labelHideZoom);
     // читает orbit-stars.js — легкий параллакс фона от смещения камеры
     window.__orbitCamera = camera;
   }
