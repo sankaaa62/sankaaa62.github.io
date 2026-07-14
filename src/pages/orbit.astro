@@ -49,17 +49,27 @@ function coverFor(slug: string): string {
 // buildViewer()/attachViewer() из media-viewer.js (тот же прием, что и у
 // роя прототипов, см. orbit-prototypes.js). Скан трейлеров — по паттерну
 // (не жесткий список ['trailer.webm','trailer-2.webm']), т.к. у
-// forsaken-kingdom скоро появится до 4 роликов (trailer.webm..trailer-4.webm).
+// forsaken-kingdom теперь 4 ролика (trailer.webm..trailer-4.webm).
 type ViewerPlaylistItem = { kind: 'video' | 'youtube' | 'image'; src: string; id: string; poster: string };
 function buildProjectPlaylist(slug: string, youtube?: string): ViewerPlaylistItem[] {
   const mediaDir = `public/media/projects/${slug}`;
   const webPath = (name: string) => `/media/projects/${slug}/${name}`;
   const hasFile = (name: string) => existsSync(`${mediaDir}/${name}`);
   const localPoster = hasFile('cover.webp') ? webPath('cover.webp') : hasFile('shot-1.webp') ? webPath('shot-1.webp') : '';
+  // порядок НЕ localeCompare(numeric), как у скринов ниже: там имена всегда
+  // 'shot-N.webp', а у trailer.webm нет суффикса -N, из-за чего символ '-'
+  // (0x2D) лексикографически меньше '.' (0x2E) и localeCompare ставит
+  // trailer.webm ПОСЛЕ trailer-2..4 — обратный порядок (тот же баг уже был
+  // найден и исправлен в MediaViewer.astro). Извлекаем номер явно
+  // (trailer.webm = 1) и сортируем по нему числом.
+  const trailerOrder = (name: string) => {
+    const match = name.match(/^trailer-(\d+)\.webm$/);
+    return match ? Number(match[1]) : 1;
+  };
   const localVideos: ViewerPlaylistItem[] = existsSync(mediaDir)
     ? readdirSync(mediaDir)
         .filter((f) => /^trailer(-\d+)?\.webm$/.test(f))
-        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+        .sort((a, b) => trailerOrder(a) - trailerOrder(b))
         .map((f) => ({ kind: 'video', src: webPath(f), id: '', poster: localPoster }))
     : [];
   const youtubeItems: ViewerPlaylistItem[] = youtube
