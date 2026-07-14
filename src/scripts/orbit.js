@@ -578,10 +578,14 @@ import { buildViewer, attachViewer } from '../scripts/media-viewer.js';
   // карте" со страниц проектов основной версии). Неизвестный/отсутствующий
   // slug — тихий no-op, без ошибок в консоли. Не открывает карточку сама
   // (пользователь и так пришел со страницы проекта с полными деталями) —
-  // только фокусирует камеру и подсвечивает планету коротким пульсом. ------
+  // только фокусирует камеру и подсвечивает планету коротким пульсом.
+  // Возвращает true/false (нашла ли планету) — вызывающий код (обе точки
+  // старта ниже) должен знать, состоялся ли реальный фокус, чтобы при
+  // мусорном slug (например #focus=garbage) откатиться на обычный
+  // fitToScreen(false), а не молча оставить камеру в чем попало. ------
   function focusPlanetBySlug(slug) {
     const btn = /** @type {HTMLElement | null} */ (document.querySelector(`.planet[data-tpl="tpl-${slug}"]`));
-    if (!btn) return;
+    if (!btn) return false;
     const eraId = btn.dataset.era;
     if (eraId) setActiveEra(eraId);
     const rect = btn.getBoundingClientRect();
@@ -589,6 +593,7 @@ import { buildViewer, attachViewer } from '../scripts/media-viewer.js';
     focusWorldCenter(world.x, world.y, clamp(Math.max(camera.zoom, 0.9), MIN_ZOOM, MAX_ZOOM), 900);
     btn.classList.add('is-deeplink-pulse');
     setTimeout(() => btn.classList.remove('is-deeplink-pulse'), 3400);
+    return true;
   }
   // Гонка (найдена ревью): раньше deep-link фокус планировался через
   // setTimeout(550) "чтобы дать начальному fitToScreen отыграть", а
@@ -611,6 +616,18 @@ import { buildViewer, attachViewer } from '../scripts/media-viewer.js';
   // "обзор всей системы". Для обычного захода (без hash) поведение не
   // меняется: и синхронный старт, и 'load' по-прежнему используют
   // fitToScreen(false), как раньше.
+  //
+  // Пробел (найден повторным ревью): ветвление было по truthy deepLinkSlug
+  // (строка из хэша), а не по факту "планета реально найдена". Для
+  // мусорного slug (#focus=garbage — опечатка в ссылке, устаревший slug
+  // после переименования проекта) focusPlanetBySlug() молча возвращает
+  // false, ничего не меняя в камере — но deepLinkSlug все равно truthy,
+  // так что safety-refit на 'load' пропускался тоже, и камера могла
+  // остаться в некорректном состоянии первого (возможно, неготового)
+  // замера viewport. Теперь focusPlanetBySlug возвращает true/false, и обе
+  // точки делают fallback на fitToScreen(false), если планета не найдена —
+  // мусорный slug гарантированно приводит к обзору всей системы, в обеих
+  // точках одинаково.
   function detectDeepLinkSlug() {
     const m = /^#focus=([a-z0-9-]+)$/i.exec(location.hash);
     return m ? m[1] : null;
@@ -621,14 +638,13 @@ import { buildViewer, attachViewer } from '../scripts/media-viewer.js';
   refreshViewportRect();
   fitToScreen(false);
   setActiveEra(OVERVIEW_ID);
-  if (deepLinkSlug) focusPlanetBySlug(deepLinkSlug);
+  if (!deepLinkSlug || !focusPlanetBySlug(deepLinkSlug)) fitToScreen(false);
   // повторный refit/refocus после полной загрузки (шрифты/CSS/картинки) —
   // подстраховка на случай, если самый первый замер viewport пришелся на
   // еще не готовый layout (наблюдалось в dev-режиме); порядок относительно
   // deep-link фокуса выше НЕ важен — см. комментарий над detectDeepLinkSlug
   window.addEventListener('load', () => {
     refreshViewportRect();
-    if (deepLinkSlug) focusPlanetBySlug(deepLinkSlug);
-    else fitToScreen(false);
+    if (!deepLinkSlug || !focusPlanetBySlug(deepLinkSlug)) fitToScreen(false);
   }, { once: true });
 })();
