@@ -24,9 +24,15 @@ const hoverClipPath = `public/media/projects/${slug}/hover-clip.webm`;
 const hasHoverClip = existsSync(hoverClipPath);
 const hasHoverSlideshow = !hasHoverClip && shots.length > 1;
 ---
-<a class="reveal lift proj-card" href={localePath(locale, `/projects/${slug}/`)}
-   data-shots={hasHoverSlideshow ? JSON.stringify(shots) : undefined}
-   style={`display:grid;grid-template-columns:1fr;gap:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;color:var(--text);text-decoration:none;--i:${index ?? 0}`}>
+<!-- iter11 (задача AA, п.3б): корень раньше был <a>, но теперь внутри
+     появилась вторая ссылка (пин на карту) - вложенный <a> в <a> невалиден.
+     Корень стал <div>, основная навигация на страницу проекта вынесена в
+     card-link - абсолютно растянутый <a> (stretched-link паттерн), пин лежит
+     выше него по z-index и перехватывает клик первым. -->
+<div class="reveal lift proj-card"
+     data-shots={hasHoverSlideshow ? JSON.stringify(shots) : undefined}
+     style={`position:relative;display:grid;grid-template-columns:1fr;gap:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;color:var(--text);--i:${index ?? 0}`}>
+  <a class="card-link" href={localePath(locale, `/projects/${slug}/`)} aria-label={d.title}></a>
   <div class="cover-wrap">
     {hasCoverImage
       ? <img class="cover-static" src={`/media/projects/${slug}/cover.webp`} alt={d.title} loading="lazy" style="width:100%;aspect-ratio:16/9;object-fit:cover;" />
@@ -51,6 +57,16 @@ const hasHoverSlideshow = !hasHoverClip && shots.length > 1;
         <span class="platform-badge" set:html={b.svg + `<span>${b.label}</span>`} />
       ))}
     </div>
+    <!-- iter11 (задача AA, п.3б): пин-бейдж на карту - правый нижний угол
+         обложки (правый верхний уже занят бейджами платформ), деликатный
+         круглый маркер, типичный для карт-паттернов -->
+    <a class="map-pin-badge" href={`/orbit/#focus=${slug}`}
+       aria-label={t(locale, 'project.showOnMap')} title={t(locale, 'project.showOnMap')}>
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M12 21s7-7.58 7-12.5A7 7 0 1 0 5 8.5C5 13.42 12 21 12 21z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
+        <circle cx="12" cy="8.5" r="2.3" fill="none" stroke="currentColor" stroke-width="1.5" />
+      </svg>
+    </a>
   </div>
   <div style="padding:18px 20px;">
     <div class="title-row" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
@@ -61,7 +77,7 @@ const hasHoverSlideshow = !hasHoverClip && shots.length > 1;
     <p style="color:var(--muted);margin:.5em 0;">{d.tagline}</p>
     <div class="mono" style="color:var(--ok);font-size:.8rem;opacity:.9;">{d.metrics.join(' · ')}</div>
   </div>
-</a>
+</div>
 
 <style>
   /* iter6 (Stellar, п.14a): усиленный bump для больших карточек проектов —
@@ -71,15 +87,50 @@ const hasHoverSlideshow = !hasHoverClip && shots.length > 1;
     transform: translateY(-5px) scale(1.03);
   }
 
+  /* iter11 (задача AA, п.3б): stretched-link на всю карточку - под пином
+     (z-index ниже), над ним ничего интерактивного нет, кроме самого пина */
+  .card-link { position: absolute; inset: 0; z-index: 1; }
+  /* бейджи платформ декоративные (не ссылки) - пропускаем клик сквозь них,
+     иначе в их зоне (угол обложки) образуется мертвая зона поверх card-link */
+  .platform-badges-cover { pointer-events: none; }
+
   .cover-wrap { position: relative; overflow: hidden; }
   .cover-hover {
     position: absolute; inset: 0; width: 100%; height: 100%;
     object-fit: cover; opacity: 0; pointer-events: none;
   }
+  /* длительность читается скриптом ниже через getComputedStyle - при смене
+     .5s здесь FADE_MS в script подхватит новое значение сам, без ручной
+     правки константы (см. ревью-фикс iter11 п.1) */
   .cover-hover-img { transition: opacity .5s ease; }
   .cover-hover-img.is-visible { opacity: 1; }
+  /* iter11 п.1: мгновенное снятие opacity у уже перекрытого слоя - без этого
+     дублировался бы фейд-аут поверх фейд-ина нового слоя */
+  .cover-hover-img.notransition { transition: none !important; }
   .cover-hover-video { transition: opacity .4s ease; }
   .cover-hover-video.is-visible { opacity: 1; }
+
+  /* iter11 (задача AA, п.3б): круглый пин-маркер - правый нижний угол обложки,
+     тот же язык, что .platform-badge (полупрозрачная темная подложка +
+     accent-2 обводка), но замкнут в круг - типичный "показать на карте" стиль */
+  .map-pin-badge {
+    position: absolute; right: 10px; bottom: 10px;
+    /* iter11 (задача AA, ревью-фикс): выше .platform-badges-cover (z-index:4
+       в global.css) - пин должен быть кликабелен и виден всегда, в т.ч. когда
+       обложка и бейджи платформ рядом в углу */
+    z-index: 5;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; border-radius: 50%;
+    background: rgba(14, 15, 19, .72);
+    border: 1px solid rgba(255, 176, 26, .35);
+    color: var(--accent-2);
+    transition: transform .2s, border-color .2s, color .2s;
+  }
+  .map-pin-badge svg { width: 16px; height: 16px; }
+  .map-pin-badge:hover {
+    color: var(--accent); border-color: var(--accent);
+    transform: translateY(-2px) scale(1.06);
+  }
 
   /* п.14c: заголовок получает акцент-подчеркивание при ховере карточки */
   .proj-title { position: relative; display: inline-block; }
@@ -107,7 +158,7 @@ const hasHoverSlideshow = !hasHoverClip && shots.length > 1;
   // либо, если у проекта есть hover-clip.webm (last-wish), короткое видео вместо
   // слайд-шоу. Полностью выключено на тач-устройствах (нет реального hover).
   if (matchMedia('(hover: hover) and (pointer: fine)').matches) {
-    document.querySelectorAll<HTMLAnchorElement>('.proj-card').forEach((card) => {
+    document.querySelectorAll<HTMLDivElement>('.proj-card').forEach((card) => {
       const cover = card.querySelector<HTMLElement>('.cover-wrap');
       if (!cover) return;
       const video = cover.querySelector<HTMLVideoElement>('.cover-hover-video');
@@ -129,6 +180,13 @@ const hasHoverSlideshow = !hasHoverClip && shots.length > 1;
       // смены - никакого хаотичного пролистывания на первом ховере, пока
       // кадры догружаются.
       const INTERVAL_MS = 1100;
+      // iter11 п.1 (ревью-фикс): длительность тайм-аута фолбэка на
+      // transitionend читается из реального CSS-transition opacity у
+      // .cover-hover-img (см. style ниже), а не дублируется константой -
+      // если поменяют длительность в CSS, скрипт не рассинхронизируется.
+      // 500 - запасное значение на случай, если transitionDuration не распарсился.
+      const cssFadeSec = parseFloat(getComputedStyle(layers[0]).transitionDuration);
+      const FADE_MS = Number.isFinite(cssFadeSec) && cssFadeSec > 0 ? cssFadeSec * 1000 : 500;
       let index = 0;
       let front = 0;
       let hovering = false;
@@ -136,9 +194,36 @@ const hasHoverSlideshow = !hasHoverClip && shots.length > 1;
       let timer: ReturnType<typeof setTimeout> | null = null;
       let preloaded = false;
 
+      // iter11 п.1: фикс "флэша обложки" - раньше уходящий и приходящий слой
+      // фейдились ОДНОВРЕМЕННО (opacity 1->0 и 0->1), в середине перехода оба
+      // ~50% прозрачны и сквозь них проступает статичная обложка ПОД ними.
+      // Теперь приходящий слой заходит ПОВЕРХ (z-index выше) еще полностью
+      // непрозрачного уходящего - тот остается opacity:1 весь переход, и
+      // гасится МГНОВЕННО (без transition) только когда уже полностью
+      // перекрыт сверху - обложка ни на миг не остается непокрытой.
+      let hideTimer: ReturnType<typeof setTimeout> | null = null;
+      let pendingHide: { el: HTMLImageElement; onEnd: (e: TransitionEvent) => void } | null = null;
+
       const scheduleNext = () => {
         if (timer !== null) clearTimeout(timer);
         timer = setTimeout(advance, INTERVAL_MS);
+      };
+
+      const clearPendingHide = () => {
+        if (hideTimer !== null) { clearTimeout(hideTimer); hideTimer = null; }
+        if (pendingHide) { pendingHide.el.removeEventListener('transitionend', pendingHide.onEnd); pendingHide = null; }
+      };
+
+      // гасит слой без анимации - вызывается, когда он уже полностью перекрыт
+      // сверху новым непрозрачным слоем, поэтому скачок незаметен; двойной
+      // forced reflow гарантирует, что notransition реально подействует на
+      // снятие opacity, а не будет случайно проанимировано браузером
+      const hideInstantly = (el: HTMLImageElement) => {
+        el.classList.add('notransition');
+        void el.offsetWidth;
+        el.classList.remove('is-visible');
+        void el.offsetWidth;
+        el.classList.remove('notransition');
       };
 
       function advance() {
@@ -146,20 +231,32 @@ const hasHoverSlideshow = !hasHoverClip && shots.length > 1;
         const mySession = session;
         const nextIndex = (index + 1) % shots.length;
         const back = front === 0 ? 1 : 0;
-        const img = layers[back];
-        img.src = shots[nextIndex];
+        const incoming = layers[back];
+        const outgoing = layers[front];
+        incoming.src = shots[nextIndex];
         const swap = () => {
           if (!hovering || mySession !== session) return;
           index = nextIndex;
-          img.classList.add('is-visible');
-          layers[front].classList.remove('is-visible');
+          clearPendingHide();
+          // чередуем z-index при каждом свапе - приходящий всегда сверху
+          incoming.style.zIndex = '2';
+          outgoing.style.zIndex = '1';
+          incoming.classList.add('is-visible');
+          const onEnd = (e: TransitionEvent) => {
+            if (e.target !== incoming || e.propertyName !== 'opacity') return;
+            clearPendingHide();
+            hideInstantly(outgoing);
+          };
+          incoming.addEventListener('transitionend', onEnd);
+          pendingHide = { el: incoming, onEnd };
+          hideTimer = setTimeout(() => { clearPendingHide(); hideInstantly(outgoing); }, FADE_MS + 100);
           front = back;
           scheduleNext();
         };
         // decode() ждет фактической готовности кадра; на отказе (редкие
         // форматные косяки) все равно меняем - хуже застывшего слайдшоу
         // ничего нет
-        img.decode ? img.decode().then(swap).catch(swap) : ((img.onload = swap), (img.onerror = swap));
+        incoming.decode ? incoming.decode().then(swap).catch(swap) : ((incoming.onload = swap), (incoming.onerror = swap));
       }
 
       card.addEventListener('pointerenter', () => {
@@ -176,7 +273,13 @@ const hasHoverSlideshow = !hasHoverClip && shots.length > 1;
         hovering = false;
         session++;
         if (timer !== null) { clearTimeout(timer); timer = null; }
-        layers.forEach((l) => l.classList.remove('is-visible'));
+        clearPendingHide();
+        layers.forEach((l) => {
+          l.classList.remove('is-visible');
+          l.classList.remove('notransition');
+          l.style.zIndex = '';
+        });
+        front = 0;
       });
     });
   }

@@ -244,6 +244,39 @@ button.reset {
 
 /* --- планеты -------------------------------------------------------------- */
 .planet-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+/* итерация 11 (п.8): .planet-stage — квадрат ровно по размеру планеты
+   (--size передан инлайново из orbit.astro, наследуется вниз по CSS custom
+   property inheritance и планетой, и .moon-rotor-спутниками ниже — единый
+   источник размера, не задан на самой кнопке отдельно). position:relative
+   дает точку отсчета (0,0) в ЛЕВОМ ВЕРХНЕМ углу квадрата — .moon-rotor
+   компенсирует это через left/top:50% (см. ниже), центрируя локальную
+   "орбиту" точно на центре планеты, тем же .orbit-rotor-механизмом, что и
+   у планет вокруг звезды (см. комментарий в начале файла), но на один
+   уровень вложенности глубже. */
+.planet-stage { position: relative; width: var(--size, 140px); height: var(--size, 140px); }
+/* .orbit-rotor.moon-rotor (два класса) переопределяет left/top базового
+   .orbit-rotor (left:0;top:0 — центр КОНТЕЙНЕРА, т.е. звезды на верхнем
+   уровне) на центр .planet-stage: калька той же техники специфичности
+   .planet.reset/.asteroid.reset выше по файлу, только здесь для left/top,
+   не border/padding. */
+.orbit-rotor.moon-rotor { left: 50%; top: 50%; }
+/* спутники не кликабельны и не должны перехватывать hover/клик по планете
+   под собой — базовый .orbit-counter-rotate ставит pointer-events:auto
+   (нужно для кликабельных планет/астероидов), тут явно возвращаем none */
+.moon-rotor .orbit-counter-rotate { pointer-events: none; }
+.moon-badge {
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 2px 7px; border-radius: 999px; white-space: nowrap;
+  background: rgba(6,7,16,.82); border: 1px solid var(--border);
+  color: var(--muted); font-size: .56rem; line-height: 1.3;
+}
+.moon-badge svg { width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 2; flex: none; }
+.moon-badge--platform { color: var(--text); padding: 3px; gap: 2px; }
+.moon-badge--metric { color: var(--gold); border-color: rgba(232,193,90,.4); }
+.moon-badge--multiplayer { color: var(--teal); border-color: rgba(45,212,191,.4); }
+/* спутники притушенной (не в фокусе) орбиты гасим вместе с подписью планеты —
+   тот же .is-dimmed на роторе планеты, что и у .planet-label выше */
+.orbit-rotor.is-dimmed .moon-rotor { opacity: 0; }
 /* .planet.reset (не просто .planet) — тот же баг специфичности, что у
    .asteroid (см. комментарий там): элемент это <button class="planet
    reset">, а button.reset выше по файлу задает border:none с более высокой
@@ -313,7 +346,14 @@ button.reset {
   position: absolute; transform: translate(-50%, -50%);
   border-radius: 50%; background: rgba(154,151,163,.35); pointer-events: none;
 }
-.debris-anchor { position: absolute; transform: translate(-50%, -50%); z-index: 2; }
+/* итерация 11 (п.7a): астероиды переведены на общую орбитальную механику
+   .orbit-rotor (см. комментарий в начале файла) — .debris-anchor (статичная
+   позиция + локальный дрейф) убран целиком, вместо него .debris-rotor:
+   тот же .orbit-rotor, что у планет/пояса, свой z-index уровень (между
+   поясом навыков и планетами — рой не должен перекрывать планеты, но
+   рисуется поверх кольца навыков, с которым может пересекаться радиусами
+   на близком зуме). */
+.orbit-rotor.debris-rotor { z-index: 2; }
 /* итерация 10 (п.6b): часть иконок прототипов лежит на прозрачном фоне —
    без собственной подложки такой астероид выглядел "дырявым" на фоне сцены.
    Добавлен единый круглый диск (радиальный градиент в тон поверхности) под
@@ -335,15 +375,13 @@ button.reset {
   border-radius: 50%; overflow: hidden;
   background: radial-gradient(circle at 32% 28%, var(--surface-2), var(--bg-deep) 88%);
   /* было padding:14% — проценты для padding считаются от ширины containing
-     block, а тот у .asteroid (потомок .debris-anchor/.orbit-counter-zoom,
-     оба без явной ширины, shrink-to-fit) резолвится непредсказуемо. calc()
-     от собственного --size (уже задан инлайново на каждом астероиде) дает
-     надежный абсолютный отступ независимо от родителей. */
+     block, а тот у .asteroid (потомок .orbit-counter-zoom, без явной ширины,
+     shrink-to-fit) резолвится непредсказуемо. calc() от собственного --size
+     (уже задан инлайново на каждом астероиде) дает надежный абсолютный
+     отступ независимо от родителей. */
   padding: calc(var(--size, 50px) * 0.14);
   border: 1.5px solid rgba(232,193,90,.5);
   box-shadow: 0 0 12px -3px rgba(232,193,90,.5);
-  animation: asteroid-drift var(--drift-dur, 2.4s) ease-in-out infinite;
-  animation-delay: var(--delay, 0s);
   transition: transform .2s ease, box-shadow .2s ease;
 }
 .asteroid img { width: 100%; height: 100%; object-fit: contain; border-radius: 50%; }
@@ -352,9 +390,15 @@ button.reset {
   box-shadow: 0 0 22px -2px rgba(232,193,90,.9);
   z-index: 5;
 }
-@keyframes asteroid-drift {
-  0%, 100% { margin-top: 0; }
-  50% { margin-top: -6px; }
+/* итерация 11 (п.7c): "миллионник" (1M+ установок) — крупнее (--size уже
+   увеличен на SSR, см. ASTEROID_PIN_SIZE_MULT в orbit.astro) и получает
+   чуть более теплую/яркую обводку, чтобы читаться как самый заметный объект
+   роя, а не просто "еще один астероид побольше". Рисуется поверх остальных
+   за счет порядка в DOM (см. реордер asteroids в orbit.astro) — z-index тут
+   не нужен, астероиды делят один .debris-rotor уровень. */
+.asteroid.asteroid-pin {
+  border-color: rgba(232, 193, 90, 0.85);
+  box-shadow: 0 0 18px -2px rgba(232, 193, 90, 0.75);
 }
 .asteroid-badge {
   position: absolute; bottom: -2px; left: 50%; transform: translateX(-50%);
@@ -364,21 +408,42 @@ button.reset {
 
 /* --- HUD ------------------------------------------------------------------- */
 .hud { position: fixed; inset: 0; z-index: 20; pointer-events: none; }
+/* итерация 11 (п.4): обертка колонкой над панелью легенды — держит обратную
+   ссылку и панель как два визуально отдельных, но совместно позиционируемых
+   блока (один top/left на оба, один брейкпоинт-оверрайд ниже в responsive).
+   pointer-events:none на обертке + auto на прямых детях — тот же прием, что
+   и у .hud в целом (сцена под HUD должна остаться кликабельной за пределами
+   реальных виджетов). */
+.hud-topleft {
+  pointer-events: none;
+  position: fixed; top: 20px; left: 20px; z-index: 20;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 10px;
+  max-width: 300px;
+}
+.hud-topleft > * { pointer-events: auto; }
 .hud-panel {
-  pointer-events: auto;
-  position: fixed; top: 20px; left: 20px; max-width: 300px;
+  max-width: 300px;
   background: rgba(10,11,18,.62); border: 1px solid var(--border); border-radius: var(--radius);
   -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
   padding: 16px 18px;
 }
-/* итерация 10 (задача ZB, п.1): обратная ссылка на основной сайт - компактная,
-   в языке навигационных иконок HUD (mono, приглушенная, подсветка на hover) */
+/* итерация 11 (п.4): раньше это была мелкая строка ВНУТРИ панели легенды
+   (color:muted, только hover ярче) — терялась среди заголовка/легенды.
+   Теперь отдельный HUD-чип: свой фон/бордер (тот же язык, что у hud-zoom-btn/
+   hud-hint), цвет по умолчанию accent-2 (заметнее muted, но не кричащий —
+   тот же оттенок, что у kicker/hover-подсветок остальных элементов HUD). */
 .hud-backlink {
   display: inline-flex; align-items: center; gap: 6px;
-  margin: 0 0 10px; font-size: .72rem; color: var(--muted);
-  text-decoration: none; transition: color .15s, transform .15s;
+  padding: 8px 14px; border-radius: 999px;
+  background: rgba(10,11,18,.62); border: 1px solid var(--border);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  font-size: .74rem; color: var(--accent-2);
+  text-decoration: none; transition: color .15s, transform .15s, border-color .15s, box-shadow .15s;
 }
-.hud-backlink:hover, .hud-backlink:focus-visible { color: var(--accent-2); transform: translateX(-2px); outline: none; }
+.hud-backlink:hover, .hud-backlink:focus-visible {
+  color: #fff; transform: translateX(-2px); border-color: var(--accent-2);
+  box-shadow: 0 0 14px rgba(255,176,26,.25); outline: none;
+}
 .hud-backlink-arrow { font-size: .9rem; line-height: 1; }
 .hud-kicker { font-size: .68rem; letter-spacing: .14em; text-transform: uppercase; color: var(--accent-2); margin: 0 0 6px; }
 .hud-title {
@@ -387,7 +452,28 @@ button.reset {
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 .hud-subtitle { margin: 0 0 14px; color: var(--muted); font-size: .8rem; line-height: 1.5; }
-.hud-legend { display: flex; flex-direction: column; gap: 4px; }
+/* итерация 11 (п.5): кнопка-переключатель легенды — компактная строка над
+   списком, шеврон разворачивается на 180° при открытой легенде (класс на
+   самой кнопке через aria-expanded, читает orbit.js) */
+/* .legend-toggle.reset (не просто .legend-toggle) — тот же баг специфичности
+   button.reset, что у .planet/.asteroid (см. комментарии там): элемент это
+   <button class="legend-toggle reset">, а button.reset (элемент+класс)
+   специфичнее одного класса .legend-toggle и молча съел бы padding/width. */
+.legend-toggle.reset {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  width: 100%; margin-bottom: 6px; padding: 4px 2px;
+  font-family: var(--font-mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--muted); transition: color .15s ease;
+}
+.legend-toggle:hover, .legend-toggle:focus-visible { color: var(--text); outline: none; }
+.legend-toggle-chevron { font-size: .9rem; line-height: 1; transition: transform .3s ease; }
+.legend-toggle[aria-expanded="false"] .legend-toggle-chevron { transform: rotate(-90deg); }
+.hud-legend {
+  display: flex; flex-direction: column; gap: 4px;
+  max-height: 400px; overflow: hidden;
+  transition: max-height .35s ease, opacity .3s ease;
+}
+.hud-legend.is-collapsed { max-height: 0; opacity: 0; }
 .legend-item {
   display: flex; align-items: baseline; gap: 8px;
   padding: 6px 8px; border-radius: 8px; cursor: pointer;
@@ -397,7 +483,6 @@ button.reset {
 .legend-item:hover, .legend-item:focus-visible { background: rgba(255,255,255,.05); border-color: var(--border); outline: none; }
 .legend-item.is-active { background: rgba(255,255,255,.07); border-color: color-mix(in srgb, var(--era-color, var(--accent)) 55%, transparent); }
 .legend-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--era-color, var(--accent)); box-shadow: 0 0 8px var(--era-color, var(--accent)); }
-.legend-dot--star { background: #fff; box-shadow: 0 0 8px #fff; }
 /* итерация 10 (п.6c): точка "Вся система" — тонкое кольцо вместо сплошного
    кружка, читается как "обзор всех орбит", а не как еще одна конкретная орбита */
 .legend-dot--overview {
@@ -455,32 +540,56 @@ button.reset {
   50% { box-shadow: 0 0 0 8px rgba(255,176,26,0); }
 }
 
-/* --- hover-блоки (итерация 10, п.6) ------------------------------------------
+/* --- hover-блоки: "sci-fi" callout с линией-выноской (итерация 10, п.6 +
+   итерация 11, п.12) ------------------------------------------------------
    Один общий элемент на всю страницу (не по одному на планету) — orbit.js
-   переиспользует его, наполняя/двигая на pointerenter. pointer-events:none —
-   блок не должен перехватывать клики по объекту под курсором. Позиция и
-   флип по квадранту считает JS (см. showHoverCard в orbit.js), тут только
-   визуальное появление (fade+shift). На тач-устройствах слушатели вообще не
-   вешаются (см. matchMedia(hover:hover) гейт в orbit.js) — блок не покажется. */
-.hover-card {
-  position: fixed; z-index: 26; pointer-events: none;
-  max-width: 230px;
-  background: rgba(10,11,18,.88); border: 1px solid var(--border); border-radius: 10px;
-  padding: 10px 14px;
-  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
-  opacity: 0; transform: translateY(6px);
-  transition: opacity .2s ease, transform .2s ease;
+   переиспользует его, наполняя/двигая по pointerenter, и НЕПРЕРЫВНО следит
+   за целью через rAF, пока курсор наведен (п.12a — планета/звезда едут по
+   орбите, карточка раньше отставала). pointer-events:none на всех трех
+   частях — блок не должен перехватывать клики по объекту под курсором. На
+   тач-устройствах слушатели вообще не вешаются (см. matchMedia(hover:hover)
+   гейт в orbit.js) — блок не покажется.
+   Три слоя (см. разметку в orbit.astro): точка-маркер на объекте -> ломаная
+   линия-выноска (диагональ 45° + горизонталь, SVG path с draw-in через
+   stroke-dashoffset) -> текст-сноска в стороне. Никакой плашки-панели —
+   минималистичный "footnote" на тонких линиях и mono-шрифте, а не еще одна
+   карточка с фоном/рамкой/скруглением, как раньше. */
+.hover-card { position: fixed; inset: 0; z-index: 26; pointer-events: none; }
+.hover-card-svg {
+  position: fixed; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none;
 }
-.hover-card.is-visible { opacity: 1; transform: translateY(0); }
+/* transition на stroke-dashoffset висит ПОСТОЯННО (не только после
+   is-visible) — так JS может один раз в showHoverCard() выставить
+   dashoffset=length БЕЗ анимации (мгновенно, до layout/reflow), а сам
+   переход к 0 запускается уже добавлением is-visible на кадр позже (см.
+   комментарий в orbit.js про force reflow) */
+.hover-card-leader-line {
+  stroke: var(--hc-color, var(--accent-2)); stroke-width: 1.2;
+  opacity: 0; transition: stroke-dashoffset .5s cubic-bezier(.2,.7,.2,1), opacity .15s ease;
+}
+.hover-card.is-visible .hover-card-leader-line { opacity: .85; }
+.hover-card-dot {
+  position: fixed; z-index: 1; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%;
+  background: var(--hc-color, var(--accent-2));
+  box-shadow: 0 0 7px var(--hc-color, var(--accent-2));
+  opacity: 0; transform: scale(.3);
+  transition: opacity .2s ease, transform .25s cubic-bezier(.3,1.4,.4,1);
+}
+.hover-card.is-visible .hover-card-dot { opacity: 1; transform: scale(1); }
+.hover-card-box {
+  position: fixed; max-width: 220px;
+  padding: 6px 0 6px 10px; border-left: 1.5px solid var(--hc-color, var(--accent-2));
+  opacity: 0; transform: translateX(-4px);
+  transition: opacity .3s ease .16s, transform .3s ease .16s;
+}
+.hover-card.is-visible .hover-card-box { opacity: 1; transform: translateX(0); }
 .hover-card-role {
-  display: inline-flex; align-items: center;
-  font-family: var(--font-mono); font-size: .68rem; text-transform: uppercase; letter-spacing: .04em;
-  padding: 2px 8px; border-radius: 999px; margin-bottom: 6px;
-  color: var(--hc-color, var(--accent-2));
-  border: 1px solid color-mix(in srgb, var(--hc-color, var(--accent)) 55%, transparent);
+  display: block;
+  font-family: var(--font-mono); font-size: .64rem; text-transform: uppercase; letter-spacing: .07em;
+  color: var(--hc-color, var(--accent-2)); margin-bottom: 3px;
 }
-.hover-card-line { margin: 0; font-size: .8rem; color: var(--text); line-height: 1.4; }
-.hover-card-line + .hover-card-line { margin-top: 3px; color: var(--muted); }
+.hover-card-line { margin: 0; font-family: var(--font-mono); font-size: .76rem; color: var(--text); line-height: 1.45; }
+.hover-card-line + .hover-card-line { margin-top: 2px; color: var(--muted); }
 
 /* --- модалки ---------------------------------------------------------------- */
 .orbit-modal {
@@ -508,6 +617,20 @@ button.reset {
 .orbit-modal.is-warping { animation: modal-warp-in .34s cubic-bezier(.2,.7,.25,1) both; }
 @keyframes modal-fade-out { to { opacity: 0; transform: scale(.94); } }
 .orbit-modal.is-closing { animation: modal-fade-out .15s ease-in both; }
+/* итерация 11 (п.10): закрытие окна проекта/прототипа (тех, что открывались
+   варпом — см. .was-warped, вешает orbit.js) получило обратный эффект: окно
+   "схлопывается" внутрь с той же вспышкой, что и при появлении, но в реверсе
+   (яркость/насыщенность растут к КОНЦУ, не к началу). Длительность (.32s)
+   совпадает с WARP_CLOSE_DELAY в orbit.js — JS ждет ровно столько же, прежде
+   чем реально вызвать dialog.close(). Селектор из трех классов специфичнее
+   и .is-warping (может еще не успеть погаснуть при очень быстром закрытии), и
+   обычного .is-closing — гарантированно выигрывает у обоих. */
+@keyframes modal-warp-out {
+  0% { opacity: 1; transform: scale(1); filter: brightness(1); }
+  35% { opacity: 1; transform: scale(.95); filter: brightness(1.35); }
+  100% { opacity: 0; transform: scale(.68); filter: brightness(2.6) saturate(1.3); }
+}
+.orbit-modal.is-closing.was-warped { animation: modal-warp-out .32s cubic-bezier(.4,0,.7,.4) both; }
 .modal-close {
   position: fixed; top: 16px; right: 16px; z-index: 2;
   width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border);
@@ -702,10 +825,11 @@ button.reset {
 
 /* --- responsive ------------------------------------------------------------- */
 @media (max-width: 720px) {
-  .hud-panel--top { max-width: calc(100vw - 40px); padding: 13px 15px; }
+  .hud-topleft { max-width: calc(100vw - 40px); }
+  .hud-panel--top { max-width: 100%; padding: 13px 15px; }
   .hud-title { font-size: 1.35rem; }
   .hud-subtitle { display: none; }
-  .hud-legend { flex-direction: row; flex-wrap: wrap; gap: 6px; }
+  .hud-legend { flex-direction: row; flex-wrap: wrap; gap: 6px; max-height: 300px; }
   .legend-item { padding: 9px 10px; min-height: 40px; }
   .legend-range { display: none; }
   .hud-era-detail.is-open { max-height: 160px; }
@@ -715,7 +839,8 @@ button.reset {
   .mv-thumb { width: 104px; height: 60px; }
 }
 @media (max-width: 420px) {
-  .hud-panel--top { top: 12px; left: 12px; padding: 11px 13px; }
+  .hud-topleft { top: 12px; left: 12px; }
+  .hud-panel--top { padding: 11px 13px; }
   .hud-title { font-size: 1.2rem; }
   .hud-footer { display: none; }
   .hud-zoom { right: 12px; bottom: 12px; }
