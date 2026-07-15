@@ -312,9 +312,24 @@ import { buildViewer, attachViewer } from '../scripts/media-viewer.js';
       pendingOpenTimers.delete(dialog);
     }
   }
+  // Гонка (найдена повторным ревью): openModalWarped отменяла отложенное
+  // открытие ЛЮБОГО ДРУГОГО диалога перед планированием своего, а openModal
+  // (путь звезды-визитки) — только своего. Сценарий: клик по планете
+  // (openModalWarped планирует showModal() через ~266мс) -> в этом окне
+  // клик по звезде -> openModal() открывает star-modal СРАЗУ (не отменяя
+  // уже запланированный таймер project-modal), таймер планеты все равно
+  // стреляет по расписанию -> оба диалога открыты одновременно, бэкдропы
+  // наложены друг на друга. Фикс — кросс-диалоговая отмена вынесена в общую
+  // функцию и вызывается из ОБОИХ путей открытия (не только из
+  // openModalWarped), симметрично с тем, как оба пути уже закрывают чужие
+  // ОТКРЫТЫЕ диалоги строкой выше.
+  function cancelOtherPendingOpens(dialog) {
+    document.querySelectorAll('.orbit-modal').forEach((d) => { if (d !== dialog) cancelPendingOpen(d); });
+  }
   function openModal(dialog) {
     if (!dialog) return;
     document.querySelectorAll('.orbit-modal[open]').forEach((d) => { if (d !== dialog) requestCloseModal(d); });
+    cancelOtherPendingOpens(dialog);
     cancelPendingOpen(dialog);
     cancelPendingClose(dialog);
     if (!dialog.open) dialog.showModal();
@@ -336,7 +351,7 @@ import { buildViewer, attachViewer } from '../scripts/media-viewer.js';
     // пользователь мог кликнуть по второму объекту раньше, чем успело
     // всплыть окно первого (оба используют общие shared-диалоги проекта/
     // прототипа, повторный клик просто переоткрывает тот же <dialog>)
-    document.querySelectorAll('.orbit-modal').forEach((d) => { if (d !== dialog) cancelPendingOpen(d); });
+    cancelOtherPendingOpens(dialog);
     cancelPendingOpen(dialog);
     cancelPendingClose(dialog);
     const timerId = setTimeout(() => {
@@ -462,7 +477,10 @@ import { buildViewer, attachViewer } from '../scripts/media-viewer.js';
   document.querySelectorAll('[data-planet-open]').forEach((btn) => {
     btn.addEventListener('click', () => openPlanetCard(btn));
   });
-  document.querySelectorAll('[data-star-open], [data-focus-star]').forEach((btn) => {
+  // [data-focus-star] убран из селектора: атрибут исчез из разметки вместе
+  // с пунктом "Визитка" легенды (итерация 11, п.6) — остался только сам
+  // клик по звезде (data-star-open)
+  document.querySelectorAll('[data-star-open]').forEach((btn) => {
     btn.addEventListener('click', openStar);
   });
   // итерация 10 (п.6c): повторный клик по УЖЕ сфокусированной орбите (легенда
@@ -496,6 +514,13 @@ import { buildViewer, attachViewer } from '../scripts/media-viewer.js';
     legendToggleBtn.addEventListener('click', () => {
       setLegendExpanded(legendToggleBtn.getAttribute('aria-expanded') !== 'true');
     });
+    // вызов ниже дублирует то, что уже сделал синхронный is:inline script в
+    // orbit.astro сразу после разметки легенды (см. комментарий там) — тот
+    // отрабатывает ДО первого пейнта и убирает FOUC схлопывания на мобиле,
+    // этот модуль грузится/выполняется позже. Дублирование безопасно и
+    // идемпотентно (то же условие, то же вычисление) — оставлено как второй
+    // рубеж на случай, если инлайн-скрипт по какой-то причине не найдет
+    // элементы (например, будущий рефакторинг разметки уберет их порядок).
     setLegendExpanded(window.innerWidth > 720);
   }
 
