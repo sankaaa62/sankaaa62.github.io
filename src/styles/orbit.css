@@ -244,6 +244,39 @@ button.reset {
 
 /* --- планеты -------------------------------------------------------------- */
 .planet-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+/* итерация 11 (п.8): .planet-stage — квадрат ровно по размеру планеты
+   (--size передан инлайново из orbit.astro, наследуется вниз по CSS custom
+   property inheritance и планетой, и .moon-rotor-спутниками ниже — единый
+   источник размера, не задан на самой кнопке отдельно). position:relative
+   дает точку отсчета (0,0) в ЛЕВОМ ВЕРХНЕМ углу квадрата — .moon-rotor
+   компенсирует это через left/top:50% (см. ниже), центрируя локальную
+   "орбиту" точно на центре планеты, тем же .orbit-rotor-механизмом, что и
+   у планет вокруг звезды (см. комментарий в начале файла), но на один
+   уровень вложенности глубже. */
+.planet-stage { position: relative; width: var(--size, 140px); height: var(--size, 140px); }
+/* .orbit-rotor.moon-rotor (два класса) переопределяет left/top базового
+   .orbit-rotor (left:0;top:0 — центр КОНТЕЙНЕРА, т.е. звезды на верхнем
+   уровне) на центр .planet-stage: калька той же техники специфичности
+   .planet.reset/.asteroid.reset выше по файлу, только здесь для left/top,
+   не border/padding. */
+.orbit-rotor.moon-rotor { left: 50%; top: 50%; }
+/* спутники не кликабельны и не должны перехватывать hover/клик по планете
+   под собой — базовый .orbit-counter-rotate ставит pointer-events:auto
+   (нужно для кликабельных планет/астероидов), тут явно возвращаем none */
+.moon-rotor .orbit-counter-rotate { pointer-events: none; }
+.moon-badge {
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 2px 7px; border-radius: 999px; white-space: nowrap;
+  background: rgba(6,7,16,.82); border: 1px solid var(--border);
+  color: var(--muted); font-size: .56rem; line-height: 1.3;
+}
+.moon-badge svg { width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 2; flex: none; }
+.moon-badge--platform { color: var(--text); padding: 3px; gap: 2px; }
+.moon-badge--metric { color: var(--gold); border-color: rgba(232,193,90,.4); }
+.moon-badge--multiplayer { color: var(--teal); border-color: rgba(45,212,191,.4); }
+/* спутники притушенной (не в фокусе) орбиты гасим вместе с подписью планеты —
+   тот же .is-dimmed на роторе планеты, что и у .planet-label выше */
+.orbit-rotor.is-dimmed .moon-rotor { opacity: 0; }
 /* .planet.reset (не просто .planet) — тот же баг специфичности, что у
    .asteroid (см. комментарий там): элемент это <button class="planet
    reset">, а button.reset выше по файлу задает border:none с более высокой
