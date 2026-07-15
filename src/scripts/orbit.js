@@ -49,14 +49,24 @@ import { buildViewer, attachViewer } from '../scripts/media-viewer.js';
   const MAX_ZOOM = 2.6;
   const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
 
-  // итерация 10 (п.1): взвешенный контр-масштаб маркеров вместо константного
-  // экранного размера — "параллакс с размером". W в пределах 0.55-0.75 по
-  // ТЗ, подобрано 0.65 (среднее): при отдалении маркеры уменьшаются, но
-  // медленнее сцены. MARKER_SCALE_MIN/MAX — кламп итогового ЭКРАННОГО
-  // масштаба относительно базового (не дают планетам ни исчезнуть при
-  // отдалении, ни разрастись при сильном приближении).
-  const MARKER_SCALE_WEIGHT = 0.65;
-  const MARKER_SCALE_MIN = 0.5;
+  // итерация 10 (п.1) / итерация 12 (п.6b): взвешенный контр-масштаб маркеров
+  // вместо константного экранного размера — "параллакс с размером".
+  // screenScale = zoom^(1-W) — чем БОЛЬШЕ W, тем СЛАБЕЕ маркеры реагируют на
+  // отдаление (при W=1 экранный размер был бы вообще constant). Итерация 10
+  // подобрала W=0.65 — по фидбеку итерации 12 маркеры на отдалении все еще
+  // уменьшались недостаточно заметно ("параллакс" читался слабо). Опущено до
+  // W=0.52 (нижняя половина диапазона 0.5-0.55 из ТЗ) — показатель степени
+  // (1-W) вырос с 0.35 до 0.48, зависимость от zoom стала заметно круче.
+  // Нижний кламп MARKER_SCALE_MIN тоже опущен (0.5 -> 0.42, в пределах ~0.4
+  // из ТЗ) — иначе более крутая формула быстро уперлась бы в старый пол и
+  // эффект не читался бы при сильном отдалении. Измерено (см. отчет
+  // итерации 12): на дефолтном fit-зуме 1280x800 (zoom~0.352) screenScale
+  // упал с 0.694 (W=0.65) до 0.606 (W=0.52); при дальнейшем 2х-отдалении
+  // (zoom~0.176) — с 0.5 (старый кламп) до ~0.434 (новый, кламп еще не
+  // достигнут). MARKER_SCALE_MAX не трогали (клампится на приближении и там
+  // не менялась логика ТЗ).
+  const MARKER_SCALE_WEIGHT = 0.52;
+  const MARKER_SCALE_MIN = 0.42;
   const MARKER_SCALE_MAX = 1.15;
   // итерация 10 (п.5, исправлено повторным ревью): порог zoom, ниже которого
   // подписи планет/звезды (и не-сфокусированные подписи орбит) плавно гаснут.
@@ -664,31 +674,63 @@ import { buildViewer, attachViewer } from '../scripts/media-viewer.js';
     // считает точки маркера/излома/конца линии по текущему rect цели и
     // квадранту экрана, кладет их в DOM (dot/path/box) — вызывается и один
     // раз на старте ховера, и каждый кадр rAF-трекинга, пока курсор наведен
+    //
+    // Баг (найден ревью, скрин Last Wish): направление диагонали (dirX/dirY)
+    // раньше выбиралось ТОЛЬКО по тому, в какой половине экрана лежит сам
+    // объект — а итоговая позиция бокса после этого еще и КЛАМПАЛАСЬ к
+    // границам экрана независимо. Если объект был близко к краю и клампу
+    // приходилось сильно сдвигать бокс, тот уезжал в сторону, противоположную
+    // исходной диагонали (напр. диагональ идет вверх-влево, а бокс из-за
+    // клампа в итоге у правого края) — линия и текст читались как
+    // указывающие в разные стороны ("зигзаг"), плюс второй (номинально
+    // горизонтальный) отрезок становился почти вертикальным. Фикс: перед
+    // тем, как считать точки, проверяем, ХВАТИТ ЛИ места в предпочтительном
+    // направлении для диагонали+зазора+бокса ЦЕЛИКОМ; если нет и с другой
+    // стороны места больше — ПЕРЕВОРАЧИВАЕМ направление (dirX/dirY), а не
+    // просто клампим результат. После этого клампы ниже — лишь подстраховка
+    // на совсем крайний случай (очень узкий экран), в норме почти не
+    // срабатывают, и линия с текстом всегда читаются как единая стрелка ОТ
+    // маркера К тексту.
     function positionHoverCard(rect) {
       const vw = window.innerWidth;
       const vh = window.innerHeight;
       const cx = rect.left + rect.width / 2;
       const cy = rect.top + rect.height / 2;
       const r = Math.min(rect.width, rect.height) / 2;
-      const dirX = cx < vw / 2 ? 1 : -1;
-      const dirY = cy < vh / 2 ? 1 : -1;
+      const bw = hoverBox.offsetWidth;
+      const bh = hoverBox.offsetHeight;
+
+      let dirX = cx < vw / 2 ? 1 : -1;
+      let dirY = cy < vh / 2 ? 1 : -1;
+      const neededX = LEADER_DIAG + LEADER_GAP + bw + HOVER_EDGE_MARGIN;
+      const spaceRight = vw - cx;
+      const spaceLeft = cx;
+      if (dirX > 0 && spaceRight < neededX && spaceLeft > spaceRight) dirX = -1;
+      else if (dirX < 0 && spaceLeft < neededX && spaceRight > spaceLeft) dirX = 1;
+      const neededY = LEADER_DIAG + bh / 2 + HOVER_EDGE_MARGIN;
+      const spaceBelow = vh - cy;
+      const spaceAbove = cy;
+      if (dirY > 0 && spaceBelow < neededY && spaceAbove > spaceBelow) dirY = -1;
+      else if (dirY < 0 && spaceAbove < neededY && spaceBelow > spaceAbove) dirY = 1;
+
       // точка на краю объекта под 45° в сторону, куда пойдет линия
       const dotX = cx + dirX * r * Math.SQRT1_2;
       const dotY = cy + dirY * r * Math.SQRT1_2;
       const kneeX = dotX + dirX * LEADER_DIAG;
       const kneeY = dotY + dirY * LEADER_DIAG;
-      const bw = hoverBox.offsetWidth;
-      const bh = hoverBox.offsetHeight;
       let boxLeft = dirX > 0 ? kneeX + LEADER_GAP : kneeX - LEADER_GAP - bw;
       let boxTop = kneeY - bh / 2;
       boxLeft = clamp(boxLeft, HOVER_EDGE_MARGIN, Math.max(HOVER_EDGE_MARGIN, vw - bw - HOVER_EDGE_MARGIN));
       boxTop = clamp(boxTop, HOVER_EDGE_MARGIN, Math.max(HOVER_EDGE_MARGIN, vh - bh - HOVER_EDGE_MARGIN));
-      // горизонтальный отрезок линии всегда доходит РОВНО до края текста —
-      // даже если бокс сместился клампом у края экрана (тогда сегмент
-      // перестает быть строго горизонтальным, что нормально: линия обязана
-      // физически соединять точки, а не просто "казаться" горизонтальной)
       const lineEndX = dirX > 0 ? boxLeft : boxLeft + bw;
       const lineEndY = boxTop + bh / 2;
+
+      // акцентная граница/градиент подложки текста всегда со стороны линии
+      // (см. .hover-card-box--flip в orbit.css, п.5b) — без этого при
+      // dirX<0 линия физически приходит к ПРАВОМУ краю бокса, а акцент
+      // (бордер+градиент) висел на ЛЕВОМ, создавая тот же эффект "разного
+      // направления" линии и текста, что и баг геометрии выше
+      hoverBox.classList.toggle('hover-card-box--flip', dirX < 0);
 
       hoverDot.style.left = `${dotX}px`;
       hoverDot.style.top = `${dotY}px`;

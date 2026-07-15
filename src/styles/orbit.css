@@ -216,10 +216,21 @@ button.reset {
    бликом у центра — на глаз читалась как отдельный "диск солнца" позади
    фотки. Заливка убрана целиком, остался только box-shadow — он по природе
    мягкий/размытый (нет четкой границы диска) и дает умеренное свечение
-   вокруг САМОЙ фотки, не второй объект за ней. */
+   вокруг САМОЙ фотки, не второй объект за ней.
+   Итерация 12 (п.8, ревью): ореол читался шире фотки и как будто смещенным
+   относительно нее, с жестким внешним кольцом. inset был -22px — собственный
+   бокс .star-halo получался на 44px больше фотки в каждом измерении; хотя
+   центр математически совпадал (оба — position:absolute от одного и того же
+   .orbit-star, без padding/border), больший спред box-shadow (12px/28px) на
+   заметно БОЛЬШЕМ базовом боксе визуально читался как отдельная сущность со
+   своим краем ("кольцо"), а не как свечение ОТ фотки. Теперь inset:0 —
+   .star-halo получает ТОЧНО тот же бокс, что и сама фотка (176x176,
+   совпадение центра/радиуса гарантировано конструкцией, не расчетом), а
+   "наружу от фотки" дает исключительно blur box-shadow (спред уменьшен до
+   2-8px — мягкий рост, не вторая четкая окружность). */
 .star-halo {
-  position: absolute; inset: -22px; border-radius: 50%; z-index: 0;
-  box-shadow: 0 0 54px 12px rgba(255,146,26,.32), 0 0 100px 28px rgba(255,92,26,.15);
+  position: absolute; inset: 0; border-radius: 50%; z-index: 0;
+  box-shadow: 0 0 40px 2px rgba(255,146,26,.32), 0 0 76px 8px rgba(255,92,26,.16);
   animation: star-pulse 5s ease-in-out infinite;
 }
 @keyframes star-pulse {
@@ -264,16 +275,45 @@ button.reset {
    под собой — базовый .orbit-counter-rotate ставит pointer-events:auto
    (нужно для кликабельных планет/астероидов), тут явно возвращаем none */
 .moon-rotor .orbit-counter-rotate { pointer-events: none; }
+/* итерация 12 (п.6, ревью): раньше это были овальные пилюли (inline-flex +
+   padding, размер по контенту) на мелком приглушенном фоне — по фидбеку
+   сливались с картой и не читались как отдельные "планетки". Теперь
+   фиксированный КРУГ (не растет/сжимается по тексту — переполнение прячет
+   overflow:hidden), плотная surface-подложка + категорийный
+   бордер/свечение (platform=violet, metric=gold, multiplayer=teal — та же
+   палитра, что и у остального HUD) вместо мутного rgba(6,7,16). PC/Mobile
+   больше не делят одну пилюль — см. buildSatellites() в orbit.astro
+   (итерация 12, п.6): у каждой платформы свой .moon-badge--platform-{pc,
+   mobile} со своей иконкой. */
 .moon-badge {
-  display: inline-flex; align-items: center; gap: 3px;
-  padding: 2px 7px; border-radius: 999px; white-space: nowrap;
-  background: rgba(6,7,16,.82); border: 1px solid var(--border);
-  color: var(--muted); font-size: .56rem; line-height: 1.3;
+  display: flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 50%; flex: none;
+  background: var(--surface-2); border: 1.5px solid var(--border);
+  color: var(--muted); font-weight: 700; font-size: .5rem; line-height: 1;
+  box-shadow: 0 0 0 3px rgba(6,7,16,.6);
+  overflow: hidden;
 }
-.moon-badge svg { width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 2; flex: none; }
-.moon-badge--platform { color: var(--text); padding: 3px; gap: 2px; }
-.moon-badge--metric { color: var(--gold); border-color: rgba(232,193,90,.4); }
-.moon-badge--multiplayer { color: var(--teal); border-color: rgba(45,212,191,.4); }
+.moon-badge svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; flex: none; }
+.moon-badge span { padding: 0 2px; }
+.moon-badge--platform-pc,
+.moon-badge--platform-mobile {
+  color: var(--text);
+  background: color-mix(in srgb, var(--surface-2) 80%, var(--violet) 20%);
+  border-color: color-mix(in srgb, var(--violet) 55%, transparent);
+  box-shadow: 0 0 0 3px rgba(6,7,16,.6), 0 0 10px -1px color-mix(in srgb, var(--violet) 60%, transparent);
+}
+.moon-badge--metric {
+  color: var(--gold);
+  background: color-mix(in srgb, var(--surface-2) 78%, var(--gold) 14%);
+  border-color: rgba(232,193,90,.75);
+  box-shadow: 0 0 0 3px rgba(6,7,16,.6), 0 0 11px -1px rgba(232,193,90,.6);
+}
+.moon-badge--multiplayer {
+  color: var(--teal);
+  background: color-mix(in srgb, var(--surface-2) 78%, var(--teal) 14%);
+  border-color: rgba(45,212,191,.75);
+  box-shadow: 0 0 0 3px rgba(6,7,16,.6), 0 0 11px -1px rgba(45,212,191,.6);
+}
 /* спутники притушенной (не в фокусе) орбиты гасим вместе с подписью планеты —
    тот же .is-dimmed на роторе планеты, что и у .planet-label выше */
 .orbit-rotor.is-dimmed .moon-rotor { opacity: 0; }
@@ -400,11 +440,12 @@ button.reset {
   border-color: rgba(232, 193, 90, 0.85);
   box-shadow: 0 0 18px -2px rgba(232, 193, 90, 0.75);
 }
-.asteroid-badge {
-  position: absolute; bottom: -2px; left: 50%; transform: translateX(-50%);
-  font-size: .5rem; padding: 1px 5px; border-radius: 999px; white-space: nowrap;
-  background: rgba(6,7,16,.85); color: var(--gold); border: 1px solid rgba(232,193,90,.5);
-}
+/* итерация 12 (п.7): .asteroid-badge (текстовая надпись ПРЯМО на иконке
+   астероида) убрана - на маленьком круглом диске текст обрезался ("1M+
+   установок" не помещалось). Заменена спутником-"луной" (.moon-badge--metric,
+   см. a.moons в orbit.astro) - та же механика, что у метрик-спутников
+   планет, координаты текста берутся из data-badge (для модалки прототипа,
+   opm-badge в orbit-prototypes.js, не для отрисовки на карте). */
 
 /* --- HUD ------------------------------------------------------------------- */
 .hud { position: fixed; inset: 0; z-index: 20; pointer-events: none; }
@@ -576,12 +617,33 @@ button.reset {
   transition: opacity .2s ease, transform .25s cubic-bezier(.3,1.4,.4,1);
 }
 .hover-card.is-visible .hover-card-dot { opacity: 1; transform: scale(1); }
+/* итерация 12 (п.5b): подложка под текст — раньше текст лежал прямо на
+   сцене (никакого фона) и местами плохо читался поверх пестрых обложек
+   планет. Линейный градиент от полупрозрачного surface-тона у линии-выноски
+   (там текст "заякорен") к прозрачному на дальнем крае — читаемость есть,
+   но нет глухой плашки-панели, дух минималистичного sci-fi callout (п.12b
+   прошлой итерации) сохранен. --hover-fade-dir переключает направление
+   градиента (и сторону акцентной границы) между обычным положением
+   (текст справа от линии, акцент слева) и .hover-card-box--flip (текст
+   слева от линии, акцент справа — см. positionHoverCard()/dirX в orbit.js). */
 .hover-card-box {
   position: fixed; max-width: 220px;
-  padding: 6px 0 6px 10px; border-left: 1.5px solid var(--hc-color, var(--accent-2));
+  padding: 7px 12px 7px 14px;
+  border-left: 1.5px solid var(--hc-color, var(--accent-2));
+  background: linear-gradient(to right, color-mix(in srgb, var(--surface) 82%, transparent) 0%, transparent 100%);
+  -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
   opacity: 0; transform: translateX(-4px);
   transition: opacity .3s ease .16s, transform .3s ease .16s;
 }
+.hover-card-box.hover-card-box--flip {
+  padding: 7px 14px 7px 12px;
+  border-left: none; border-right: 1.5px solid var(--hc-color, var(--accent-2));
+  background: linear-gradient(to left, color-mix(in srgb, var(--surface) 82%, transparent) 0%, transparent 100%);
+  transform: translateX(4px);
+}
+/* специфичность (0,3,0) выше .hover-card-box.hover-card-box--flip (0,2,0) —
+   при появлении карточки translateX(0) выигрывает у флип-варианта
+   независимо от порядка правил в файле */
 .hover-card.is-visible .hover-card-box { opacity: 1; transform: translateX(0); }
 .hover-card-role {
   display: block;
