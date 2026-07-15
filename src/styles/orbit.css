@@ -540,32 +540,56 @@ button.reset {
   50% { box-shadow: 0 0 0 8px rgba(255,176,26,0); }
 }
 
-/* --- hover-блоки (итерация 10, п.6) ------------------------------------------
+/* --- hover-блоки: "sci-fi" callout с линией-выноской (итерация 10, п.6 +
+   итерация 11, п.12) ------------------------------------------------------
    Один общий элемент на всю страницу (не по одному на планету) — orbit.js
-   переиспользует его, наполняя/двигая на pointerenter. pointer-events:none —
-   блок не должен перехватывать клики по объекту под курсором. Позиция и
-   флип по квадранту считает JS (см. showHoverCard в orbit.js), тут только
-   визуальное появление (fade+shift). На тач-устройствах слушатели вообще не
-   вешаются (см. matchMedia(hover:hover) гейт в orbit.js) — блок не покажется. */
-.hover-card {
-  position: fixed; z-index: 26; pointer-events: none;
-  max-width: 230px;
-  background: rgba(10,11,18,.88); border: 1px solid var(--border); border-radius: 10px;
-  padding: 10px 14px;
-  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
-  opacity: 0; transform: translateY(6px);
-  transition: opacity .2s ease, transform .2s ease;
+   переиспользует его, наполняя/двигая по pointerenter, и НЕПРЕРЫВНО следит
+   за целью через rAF, пока курсор наведен (п.12a — планета/звезда едут по
+   орбите, карточка раньше отставала). pointer-events:none на всех трех
+   частях — блок не должен перехватывать клики по объекту под курсором. На
+   тач-устройствах слушатели вообще не вешаются (см. matchMedia(hover:hover)
+   гейт в orbit.js) — блок не покажется.
+   Три слоя (см. разметку в orbit.astro): точка-маркер на объекте -> ломаная
+   линия-выноска (диагональ 45° + горизонталь, SVG path с draw-in через
+   stroke-dashoffset) -> текст-сноска в стороне. Никакой плашки-панели —
+   минималистичный "footnote" на тонких линиях и mono-шрифте, а не еще одна
+   карточка с фоном/рамкой/скруглением, как раньше. */
+.hover-card { position: fixed; inset: 0; z-index: 26; pointer-events: none; }
+.hover-card-svg {
+  position: fixed; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none;
 }
-.hover-card.is-visible { opacity: 1; transform: translateY(0); }
+/* transition на stroke-dashoffset висит ПОСТОЯННО (не только после
+   is-visible) — так JS может один раз в showHoverCard() выставить
+   dashoffset=length БЕЗ анимации (мгновенно, до layout/reflow), а сам
+   переход к 0 запускается уже добавлением is-visible на кадр позже (см.
+   комментарий в orbit.js про force reflow) */
+.hover-card-leader-line {
+  stroke: var(--hc-color, var(--accent-2)); stroke-width: 1.2;
+  opacity: 0; transition: stroke-dashoffset .5s cubic-bezier(.2,.7,.2,1), opacity .15s ease;
+}
+.hover-card.is-visible .hover-card-leader-line { opacity: .85; }
+.hover-card-dot {
+  position: fixed; z-index: 1; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%;
+  background: var(--hc-color, var(--accent-2));
+  box-shadow: 0 0 7px var(--hc-color, var(--accent-2));
+  opacity: 0; transform: scale(.3);
+  transition: opacity .2s ease, transform .25s cubic-bezier(.3,1.4,.4,1);
+}
+.hover-card.is-visible .hover-card-dot { opacity: 1; transform: scale(1); }
+.hover-card-box {
+  position: fixed; max-width: 220px;
+  padding: 6px 0 6px 10px; border-left: 1.5px solid var(--hc-color, var(--accent-2));
+  opacity: 0; transform: translateX(-4px);
+  transition: opacity .3s ease .16s, transform .3s ease .16s;
+}
+.hover-card.is-visible .hover-card-box { opacity: 1; transform: translateX(0); }
 .hover-card-role {
-  display: inline-flex; align-items: center;
-  font-family: var(--font-mono); font-size: .68rem; text-transform: uppercase; letter-spacing: .04em;
-  padding: 2px 8px; border-radius: 999px; margin-bottom: 6px;
-  color: var(--hc-color, var(--accent-2));
-  border: 1px solid color-mix(in srgb, var(--hc-color, var(--accent)) 55%, transparent);
+  display: block;
+  font-family: var(--font-mono); font-size: .64rem; text-transform: uppercase; letter-spacing: .07em;
+  color: var(--hc-color, var(--accent-2)); margin-bottom: 3px;
 }
-.hover-card-line { margin: 0; font-size: .8rem; color: var(--text); line-height: 1.4; }
-.hover-card-line + .hover-card-line { margin-top: 3px; color: var(--muted); }
+.hover-card-line { margin: 0; font-family: var(--font-mono); font-size: .76rem; color: var(--text); line-height: 1.45; }
+.hover-card-line + .hover-card-line { margin-top: 2px; color: var(--muted); }
 
 /* --- модалки ---------------------------------------------------------------- */
 .orbit-modal {

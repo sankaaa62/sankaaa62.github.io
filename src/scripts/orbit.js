@@ -20,7 +20,30 @@ import { buildViewer, attachViewer } from '../scripts/media-viewer.js';
   const data = window.__ORBIT_DATA__ || { maxOrbitRadius: 900, eras: [] };
   const hint = document.getElementById('orbit-hint');
   const hoverCard = document.getElementById('orbit-hover-card');
-  function hideHoverCard() { hoverCard?.classList.remove('is-visible'); }
+  const hoverLine = /** @type {SVGPathElement | null} */ (hoverCard?.querySelector('.hover-card-leader-line') ?? null);
+  const hoverDot = /** @type {HTMLElement | null} */ (hoverCard?.querySelector('.hover-card-dot') ?? null);
+  const hoverBox = /** @type {HTMLElement | null} */ (hoverCard?.querySelector('.hover-card-box') ?? null);
+  // итерация 11 (п.12a): карточка раньше позиционировалась ОДИН РАЗ на вход
+  // указателя и дальше не двигалась, пока планета/звезда непрерывно едет по
+  // орбите под ней — визуально "отклеивалась" от объекта уже через долю
+  // секунды. hoverAnchorEl/hoverRafId — состояние небольшого rAF-цикла,
+  // который, пока курсор наведен, каждый кадр перечитывает текущий
+  // getBoundingClientRect() цели и пересчитывает и точку-маркер, и
+  // ломаную линию-выноску, и позицию текста (см. positionHoverCard ниже).
+  // Объявлено на верхнем уровне (не внутри matchMedia-гейта ниже), т.к.
+  // hideHoverCard() дергается и из кода вне гейта (openStar/openPlanetCard) —
+  // должен безопасно останавливать трекинг независимо от того, включились
+  // ли вообще hover-слушатели на этом устройстве.
+  let hoverRafId = null;
+  let hoverAnchorEl = null;
+  function stopHoverTracking() {
+    hoverAnchorEl = null;
+    if (hoverRafId !== null) { cancelAnimationFrame(hoverRafId); hoverRafId = null; }
+  }
+  function hideHoverCard() {
+    hoverCard?.classList.remove('is-visible');
+    stopHoverTracking();
+  }
 
   const MIN_ZOOM = 0.1;
   const MAX_ZOOM = 2.6;
@@ -590,38 +613,89 @@ import { buildViewer, attachViewer } from '../scripts/media-viewer.js';
     if (justDragged) { e.stopPropagation(); e.preventDefault(); }
   }, true);
 
-  // --- hover-блоки (итерация 10, п.6) ------------------------------------------
+  // --- hover-блоки: "sci-fi" callout с линией-выноской (итерация 10, п.6 +
+  // итерация 11, п.12) ----------------------------------------------------
   // Один общий #orbit-hover-card на всю страницу (см. orbit.astro) — тут
   // только позиционирование и наполнение по pointerenter/leave. Гейт
   // matchMedia(hover:hover) — на тач-устройствах слушатели вообще не
   // вешаются, ховер там физически невозможен, клик по-прежнему открывает
   // карточку/модалку без изменений.
-  if (hoverCard && matchMedia('(hover: hover) and (pointer: fine)').matches) {
-    const HOVER_GAP = 14;
-    const HOVER_EDGE_MARGIN = 8;
+  //
+  // п.12b (редизайн): точка-маркер НА объекте -> ломаная линия (диагональ
+  // 45° + горизонтальный отрезок) -> текст-сноска в стороне. Диагональ и
+  // горизонталь считаются от края объекта (не от центра — на маркере под
+  // курсором), направление (право/лево, вверх/вниз) выбирается по
+  // квадранту экрана, где сейчас находится объект — та же идея, что и у
+  // прежнего вертикального флипа, но на обе оси сразу. Линия рисуется
+  // через <path> с stroke-dasharray/dashoffset = длина пути — на старте
+  // ховера offset выставляется в length (линия невидима), затем классом
+  // is-visible включается CSS-transition dashoffset->0 (эффект "прочерчивания
+  // линии"), текст проявляется отдельным fade с небольшой задержкой following.
+  if (hoverCard && hoverLine && hoverDot && hoverBox && matchMedia('(hover: hover) and (pointer: fine)').matches) {
+    const LEADER_DIAG = 26; // длина диагонального сегмента, px
+    const LEADER_GAP = 14; // зазор между концом горизонтали и текстом
+    const HOVER_EDGE_MARGIN = 10;
 
+    // считает точки маркера/излома/конца линии по текущему rect цели и
+    // квадранту экрана, кладет их в DOM (dot/path/box) — вызывается и один
+    // раз на старте ховера, и каждый кадр rAF-трекинга, пока курсор наведен
     function positionHoverCard(rect) {
       const vw = window.innerWidth;
       const vh = window.innerHeight;
-      const cw = hoverCard.offsetWidth;
-      const ch = hoverCard.offsetHeight;
-      // вертикальный флип по квадранту: маркер в верхней половине экрана —
-      // карточка снизу, иначе сверху (чтобы не вылезала за верх/низ)
-      const showBelow = rect.top < vh / 2;
-      let top = showBelow ? rect.bottom + HOVER_GAP : rect.top - HOVER_GAP - ch;
-      top = clamp(top, HOVER_EDGE_MARGIN, Math.max(HOVER_EDGE_MARGIN, vh - ch - HOVER_EDGE_MARGIN));
-      let left = rect.left + rect.width / 2 - cw / 2;
-      left = clamp(left, HOVER_EDGE_MARGIN, Math.max(HOVER_EDGE_MARGIN, vw - cw - HOVER_EDGE_MARGIN));
-      hoverCard.style.left = `${left}px`;
-      hoverCard.style.top = `${top}px`;
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const r = Math.min(rect.width, rect.height) / 2;
+      const dirX = cx < vw / 2 ? 1 : -1;
+      const dirY = cy < vh / 2 ? 1 : -1;
+      // точка на краю объекта под 45° в сторону, куда пойдет линия
+      const dotX = cx + dirX * r * Math.SQRT1_2;
+      const dotY = cy + dirY * r * Math.SQRT1_2;
+      const kneeX = dotX + dirX * LEADER_DIAG;
+      const kneeY = dotY + dirY * LEADER_DIAG;
+      const bw = hoverBox.offsetWidth;
+      const bh = hoverBox.offsetHeight;
+      let boxLeft = dirX > 0 ? kneeX + LEADER_GAP : kneeX - LEADER_GAP - bw;
+      let boxTop = kneeY - bh / 2;
+      boxLeft = clamp(boxLeft, HOVER_EDGE_MARGIN, Math.max(HOVER_EDGE_MARGIN, vw - bw - HOVER_EDGE_MARGIN));
+      boxTop = clamp(boxTop, HOVER_EDGE_MARGIN, Math.max(HOVER_EDGE_MARGIN, vh - bh - HOVER_EDGE_MARGIN));
+      // горизонтальный отрезок линии всегда доходит РОВНО до края текста —
+      // даже если бокс сместился клампом у края экрана (тогда сегмент
+      // перестает быть строго горизонтальным, что нормально: линия обязана
+      // физически соединять точки, а не просто "казаться" горизонтальной)
+      const lineEndX = dirX > 0 ? boxLeft : boxLeft + bw;
+      const lineEndY = boxTop + bh / 2;
+
+      hoverDot.style.left = `${dotX}px`;
+      hoverDot.style.top = `${dotY}px`;
+      hoverBox.style.left = `${boxLeft}px`;
+      hoverBox.style.top = `${boxTop}px`;
+      hoverLine.setAttribute('d', `M${dotX},${dotY} L${kneeX},${kneeY} L${lineEndX},${lineEndY}`);
+      return hoverLine.getTotalLength();
+    }
+
+    function hoverTrackTick() {
+      if (!hoverAnchorEl) { hoverRafId = null; return; }
+      positionHoverCard(hoverAnchorEl.getBoundingClientRect());
+      hoverRafId = requestAnimationFrame(hoverTrackTick);
     }
 
     function showHoverCard(anchorEl, html, colorVar) {
-      hoverCard.innerHTML = html;
+      hoverBox.innerHTML = html;
       hoverCard.style.setProperty('--hc-color', colorVar || 'var(--accent-2)');
+      // размеры бокса известны только после простановки контента — считаем
+      // позиции/длину пути, ЗАТЕМ проигрываем draw-in (без is-visible на
+      // старте, чтобы dashoffset=length применился мгновенно, без transition)
+      const length = positionHoverCard(anchorEl.getBoundingClientRect());
+      hoverLine.style.strokeDasharray = String(length);
+      hoverLine.style.strokeDashoffset = String(length);
+      // force reflow — гарантирует, что браузер зафиксировал dashoffset=length
+      // ДО добавления класса, иначе переход к 0 может не проиграться (both
+      // изменения схлопнутся в один кадр без анимации)
+      void hoverLine.getBoundingClientRect();
       hoverCard.classList.add('is-visible');
-      // размеры карточки известны только после простановки контента
-      positionHoverCard(anchorEl.getBoundingClientRect());
+      hoverLine.style.strokeDashoffset = '0';
+      hoverAnchorEl = anchorEl;
+      if (hoverRafId === null) hoverRafId = requestAnimationFrame(hoverTrackTick);
     }
 
     document.querySelectorAll('.planet[data-planet-open]').forEach((btn) => {
@@ -655,9 +729,9 @@ import { buildViewer, attachViewer } from '../scripts/media-viewer.js';
       starHoverBtn.addEventListener('pointerleave', hideHoverCard);
     }
 
-    // карточка не следит за целью непрерывно (позиционируется один раз на
-    // вход указателя) — при начале любого жеста камеры прячем ее, чтобы не
-    // повисла оторванной от объекта
+    // при начале любого жеста камеры прячем карточку — иначе трекинг гнался
+    // бы за целью, чья экранная позиция скачком поменялась из-за пана/зума,
+    // и линия дернулась бы рывком вместо плавного слежения за орбитой
     viewport.addEventListener('pointerdown', hideHoverCard);
     viewport.addEventListener('wheel', hideHoverCard, { passive: true });
   }
