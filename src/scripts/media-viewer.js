@@ -320,7 +320,14 @@ export function attachViewer(root, opts = {}) {
     } else if (item.kind === 'youtube') {
       const iframe = document.createElement('iframe');
       const params = new URLSearchParams({ enablejsapi: '1' });
-      if (autoplay) params.set('autoplay', '1');
+      if (autoplay) {
+        params.set('autoplay', '1');
+        // iter12 (задача BA, п.1): без mute=1 браузер молча блокирует автоплей
+        // без пользовательского жеста (авто-слайдшоу/renderFirst модалки) -
+        // для ручного клика по миниатюре (mutedAuto не передан) звук не
+        // глушим, поведение прежнее (попытка со звуком)
+        if (mutedAuto) params.set('mute', '1');
+      }
       iframe.src = `${YT_ORIGIN}/embed/${item.id}?${params.toString()}`;
       iframe.title = title;
       iframe.loading = 'lazy';
@@ -406,10 +413,29 @@ export function attachViewer(root, opts = {}) {
     // Разметка от buildViewer() (модалка прототипов) — стейдж пуст, первый
     // слайд рисуем сами. Раньше первое видео модалки играло приглушенно
     // сразу при открытии — сохраняем то же поведение (autoplay+mutedAuto).
+    // Плей запускает renderStage() (см. выше) - здесь его НЕ дублируем.
     setActive(0, true, true);
   } else {
-    // SSR-случай (страницы проектов) — первый слайд уже отрисован сервером,
-    // сразу планируем от него слайдшоу.
+    // SSR-случай (страницы проектов) — первый слайд уже отрисован сервером
+    // и сразу играет сам (video: autoplay+muted атрибуты; youtube:
+    // autoplay=1&mute=1 в src — см. MediaViewer.astro, iter12 п.1). Плей
+    // запускает браузер сам по этой разметке — JS здесь НЕ вызывает play()
+    // повторно (не было бы двойного плея), а только довешивает то, чего
+    // нет у голой SSR-разметки: цепочку авто-перехода на следующий слайд
+    // (у слайдов, отрисованных через renderStage(), ее вешает renderStage
+    // сама - 'ended' на video, currentYoutubeFrame+message на youtube).
+    const firstItem = readItem(thumbs[0]);
+    if (firstItem.kind === 'video') {
+      stage.querySelector('video')?.addEventListener('ended', () => advanceAuto());
+    } else if (firstItem.kind === 'youtube') {
+      const iframe = stage.querySelector('iframe');
+      if (iframe) {
+        currentYoutubeFrame = iframe;
+        iframe.addEventListener('load', () => {
+          iframe.contentWindow?.postMessage(JSON.stringify({ event: 'listening', id: 'mv' }), '*');
+        });
+      }
+    }
     scheduleSlide();
   }
 

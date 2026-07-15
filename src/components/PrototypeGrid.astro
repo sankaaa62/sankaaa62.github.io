@@ -2,7 +2,16 @@
 import { getCollection } from 'astro:content';
 import { t, type Locale } from '../i18n/ui';
 const { locale } = Astro.props as { locale: Locale };
-const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 1 : 0) - (a.data.pin ? 1 : 0) || b.data.year - a.data.year);
+const allProtos = await getCollection('prototypes');
+// iter12 (задача BA, п.3): раньше сортировка ставила pin-элемент (миллионник,
+// Car Junk Resurrection) ПЕРВЫМ - при появлении секции лента сразу "уезжала"
+// от него влево (первая карточка трека). Кладем его на 4-ю позицию (индекс 3) -
+// заметен почти сразу, но не в самом начале; остальные - как раньше, по году,
+// новее слева. Раскладку /orbit/ это не трогает - там своя сортировка.
+const sortedByYear = allProtos.filter((p) => !p.data.pin).sort((a, b) => b.data.year - a.data.year);
+const pinned = allProtos.filter((p) => p.data.pin);
+const pinIndex = Math.min(3, sortedByYear.length);
+const protos = [...sortedByYear.slice(0, pinIndex), ...pinned, ...sortedByYear.slice(pinIndex)];
 ---
 <div id="prototypes" class="proto-section">
   <p class="mono" style="color:var(--muted);font-size:.85rem;">{t(locale, 'prototypes.sub')}</p>
@@ -32,6 +41,16 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
                 style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .25s;">
                 <source src={`/media/prototypes/${p.data.id}/clip.webm`} type="video/webm" />
               </video>
+            )}
+            {/* iter12 (задача BA, п.4): без клипа, но есть шоты (сейчас только
+                Skee Ball League) - ховер показывает слайдшоу шотов вместо видео,
+                та же механика кроссфейда, что у карточек проектов (iter11 п.1):
+                новый кадр фейдится ПОВЕРХ старого, без флэша иконки под ними */}
+            {!p.data.clip && p.data.shots > 0 && (
+              <>
+                <img class="proto-hover-img" data-layer="a" alt="" aria-hidden="true" />
+                <img class="proto-hover-img" data-layer="b" alt="" aria-hidden="true" />
+              </>
             )}
             {p.data.badge && (
               <span class="proto-badge mono">{p.data.badge[locale]}</span>
@@ -263,6 +282,17 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
     white-space: nowrap;
     z-index: 1;
   }
+  /* iter12 (задача BA, п.4): слои ховер-слайдшоу шотов у прототипов без клипа -
+     тот же принцип, что у .cover-hover-img в FeaturedCard.astro (iter11 п.1):
+     приходящий кадр фейдится поверх еще непрозрачного уходящего (z-index в JS),
+     тот гасится мгновенно (.notransition) уже после, без совпадающего флэша */
+  .proto-hover-img {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: cover; opacity: 0; pointer-events: none;
+    transition: opacity .4s ease;
+  }
+  .proto-hover-img.is-visible { opacity: 1; }
+  .proto-hover-img.notransition { transition: none !important; }
   /* iter9 (п.5 YE): вертикальный список pm-video/pm-extra-clips/pm-shots/
      pm-icon заменен на общий Steam-стиль вьювер (.pm-viewer собирается на
      клиенте через buildViewer() из media-viewer.js, стили вьювера — в
@@ -658,6 +688,94 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
     }
   }
 
+  // iter12 (задача BA, п.4): ховер-слайдшоу шотов для карточек прототипа без
+  // клипа (clip=false, shots>0 - сейчас только Skee Ball League). Упрощенная
+  // версия механики из FeaturedCard.astro (iter11 п.1): приходящий кадр всегда
+  // заходит ПОВЕРХ еще непрозрачного уходящего (z-index выше), тот гасится
+  // мгновенно (.notransition) только один раз - таймером по длительности
+  // transition, без transitionend-слушателя - кадры мелкие (иконка 1:1),
+  // разница незаметна, а кода меньше.
+  function attachProtoHoverShots(el: HTMLElement) {
+    if (el.dataset.clip === '1') return;
+    const shotsCount = Number(el.dataset.shots ?? '0');
+    if (shotsCount < 1) return;
+    const layers = Array.from(el.querySelectorAll<HTMLImageElement>('.proto-hover-img'));
+    if (layers.length < 2) return;
+    const id = el.dataset.id ?? '';
+    const shots = Array.from({ length: shotsCount }, (_, i) => `/media/prototypes/${id}/shots/${i + 1}.webp`);
+
+    if (shots.length < 2) {
+      // один-единственный шот - листать нечего, показываем его статично
+      layers[0].src = shots[0];
+      el.addEventListener('pointerenter', () => layers[0].classList.add('is-visible'));
+      el.addEventListener('pointerleave', () => layers[0].classList.remove('is-visible'));
+      return;
+    }
+
+    const INTERVAL_MS = 1100;
+    const FADE_MS = 400; // синхронизировано с transition opacity у .proto-hover-img
+    let index = 0;
+    let front = 0;
+    let hovering = false;
+    let session = 0;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let hideTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const scheduleNext = () => {
+      if (timer !== null) clearTimeout(timer);
+      timer = setTimeout(advance, INTERVAL_MS);
+    };
+
+    const hideInstantly = (layer: HTMLImageElement) => {
+      layer.classList.add('notransition');
+      void layer.offsetWidth;
+      layer.classList.remove('is-visible');
+      void layer.offsetWidth;
+      layer.classList.remove('notransition');
+    };
+
+    function advance() {
+      if (!hovering) return;
+      const mySession = session;
+      const nextIndex = (index + 1) % shots.length;
+      const back = front === 0 ? 1 : 0;
+      const incoming = layers[back];
+      const outgoing = layers[front];
+      incoming.src = shots[nextIndex];
+      const swap = () => {
+        if (!hovering || mySession !== session) return;
+        index = nextIndex;
+        if (hideTimer !== null) clearTimeout(hideTimer);
+        incoming.style.zIndex = '2';
+        outgoing.style.zIndex = '1';
+        incoming.classList.add('is-visible');
+        hideTimer = setTimeout(() => hideInstantly(outgoing), FADE_MS + 100);
+        front = back;
+        scheduleNext();
+      };
+      incoming.decode ? incoming.decode().then(swap).catch(swap) : ((incoming.onload = swap), (incoming.onerror = swap));
+    }
+
+    el.addEventListener('pointerenter', () => {
+      if (hovering) return;
+      hovering = true;
+      session++;
+      advance();
+    });
+    el.addEventListener('pointerleave', () => {
+      hovering = false;
+      session++;
+      if (timer !== null) { clearTimeout(timer); timer = null; }
+      if (hideTimer !== null) { clearTimeout(hideTimer); hideTimer = null; }
+      layers.forEach((l) => {
+        l.classList.remove('is-visible');
+        l.classList.remove('notransition');
+        l.style.zIndex = '';
+      });
+      front = 0;
+    });
+  }
+
   if (matchMedia('(hover: hover) and (pointer: fine)').matches) {
     const protoCards = Array.from(document.querySelectorAll<HTMLElement>('.proto-card'));
     protoCards.forEach((el, idx) => {
@@ -665,6 +783,7 @@ const protos = (await getCollection('prototypes')).sort((a, b) => (b.data.pin ? 
       const video = el.querySelector('video');
       const prevCard = protoCards[idx - 1];
       const nextCard = protoCards[idx + 1];
+      attachProtoHoverShots(el);
       el.addEventListener('pointerenter', () => {
         if (video) { video.style.opacity = '1'; video.play().catch(() => {}); }
         prevCard?.classList.add('spread-left');

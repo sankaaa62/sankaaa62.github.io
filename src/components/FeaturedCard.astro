@@ -111,8 +111,10 @@ const hasHoverSlideshow = !hasHoverClip && shots.length > 1;
   .cover-hover-video.is-visible { opacity: 1; }
 
   /* iter11 (задача AA, п.3б): круглый пин-маркер - правый нижний угол обложки,
-     тот же язык, что .platform-badge (полупрозрачная темная подложка +
-     accent-2 обводка), но замкнут в круг - типичный "показать на карте" стиль */
+     та же полупрозрачная темная подложка, что у .platform-badge, но обводка/
+     иконка не оранжевые - iter12 (задача BA, п.2): тил (--teal), язык
+     навигации/интерактива сайта (scroll-spy, теги стека), отличает пин от
+     оранжевых бейджей платформ визуально, не только позицией в углу */
   .map-pin-badge {
     position: absolute; right: 10px; bottom: 10px;
     /* iter11 (задача AA, ревью-фикс): выше .platform-badges-cover (z-index:4
@@ -122,13 +124,14 @@ const hasHoverSlideshow = !hasHoverClip && shots.length > 1;
     display: inline-flex; align-items: center; justify-content: center;
     width: 32px; height: 32px; border-radius: 50%;
     background: rgba(14, 15, 19, .72);
-    border: 1px solid rgba(255, 176, 26, .35);
-    color: var(--accent-2);
-    transition: transform .2s, border-color .2s, color .2s;
+    border: 1px solid rgba(45, 212, 191, .45);
+    color: var(--teal);
+    transition: transform .2s, border-color .2s, box-shadow .2s;
   }
   .map-pin-badge svg { width: 16px; height: 16px; }
   .map-pin-badge:hover {
-    color: var(--accent); border-color: var(--accent);
+    border-color: var(--teal);
+    box-shadow: 0 0 14px rgba(45, 212, 191, .4);
     transform: translateY(-2px) scale(1.06);
   }
 
