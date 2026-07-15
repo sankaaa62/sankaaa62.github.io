@@ -364,21 +364,42 @@ button.reset {
 
 /* --- HUD ------------------------------------------------------------------- */
 .hud { position: fixed; inset: 0; z-index: 20; pointer-events: none; }
+/* итерация 11 (п.4): обертка колонкой над панелью легенды — держит обратную
+   ссылку и панель как два визуально отдельных, но совместно позиционируемых
+   блока (один top/left на оба, один брейкпоинт-оверрайд ниже в responsive).
+   pointer-events:none на обертке + auto на прямых детях — тот же прием, что
+   и у .hud в целом (сцена под HUD должна остаться кликабельной за пределами
+   реальных виджетов). */
+.hud-topleft {
+  pointer-events: none;
+  position: fixed; top: 20px; left: 20px; z-index: 20;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 10px;
+  max-width: 300px;
+}
+.hud-topleft > * { pointer-events: auto; }
 .hud-panel {
-  pointer-events: auto;
-  position: fixed; top: 20px; left: 20px; max-width: 300px;
+  max-width: 300px;
   background: rgba(10,11,18,.62); border: 1px solid var(--border); border-radius: var(--radius);
   -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
   padding: 16px 18px;
 }
-/* итерация 10 (задача ZB, п.1): обратная ссылка на основной сайт - компактная,
-   в языке навигационных иконок HUD (mono, приглушенная, подсветка на hover) */
+/* итерация 11 (п.4): раньше это была мелкая строка ВНУТРИ панели легенды
+   (color:muted, только hover ярче) — терялась среди заголовка/легенды.
+   Теперь отдельный HUD-чип: свой фон/бордер (тот же язык, что у hud-zoom-btn/
+   hud-hint), цвет по умолчанию accent-2 (заметнее muted, но не кричащий —
+   тот же оттенок, что у kicker/hover-подсветок остальных элементов HUD). */
 .hud-backlink {
   display: inline-flex; align-items: center; gap: 6px;
-  margin: 0 0 10px; font-size: .72rem; color: var(--muted);
-  text-decoration: none; transition: color .15s, transform .15s;
+  padding: 8px 14px; border-radius: 999px;
+  background: rgba(10,11,18,.62); border: 1px solid var(--border);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  font-size: .74rem; color: var(--accent-2);
+  text-decoration: none; transition: color .15s, transform .15s, border-color .15s, box-shadow .15s;
 }
-.hud-backlink:hover, .hud-backlink:focus-visible { color: var(--accent-2); transform: translateX(-2px); outline: none; }
+.hud-backlink:hover, .hud-backlink:focus-visible {
+  color: #fff; transform: translateX(-2px); border-color: var(--accent-2);
+  box-shadow: 0 0 14px rgba(255,176,26,.25); outline: none;
+}
 .hud-backlink-arrow { font-size: .9rem; line-height: 1; }
 .hud-kicker { font-size: .68rem; letter-spacing: .14em; text-transform: uppercase; color: var(--accent-2); margin: 0 0 6px; }
 .hud-title {
@@ -387,7 +408,28 @@ button.reset {
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 .hud-subtitle { margin: 0 0 14px; color: var(--muted); font-size: .8rem; line-height: 1.5; }
-.hud-legend { display: flex; flex-direction: column; gap: 4px; }
+/* итерация 11 (п.5): кнопка-переключатель легенды — компактная строка над
+   списком, шеврон разворачивается на 180° при открытой легенде (класс на
+   самой кнопке через aria-expanded, читает orbit.js) */
+/* .legend-toggle.reset (не просто .legend-toggle) — тот же баг специфичности
+   button.reset, что у .planet/.asteroid (см. комментарии там): элемент это
+   <button class="legend-toggle reset">, а button.reset (элемент+класс)
+   специфичнее одного класса .legend-toggle и молча съел бы padding/width. */
+.legend-toggle.reset {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  width: 100%; margin-bottom: 6px; padding: 4px 2px;
+  font-family: var(--font-mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--muted); transition: color .15s ease;
+}
+.legend-toggle:hover, .legend-toggle:focus-visible { color: var(--text); outline: none; }
+.legend-toggle-chevron { font-size: .9rem; line-height: 1; transition: transform .3s ease; }
+.legend-toggle[aria-expanded="false"] .legend-toggle-chevron { transform: rotate(-90deg); }
+.hud-legend {
+  display: flex; flex-direction: column; gap: 4px;
+  max-height: 400px; overflow: hidden;
+  transition: max-height .35s ease, opacity .3s ease;
+}
+.hud-legend.is-collapsed { max-height: 0; opacity: 0; }
 .legend-item {
   display: flex; align-items: baseline; gap: 8px;
   padding: 6px 8px; border-radius: 8px; cursor: pointer;
@@ -397,7 +439,6 @@ button.reset {
 .legend-item:hover, .legend-item:focus-visible { background: rgba(255,255,255,.05); border-color: var(--border); outline: none; }
 .legend-item.is-active { background: rgba(255,255,255,.07); border-color: color-mix(in srgb, var(--era-color, var(--accent)) 55%, transparent); }
 .legend-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--era-color, var(--accent)); box-shadow: 0 0 8px var(--era-color, var(--accent)); }
-.legend-dot--star { background: #fff; box-shadow: 0 0 8px #fff; }
 /* итерация 10 (п.6c): точка "Вся система" — тонкое кольцо вместо сплошного
    кружка, читается как "обзор всех орбит", а не как еще одна конкретная орбита */
 .legend-dot--overview {
@@ -508,6 +549,20 @@ button.reset {
 .orbit-modal.is-warping { animation: modal-warp-in .34s cubic-bezier(.2,.7,.25,1) both; }
 @keyframes modal-fade-out { to { opacity: 0; transform: scale(.94); } }
 .orbit-modal.is-closing { animation: modal-fade-out .15s ease-in both; }
+/* итерация 11 (п.10): закрытие окна проекта/прототипа (тех, что открывались
+   варпом — см. .was-warped, вешает orbit.js) получило обратный эффект: окно
+   "схлопывается" внутрь с той же вспышкой, что и при появлении, но в реверсе
+   (яркость/насыщенность растут к КОНЦУ, не к началу). Длительность (.32s)
+   совпадает с WARP_CLOSE_DELAY в orbit.js — JS ждет ровно столько же, прежде
+   чем реально вызвать dialog.close(). Селектор из трех классов специфичнее
+   и .is-warping (может еще не успеть погаснуть при очень быстром закрытии), и
+   обычного .is-closing — гарантированно выигрывает у обоих. */
+@keyframes modal-warp-out {
+  0% { opacity: 1; transform: scale(1); filter: brightness(1); }
+  35% { opacity: 1; transform: scale(.95); filter: brightness(1.35); }
+  100% { opacity: 0; transform: scale(.68); filter: brightness(2.6) saturate(1.3); }
+}
+.orbit-modal.is-closing.was-warped { animation: modal-warp-out .32s cubic-bezier(.4,0,.7,.4) both; }
 .modal-close {
   position: fixed; top: 16px; right: 16px; z-index: 2;
   width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border);
@@ -702,10 +757,11 @@ button.reset {
 
 /* --- responsive ------------------------------------------------------------- */
 @media (max-width: 720px) {
-  .hud-panel--top { max-width: calc(100vw - 40px); padding: 13px 15px; }
+  .hud-topleft { max-width: calc(100vw - 40px); }
+  .hud-panel--top { max-width: 100%; padding: 13px 15px; }
   .hud-title { font-size: 1.35rem; }
   .hud-subtitle { display: none; }
-  .hud-legend { flex-direction: row; flex-wrap: wrap; gap: 6px; }
+  .hud-legend { flex-direction: row; flex-wrap: wrap; gap: 6px; max-height: 300px; }
   .legend-item { padding: 9px 10px; min-height: 40px; }
   .legend-range { display: none; }
   .hud-era-detail.is-open { max-height: 160px; }
@@ -715,7 +771,8 @@ button.reset {
   .mv-thumb { width: 104px; height: 60px; }
 }
 @media (max-width: 420px) {
-  .hud-panel--top { top: 12px; left: 12px; padding: 11px 13px; }
+  .hud-topleft { top: 12px; left: 12px; }
+  .hud-panel--top { padding: 11px 13px; }
   .hud-title { font-size: 1.2rem; }
   .hud-footer { display: none; }
   .hud-zoom { right: 12px; bottom: 12px; }

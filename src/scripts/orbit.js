@@ -179,7 +179,6 @@ import { buildViewer, attachViewer } from '../scripts/media-viewer.js';
   const OVERVIEW_ID = '__overview__';
   let activeEraId = /** @type {string | null} */ (null);
   const eraDetailEl = document.querySelector('[data-era-detail]');
-  const legendStarBtn = document.querySelector('.legend-star');
   const legendOverviewBtn = document.querySelector('.legend-overview');
 
   // приглушает планеты/кольца/подписи орбит, НЕ совпадающих с id (п.6c).
@@ -211,7 +210,6 @@ import { buildViewer, attachViewer } from '../scripts/media-viewer.js';
       if (el.getAttribute('data-era-label') === id) el.setAttribute('data-focused', '');
       else el.removeAttribute('data-focused');
     });
-    legendStarBtn?.classList.toggle('is-active', id === '__star__');
     legendOverviewBtn?.classList.toggle('is-active', id === OVERVIEW_ID);
     applyEraFocusMode(id);
 
@@ -271,41 +269,101 @@ import { buildViewer, attachViewer } from '../scripts/media-viewer.js';
     }
     dialog.classList.remove('is-closing');
   }
+  // итерация 11 (п.9): открытие окна проекта/прототипа раньше показывало
+  // showModal() СИНХРОННО с началом варп-рывка камеры — рывок (380мс) и
+  // звездные штрихи проигрывались уже ЗА окном, зритель их не видел. Теперь
+  // openModalWarped откладывает фактическое появление окна до MODAL_OPEN_DELAY
+  // (~70% длительности варпа — в заданных 65-80%): камера успевает разогнаться
+  // и почти долететь, а окно всплывает "к концу рывка", внахлест с еще не
+  // погасшими штрихами (см. warpIntensity() в orbit-stars.js — там же спад
+  // растянут на весь хвост warpT, так что в момент появления окна штрихи еще
+  // заметны). Тот же WeakMap-паттерн защиты от гонок, что и pendingCloseTimers
+  // ниже — pendingOpenTimers хранит id отложенного открытия, чтобы повторный/
+  // отменяющий клик мог его отменить и не всплыть окном поверх уже другого
+  // выбранного объекта.
+  const pendingOpenTimers = new WeakMap();
+  function cancelPendingOpen(dialog) {
+    const timerId = pendingOpenTimers.get(dialog);
+    if (timerId !== undefined) {
+      clearTimeout(timerId);
+      pendingOpenTimers.delete(dialog);
+    }
+  }
   function openModal(dialog) {
     if (!dialog) return;
     document.querySelectorAll('.orbit-modal[open]').forEach((d) => { if (d !== dialog) requestCloseModal(d); });
+    cancelPendingOpen(dialog);
     cancelPendingClose(dialog);
     if (!dialog.open) dialog.showModal();
   }
-  // итерация 10 (п.6d): вариант открытия с "варп"-появлением (короткая
-  // вспышка+масштаб, см. @keyframes modal-warp-in в orbit.css) — для окон
-  // проекта и прототипа. Звезда-визитка открывается обычным openModal()
-  // (без варпа — задание просило варп именно для проектов/прототипов).
+  // WARP_DURATION объявлена выше вместе с warpToWorldPoint (варп-рывок камеры)
+  const MODAL_OPEN_DELAY = Math.round(WARP_DURATION * 0.7);
+  // итерация 10 (п.6d) / итерация 11 (п.9): вариант открытия с "варп"-появлением
+  // (короткая вспышка+масштаб, см. @keyframes modal-warp-in в orbit.css) — для
+  // окон проекта и прототипа, отложенный на MODAL_OPEN_DELAY (см. выше).
+  // Звезда-визитка открывается обычным openModal() (без варпа и без задержки —
+  // задание просило варп именно для проектов/прототипов). Класс 'was-warped'
+  // вешается на диалог вместе с фактическим открытием и живет, пока диалог
+  // открыт — requestCloseModal() читает его, чтобы понять, нужен ли обратный
+  // варп при закрытии (п.10), см. ниже.
   function openModalWarped(dialog) {
     if (!dialog) return;
     document.querySelectorAll('.orbit-modal[open]').forEach((d) => { if (d !== dialog) requestCloseModal(d); });
+    // отменяем отложенное открытие ЛЮБОГО другого диалога того же семейства —
+    // пользователь мог кликнуть по второму объекту раньше, чем успело
+    // всплыть окно первого (оба используют общие shared-диалоги проекта/
+    // прототипа, повторный клик просто переоткрывает тот же <dialog>)
+    document.querySelectorAll('.orbit-modal').forEach((d) => { if (d !== dialog) cancelPendingOpen(d); });
+    cancelPendingOpen(dialog);
     cancelPendingClose(dialog);
-    dialog.classList.add('is-warping');
-    if (!dialog.open) dialog.showModal();
-    setTimeout(() => dialog.classList.remove('is-warping'), 360);
+    const timerId = setTimeout(() => {
+      pendingOpenTimers.delete(dialog);
+      dialog.classList.add('is-warping', 'was-warped');
+      if (!dialog.open) dialog.showModal();
+      setTimeout(() => dialog.classList.remove('is-warping'), 360);
+    }, MODAL_OPEN_DELAY);
+    pendingOpenTimers.set(dialog, timerId);
   }
-  // закрытие — быстрое затухание (не обратный варп: при частом открытии
-  // разных карточек полный реверс приедался и слегка укачивал на глаз).
-  // Перехватывает и Escape (событие 'cancel' у <dialog>), чтобы затухание
-  // проигрывалось единообразно для всех путей закрытия.
+  // итерация 11 (п.10): закрытие окна, открытого варпом (project/proto —
+  // помечены классом 'was-warped', см. openModalWarped выше), тоже получает
+  // обратный эффект: короткий рывок камеры К ОБЗОРУ ВСЕЙ СИСТЕМЫ той же
+  // "рывковой" функцией warpToWorldPoint (что и у открытия) + повторный пульс
+  // звездных штрихов, синхронизированные по длительности с CSS-анимацией
+  // "схлопывания" окна (@keyframes modal-warp-out, см. orbit.css). Заодно
+  // закрывает п.11: setActiveEra(OVERVIEW_ID) тут же снимает фокус-режим и
+  // подсвечивает "Вся система" в легенде — камера и легенда возвращаются к
+  // обзору синхронно. Звезда-визитка (не 'was-warped') просто быстро гаснет,
+  // как и раньше — задание п.11 просило сброс легенды именно для карточек
+  // проекта/прототипа, не для визитки.
+  //
+  // Защита от гонки (WeakMap pendingCloseTimers) СОХРАНЕНА без изменений —
+  // как и просило ревью при задаче п.10: только ПАРАМЕТРИЗОВАНА длительность
+  // отложенного close() (WARP_CLOSE_DELAY вместо фиксированных 150мс для
+  // варпнутых диалогов, чтобы совпадать с более долгой CSS-анимацией
+  // схлопывания), сама защита (id таймера + повторная проверка is-closing в
+  // колбэке) — та же, что фиксила предыдущая гонка.
+  const SIMPLE_CLOSE_DELAY = 150;
+  const WARP_CLOSE_DELAY = 320; // = длительность modal-warp-out в orbit.css
   function requestCloseModal(dialog) {
     if (!dialog || !dialog.open || dialog.classList.contains('is-closing')) return;
+    cancelPendingOpen(dialog);
+    const warped = dialog.classList.contains('was-warped');
     dialog.classList.add('is-closing');
+    if (warped) {
+      window.__orbitWarpPulse?.(WARP_CLOSE_DELAY);
+      warpToWorldPoint(0, 0, fitZoomForRadius(data.maxOrbitRadius + 140, 0.44));
+      setActiveEra(OVERVIEW_ID);
+    }
+    const delay = warped ? WARP_CLOSE_DELAY : SIMPLE_CLOSE_DELAY;
     const timerId = setTimeout(() => {
       pendingCloseTimers.delete(dialog);
-      // защита №2: если за эти 150мс dialog успели переоткрыть (см.
+      // защита №2: если за это время dialog успели переоткрыть (см.
       // cancelPendingClose выше), класс уже снят — не закрываем то, что
       // пользователь/код только что снова открыл
       if (!dialog.classList.contains('is-closing')) return;
-      dialog.classList.remove('is-closing');
-      dialog.classList.remove('is-warping');
+      dialog.classList.remove('is-closing', 'is-warping', 'was-warped');
       dialog.close();
-    }, 150);
+    }, delay);
     pendingCloseTimers.set(dialog, timerId);
   }
   document.querySelectorAll('.orbit-modal').forEach((dialog) => {
@@ -398,6 +456,25 @@ import { buildViewer, attachViewer } from '../scripts/media-viewer.js';
     g.addEventListener('click', () => { focusEraOrToggleOff(g.getAttribute('data-focus-era')); dismissHint(); });
   });
   legendOverviewBtn?.addEventListener('click', () => { focusOverview(); dismissHint(); });
+
+  // --- легенда: сворачивание (итерация 11, п.5) -------------------------------
+  // Дефолтное состояние решаем по ширине экрана на старте: на десктопе легенда
+  // и так компактна и полезна развернутой сразу, на мобильных (та же граница
+  // 720px, что и у responsive-раскладки HUD в orbit.css) она в развернутом виде
+  // съедает заметную часть небольшого экрана поверх карты — сворачиваем по
+  // умолчанию, пользователь разворачивает по кнопке при необходимости.
+  const legendToggleBtn = document.querySelector('[data-legend-toggle]');
+  const legendNav = document.querySelector('[data-legend]');
+  if (legendToggleBtn && legendNav) {
+    const setLegendExpanded = (expanded) => {
+      legendToggleBtn.setAttribute('aria-expanded', String(expanded));
+      legendNav.classList.toggle('is-collapsed', !expanded);
+    };
+    legendToggleBtn.addEventListener('click', () => {
+      setLegendExpanded(legendToggleBtn.getAttribute('aria-expanded') !== 'true');
+    });
+    setLegendExpanded(window.innerWidth > 720);
+  }
 
   // --- зум-кнопки HUD ---------------------------------------------------------
   document.querySelectorAll('[data-zoom]').forEach((btn) => {
