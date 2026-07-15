@@ -831,6 +831,68 @@ import { buildViewer, attachViewer } from '../scripts/media-viewer.js';
     viewport.addEventListener('wheel', hideHoverCard, { passive: true });
   }
 
+  // --- тултип спутников-лун (итерация 12.1, п.2) ------------------------------
+  // Нативный title медленный (браузерная задержка появления) и не
+  // стилизуется — маленький кастомный тултип, тот же общий-элемент-на-
+  // страницу + rAF-трекинг паттерн, что и у .hover-card выше, но проще (без
+  // линии-выноски, просто ярлык у самого спутника — луна продолжает
+  // вращаться, пока курсор наведен, трекинг не дает тултипу отстать).
+  // Тот же гейт matchMedia(hover:hover) — на тач не показывается.
+  const moonTooltip = document.getElementById('orbit-moon-tooltip');
+  if (moonTooltip && matchMedia('(hover: hover) and (pointer: fine)').matches) {
+    const MOON_TIP_GAP = 8;
+    const MOON_TIP_EDGE_MARGIN = 8;
+    let moonTipRafId = null;
+    let moonTipAnchor = null;
+
+    function positionMoonTip(rect) {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const tw = moonTooltip.offsetWidth;
+      const th = moonTooltip.offsetHeight;
+      // вертикальный флип: обычно тултип НАД спутником, если места сверху
+      // не хватает (спутник у самого верха экрана) — снизу
+      const showBelow = rect.top - th - MOON_TIP_GAP < MOON_TIP_EDGE_MARGIN;
+      let top = showBelow ? rect.bottom + MOON_TIP_GAP : rect.top - MOON_TIP_GAP - th;
+      top = clamp(top, MOON_TIP_EDGE_MARGIN, Math.max(MOON_TIP_EDGE_MARGIN, vh - th - MOON_TIP_EDGE_MARGIN));
+      let left = rect.left + rect.width / 2 - tw / 2;
+      left = clamp(left, MOON_TIP_EDGE_MARGIN, Math.max(MOON_TIP_EDGE_MARGIN, vw - tw - MOON_TIP_EDGE_MARGIN));
+      moonTooltip.style.left = `${left}px`;
+      moonTooltip.style.top = `${top}px`;
+    }
+
+    function moonTipTick() {
+      if (!moonTipAnchor) { moonTipRafId = null; return; }
+      positionMoonTip(moonTipAnchor.getBoundingClientRect());
+      moonTipRafId = requestAnimationFrame(moonTipTick);
+    }
+
+    function hideMoonTip() {
+      moonTooltip.classList.remove('is-visible');
+      moonTipAnchor = null;
+      if (moonTipRafId !== null) { cancelAnimationFrame(moonTipRafId); moonTipRafId = null; }
+    }
+
+    document.querySelectorAll('.moon-badge').forEach((badge) => {
+      badge.addEventListener('pointerenter', (e) => {
+        if (/** @type {PointerEvent} */ (e).pointerType === 'touch') return;
+        const text = badge.dataset.tooltip || '';
+        if (!text) return;
+        moonTooltip.textContent = text;
+        positionMoonTip(badge.getBoundingClientRect());
+        moonTooltip.classList.add('is-visible');
+        moonTipAnchor = badge;
+        if (moonTipRafId === null) moonTipRafId = requestAnimationFrame(moonTipTick);
+      });
+      badge.addEventListener('pointerleave', hideMoonTip);
+    });
+
+    // тот же повод спрятать, что и у основной hover-карточки — жест камеры
+    // мог скачком сдвинуть все сцену, трекинг не должен гнаться за этим
+    viewport.addEventListener('pointerdown', hideMoonTip);
+    viewport.addEventListener('wheel', hideMoonTip, { passive: true });
+  }
+
   // --- фоновый метеор для оживления сцены (не привязан к взаимодействию) -----
   function scheduleAmbientMeteor() {
     const delay = 12000 + Math.random() * 13000;

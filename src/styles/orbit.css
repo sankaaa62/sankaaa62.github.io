@@ -273,7 +273,12 @@ button.reset {
 .orbit-rotor.moon-rotor { left: 50%; top: 50%; }
 /* спутники не кликабельны и не должны перехватывать hover/клик по планете
    под собой — базовый .orbit-counter-rotate ставит pointer-events:auto
-   (нужно для кликабельных планет/астероидов), тут явно возвращаем none */
+   (нужно для кликабельных планет/астероидов), тут явно возвращаем none.
+   Итерация 12.1 (п.2): .moon-badge НИЖЕ возвращает pointer-events:auto
+   ТОЧЕЧНО на себя (видимый круг, а не всю невидимую площадь ротора) — нужно
+   для наведения курсора и кастомного тултипа, клики по остальной (гораздо
+   большей, невидимой) площади .moon-rotor по-прежнему проходят насквозь к
+   планете под ним. */
 .moon-rotor .orbit-counter-rotate { pointer-events: none; }
 /* итерация 12 (п.6, ревью): раньше это были овальные пилюли (inline-flex +
    padding, размер по контенту) на мелком приглушенном фоне — по фидбеку
@@ -284,16 +289,22 @@ button.reset {
    палитра, что и у остального HUD) вместо мутного rgba(6,7,16). PC/Mobile
    больше не делят одну пилюль — см. buildSatellites() в orbit.astro
    (итерация 12, п.6): у каждой платформы свой .moon-badge--platform-{pc,
-   mobile} со своей иконкой. */
+   mobile} со своей иконкой.
+   Итерация 12.1 (п.3): базовый размер (28px) был единым для всех типов —
+   по фидбеку метрика-количество и мультиплеер (более "весомая" информация)
+   должны быть крупнее платформенных иконок. Базовое правило теперь задает
+   МЕНЬШИЙ калибр (26px, платформы), .moon-badge--metric/--multiplayer
+   переопределяют на больший (34px) отдельным правилом ниже. */
 .moon-badge {
   display: flex; align-items: center; justify-content: center;
-  width: 28px; height: 28px; border-radius: 50%; flex: none;
+  width: 26px; height: 26px; border-radius: 50%; flex: none;
   background: var(--surface-2); border: 1.5px solid var(--border);
   color: var(--muted); font-weight: 700; font-size: .5rem; line-height: 1;
   box-shadow: 0 0 0 3px rgba(6,7,16,.6);
   overflow: hidden;
+  pointer-events: auto;
 }
-.moon-badge svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; flex: none; }
+.moon-badge svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2; flex: none; }
 .moon-badge span { padding: 0 2px; }
 .moon-badge--platform-pc,
 .moon-badge--platform-mobile {
@@ -302,6 +313,15 @@ button.reset {
   border-color: color-mix(in srgb, var(--violet) 55%, transparent);
   box-shadow: 0 0 0 3px rgba(6,7,16,.6), 0 0 10px -1px color-mix(in srgb, var(--violet) 60%, transparent);
 }
+/* итерация 12.1 (п.3): калибр покрупнее (34px против базовых 26px) для
+   метрики-количества и мультиплеера - "более весомая" информация */
+.moon-badge--metric,
+.moon-badge--multiplayer {
+  width: 34px; height: 34px;
+  font-size: .56rem;
+}
+.moon-badge--metric svg,
+.moon-badge--multiplayer svg { width: 17px; height: 17px; }
 .moon-badge--metric {
   color: var(--gold);
   background: color-mix(in srgb, var(--surface-2) 78%, var(--gold) 14%);
@@ -353,8 +373,20 @@ button.reset {
 .planet.is-deeplink-pulse { animation: deeplink-pulse 1.1s ease-in-out 3; }
 /* итерация 10 (п.5): подпись планеты — только название (роль/период/метрика
    переехали в hover-блок, см. .hover-card ниже); подпись гасится ниже
-   порога зума вместе со звездой (см. #orbit-scene.labels-hidden) */
-.planet-label { text-align: center; pointer-events: none; max-width: 22ch; transition: opacity .4s ease; }
+   порога зума вместе со звездой (см. #orbit-scene.labels-hidden).
+   Итерация 12.1 (п.6): луны (.moon-rotor) наследуют z-index:3 от базового
+   .orbit-rotor (см. правило в начале файла) — ни .planet-stage, ни
+   .planet-wrap не создают собственный стэкинг-контекст для СВОИХ детей
+   (position:relative без z-index не создает контекст), так что z-index:3
+   у .moon-rotor "пробивает" наверх до ближайшего реального контекста
+   (.orbit-counter-zoom.planet-wrap — его создает transform) и конкурирует
+   ТАМ уже с .planet-label, у которой z-index был auto (эффективно 0) — луны
+   рисовались поверх подписи НЕЗАВИСИМО от порядка в DOM (явный z-index
+   всегда побеждает порядок отрисовки при сравнении внутри одного
+   стэкинг-контекста). z-index:4 гарантированно выше — .planet-wrap это
+   flex-контейнер, z-index на flex-item действует без явного position (но
+   мы все равно ставим position:relative — не помешает, только явнее). */
+.planet-label { position: relative; z-index: 4; text-align: center; pointer-events: none; max-width: 22ch; transition: opacity .4s ease; }
 .planet-title { margin: 0; font-size: .92rem; font-weight: 700; text-shadow: 0 0 14px rgba(0,0,0,.8); }
 #orbit-scene.labels-hidden .planet-label,
 #orbit-scene.labels-hidden .star-label { opacity: 0; }
@@ -671,6 +703,24 @@ button.reset {
 }
 .hover-card-line { margin: 0; font-family: var(--font-mono); font-size: .76rem; color: var(--text); line-height: 1.45; }
 .hover-card-line + .hover-card-line { margin-top: 2px; color: var(--muted); }
+
+/* --- тултип спутников-лун (итерация 12.1, п.2) ------------------------------
+   Компактная альтернатива нативному title (тот у браузеров всплывает с
+   задержкой ~500мс-1с и не стилизуется). Один общий элемент на всю страницу
+   (см. #orbit-moon-tooltip в orbit.astro), orbit.js наполняет/двигает по
+   pointerenter, следит за целью через rAF, пока курсор наведен (луны
+   продолжают вращаться). Появление быстрое (.1s, не как у sci-fi-сноски
+   планет/звезды с draw-in анимацией — тут нужен мгновенный маленький
+   лейбл, не "эффект", п.2 задания прямо просит "мгновенное/быстрое"). */
+.moon-tooltip {
+  position: fixed; z-index: 27; pointer-events: none;
+  padding: 4px 9px; border-radius: 6px;
+  background: rgba(6,7,16,.92); border: 1px solid var(--border);
+  color: var(--text); font-family: var(--font-mono); font-size: .68rem; white-space: nowrap;
+  opacity: 0; transform: translateY(3px) scale(.94);
+  transition: opacity .1s ease, transform .1s ease;
+}
+.moon-tooltip.is-visible { opacity: 1; transform: translateY(0) scale(1); }
 
 /* --- модалки ---------------------------------------------------------------- */
 .orbit-modal {
