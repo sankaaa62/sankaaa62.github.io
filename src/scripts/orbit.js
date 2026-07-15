@@ -508,18 +508,21 @@ import { buildViewer, attachViewer } from '../scripts/media-viewer.js';
   });
   legendOverviewBtn?.addEventListener('click', () => { focusOverview(); dismissHint(); });
 
-  // --- легенда: сворачивание (итерация 11, п.5) -------------------------------
+  // --- легенда: сворачивание (итерация 11, п.5 / итерация 12, п.9) ------------
   // Дефолтное состояние решаем по ширине экрана на старте: на десктопе легенда
   // и так компактна и полезна развернутой сразу, на мобильных (та же граница
   // 720px, что и у responsive-раскладки HUD в orbit.css) она в развернутом виде
   // съедает заметную часть небольшого экрана поверх карты — сворачиваем по
   // умолчанию, пользователь разворачивает по кнопке при необходимости.
+  // Итерация 12: легенда стала док-панелью — сворачивается/разворачивается
+  // теперь ВЕСЬ .hud-dock (см. .is-collapsed в orbit.css — max-width всего
+  // блока, а не max-height одной nav), не только список пунктов.
   const legendToggleBtn = document.querySelector('[data-legend-toggle]');
-  const legendNav = document.querySelector('[data-legend]');
-  if (legendToggleBtn && legendNav) {
+  const legendDock = document.querySelector('[data-dock]');
+  if (legendToggleBtn && legendDock) {
     const setLegendExpanded = (expanded) => {
       legendToggleBtn.setAttribute('aria-expanded', String(expanded));
-      legendNav.classList.toggle('is-collapsed', !expanded);
+      legendDock.classList.toggle('is-collapsed', !expanded);
     };
     legendToggleBtn.addEventListener('click', () => {
       setLegendExpanded(legendToggleBtn.getAttribute('aria-expanded') !== 'true');
