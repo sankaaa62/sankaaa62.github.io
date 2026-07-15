@@ -91,12 +91,27 @@ if (canvas) {
 
   // итерация 10 (п.6d): "варп-прыжок" — orbit.js зовет это при открытии
   // окна проекта/прототипа синхронно с рывком камеры. Пока идет варп,
-  // звезды рисуются не точками, а штрихами, вытянутыми от центра экрана
-  // наружу (эффект гиперпрыжка) — интенсивность warpT растет быстро (первые
-  // ~30% длительности) и плавно спадает к концу.
+  // звезды рисуются не точками, а штрихами — интенсивность warpT растет
+  // быстро (первые ~30% длительности) и плавно спадает к концу.
+  // итерация 12 (п.10): штрихи раньше ВСЕГДА расходились от ЦЕНТРА ЭКРАНА —
+  // при варпе к планете в углу экрана эффект "прыжка" читался не как рывок
+  // К ВЫБРАННОЙ цели, а как абстрактный гиперпрыжок в никуда. warpFocalX/Y —
+  // экранная точка, откуда (визуально) расходятся штрихи; теперь передается
+  // вызывающей стороной (orbit.js — экранные координаты клика/планеты на
+  // момент открытия) вторым/третьим аргументом __orbitWarpPulse. Без
+  // аргументов (напр. обратный варп на закрытии — см. requestCloseModal в
+  // orbit.js, п.10 задания явно разрешает центр экрана "по вкусу")
+  // по-прежнему падает на центр вьюпорта.
   let warpStart = 0;
   let warpDuration = 0;
-  window.__orbitWarpPulse = (durationMs) => { warpStart = performance.now(); warpDuration = durationMs || 380; };
+  let warpFocalX = 0;
+  let warpFocalY = 0;
+  window.__orbitWarpPulse = (durationMs, focalX, focalY) => {
+    warpStart = performance.now();
+    warpDuration = durationMs || 380;
+    warpFocalX = typeof focalX === 'number' ? focalX : w / 2;
+    warpFocalY = typeof focalY === 'number' ? focalY : h / 2;
+  };
   const warpIntensity = (now) => {
     if (warpDuration <= 0) return 0;
     const t = (now - warpStart) / warpDuration;
@@ -189,10 +204,12 @@ if (canvas) {
       const alpha = s.baseAlpha * twinkle * centerMul;
 
       if (warpT > 0.02) {
-        // штрих от звезды НАРУЖУ (от центра через звезду) — чем дальше
-        // звезда от центра и чем "ближе" она (больше depth), тем длиннее
-        // штрих, имитируя разную скорость прохождения слоев на варпе
-        const dx = sx - centerX, dy = sy - centerY;
+        // штрих от звезды НАРУЖУ (от точки варпа через звезду — см. п.10,
+        // warpFocalX/Y, НЕ centerX/Y: те остаются чисто про виньетку яркости
+        // по краям, к направлению штрихов отношения не имеют) — чем дальше
+        // звезда от точки варпа и чем "ближе" она (больше depth), тем
+        // длиннее штрих, имитируя разную скорость прохождения слоев на варпе
+        const dx = sx - warpFocalX, dy = sy - warpFocalY;
         const dist = Math.hypot(dx, dy) || 1;
         const ux = dx / dist, uy = dy / dist;
         const streak = warpT * (24 + dist * 0.55) * (0.5 + s.depth * 2.2);

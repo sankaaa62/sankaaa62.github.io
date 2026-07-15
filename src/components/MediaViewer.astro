@@ -79,18 +79,25 @@ const first = playlist[0];
 {playlist.length > 0 && (
   <div class="media-viewer" data-title={title}>
     <div class="mv-stage" tabindex="0" aria-label={`${title} — media viewer`}>
+      {/* iter12 (задача BA, п.1): активный видео-слайд играет сам, приглушенно -
+          autoplay+muted прямо HTML-атрибутами (не JS play()), это надежнее
+          политик автоплея браузера и не требует скрипта до его подгрузки;
+          media-viewer.js со своей стороны просто довешивает цепочку
+          'ended' -> advanceAuto() для авто-слайдшоу (см. attachViewer) */}
       {first.kind === 'video' && (
-        <video controls preload="metadata" poster={first.poster || undefined} playsinline>
+        <video controls preload="metadata" poster={first.poster || undefined} playsinline autoplay muted>
           <source src={first.src} type="video/webm" />
         </video>
       )}
       {/* enablejsapi=1 нужен уже здесь (SSR), а не только у динамически
           создаваемых iframe в media-viewer.js: если этот youtube-слайд —
           первый в плейлисте, слайдшоу должно ловить его 'onStateChange'
-          еще до первого клика по миниатюре */}
+          еще до первого клика по миниатюре. autoplay=1&mute=1 - тот же
+          принцип, что у video выше: свой автоплей глушим прямо в src, без
+          повторного JS-вызова play() (у iframe его и нет). */}
       {first.kind === 'youtube' && (
         <iframe
-          src={`https://www.youtube-nocookie.com/embed/${first.id}?enablejsapi=1`}
+          src={`https://www.youtube-nocookie.com/embed/${first.id}?enablejsapi=1&autoplay=1&mute=1`}
           title={title}
           loading="lazy"
           referrerpolicy="strict-origin-when-cross-origin"

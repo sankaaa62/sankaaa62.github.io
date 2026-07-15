@@ -216,10 +216,21 @@ button.reset {
    бликом у центра — на глаз читалась как отдельный "диск солнца" позади
    фотки. Заливка убрана целиком, остался только box-shadow — он по природе
    мягкий/размытый (нет четкой границы диска) и дает умеренное свечение
-   вокруг САМОЙ фотки, не второй объект за ней. */
+   вокруг САМОЙ фотки, не второй объект за ней.
+   Итерация 12 (п.8, ревью): ореол читался шире фотки и как будто смещенным
+   относительно нее, с жестким внешним кольцом. inset был -22px — собственный
+   бокс .star-halo получался на 44px больше фотки в каждом измерении; хотя
+   центр математически совпадал (оба — position:absolute от одного и того же
+   .orbit-star, без padding/border), больший спред box-shadow (12px/28px) на
+   заметно БОЛЬШЕМ базовом боксе визуально читался как отдельная сущность со
+   своим краем ("кольцо"), а не как свечение ОТ фотки. Теперь inset:0 —
+   .star-halo получает ТОЧНО тот же бокс, что и сама фотка (176x176,
+   совпадение центра/радиуса гарантировано конструкцией, не расчетом), а
+   "наружу от фотки" дает исключительно blur box-shadow (спред уменьшен до
+   2-8px — мягкий рост, не вторая четкая окружность). */
 .star-halo {
-  position: absolute; inset: -22px; border-radius: 50%; z-index: 0;
-  box-shadow: 0 0 54px 12px rgba(255,146,26,.32), 0 0 100px 28px rgba(255,92,26,.15);
+  position: absolute; inset: 0; border-radius: 50%; z-index: 0;
+  box-shadow: 0 0 40px 2px rgba(255,146,26,.32), 0 0 76px 8px rgba(255,92,26,.16);
   animation: star-pulse 5s ease-in-out infinite;
 }
 @keyframes star-pulse {
@@ -264,16 +275,45 @@ button.reset {
    под собой — базовый .orbit-counter-rotate ставит pointer-events:auto
    (нужно для кликабельных планет/астероидов), тут явно возвращаем none */
 .moon-rotor .orbit-counter-rotate { pointer-events: none; }
+/* итерация 12 (п.6, ревью): раньше это были овальные пилюли (inline-flex +
+   padding, размер по контенту) на мелком приглушенном фоне — по фидбеку
+   сливались с картой и не читались как отдельные "планетки". Теперь
+   фиксированный КРУГ (не растет/сжимается по тексту — переполнение прячет
+   overflow:hidden), плотная surface-подложка + категорийный
+   бордер/свечение (platform=violet, metric=gold, multiplayer=teal — та же
+   палитра, что и у остального HUD) вместо мутного rgba(6,7,16). PC/Mobile
+   больше не делят одну пилюль — см. buildSatellites() в orbit.astro
+   (итерация 12, п.6): у каждой платформы свой .moon-badge--platform-{pc,
+   mobile} со своей иконкой. */
 .moon-badge {
-  display: inline-flex; align-items: center; gap: 3px;
-  padding: 2px 7px; border-radius: 999px; white-space: nowrap;
-  background: rgba(6,7,16,.82); border: 1px solid var(--border);
-  color: var(--muted); font-size: .56rem; line-height: 1.3;
+  display: flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 50%; flex: none;
+  background: var(--surface-2); border: 1.5px solid var(--border);
+  color: var(--muted); font-weight: 700; font-size: .5rem; line-height: 1;
+  box-shadow: 0 0 0 3px rgba(6,7,16,.6);
+  overflow: hidden;
 }
-.moon-badge svg { width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 2; flex: none; }
-.moon-badge--platform { color: var(--text); padding: 3px; gap: 2px; }
-.moon-badge--metric { color: var(--gold); border-color: rgba(232,193,90,.4); }
-.moon-badge--multiplayer { color: var(--teal); border-color: rgba(45,212,191,.4); }
+.moon-badge svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; flex: none; }
+.moon-badge span { padding: 0 2px; }
+.moon-badge--platform-pc,
+.moon-badge--platform-mobile {
+  color: var(--text);
+  background: color-mix(in srgb, var(--surface-2) 80%, var(--violet) 20%);
+  border-color: color-mix(in srgb, var(--violet) 55%, transparent);
+  box-shadow: 0 0 0 3px rgba(6,7,16,.6), 0 0 10px -1px color-mix(in srgb, var(--violet) 60%, transparent);
+}
+.moon-badge--metric {
+  color: var(--gold);
+  background: color-mix(in srgb, var(--surface-2) 78%, var(--gold) 14%);
+  border-color: rgba(232,193,90,.75);
+  box-shadow: 0 0 0 3px rgba(6,7,16,.6), 0 0 11px -1px rgba(232,193,90,.6);
+}
+.moon-badge--multiplayer {
+  color: var(--teal);
+  background: color-mix(in srgb, var(--surface-2) 78%, var(--teal) 14%);
+  border-color: rgba(45,212,191,.75);
+  box-shadow: 0 0 0 3px rgba(6,7,16,.6), 0 0 11px -1px rgba(45,212,191,.6);
+}
 /* спутники притушенной (не в фокусе) орбиты гасим вместе с подписью планеты —
    тот же .is-dimmed на роторе планеты, что и у .planet-label выше */
 .orbit-rotor.is-dimmed .moon-rotor { opacity: 0; }
@@ -400,33 +440,27 @@ button.reset {
   border-color: rgba(232, 193, 90, 0.85);
   box-shadow: 0 0 18px -2px rgba(232, 193, 90, 0.75);
 }
-.asteroid-badge {
-  position: absolute; bottom: -2px; left: 50%; transform: translateX(-50%);
-  font-size: .5rem; padding: 1px 5px; border-radius: 999px; white-space: nowrap;
-  background: rgba(6,7,16,.85); color: var(--gold); border: 1px solid rgba(232,193,90,.5);
-}
+/* итерация 12 (п.7): .asteroid-badge (текстовая надпись ПРЯМО на иконке
+   астероида) убрана - на маленьком круглом диске текст обрезался ("1M+
+   установок" не помещалось). Заменена спутником-"луной" (.moon-badge--metric,
+   см. a.moons в orbit.astro) - та же механика, что у метрик-спутников
+   планет, координаты текста берутся из data-badge (для модалки прототипа,
+   opm-badge в orbit-prototypes.js, не для отрисовки на карте). */
 
 /* --- HUD ------------------------------------------------------------------- */
 .hud { position: fixed; inset: 0; z-index: 20; pointer-events: none; }
-/* итерация 11 (п.4): обертка колонкой над панелью легенды — держит обратную
-   ссылку и панель как два визуально отдельных, но совместно позиционируемых
-   блока (один top/left на оба, один брейкпоинт-оверрайд ниже в responsive).
-   pointer-events:none на обертке + auto на прямых детях — тот же прием, что
-   и у .hud в целом (сцена под HUD должна остаться кликабельной за пределами
-   реальных виджетов). */
+/* итерация 11 (п.4): обертка колонкой над док-панелью легенды — держит
+   обратную ссылку и док как два визуально отдельных, но совместно
+   позиционируемых блока (один top/left на оба, один брейкпоинт-оверрайд ниже
+   в responsive). pointer-events:none на обертке + auto на прямых детях —
+   тот же прием, что и у .hud в целом (сцена под HUD должна остаться
+   кликабельной за пределами реальных виджетов). */
 .hud-topleft {
   pointer-events: none;
   position: fixed; top: 20px; left: 20px; z-index: 20;
   display: flex; flex-direction: column; align-items: flex-start; gap: 10px;
-  max-width: 300px;
 }
 .hud-topleft > * { pointer-events: auto; }
-.hud-panel {
-  max-width: 300px;
-  background: rgba(10,11,18,.62); border: 1px solid var(--border); border-radius: var(--radius);
-  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
-  padding: 16px 18px;
-}
 /* итерация 11 (п.4): раньше это была мелкая строка ВНУТРИ панели легенды
    (color:muted, только hover ярче) — терялась среди заголовка/легенды.
    Теперь отдельный HUD-чип: свой фон/бордер (тот же язык, что у hud-zoom-btn/
@@ -445,35 +479,61 @@ button.reset {
   box-shadow: 0 0 14px rgba(255,176,26,.25); outline: none;
 }
 .hud-backlink-arrow { font-size: .9rem; line-height: 1; }
-.hud-kicker { font-size: .68rem; letter-spacing: .14em; text-transform: uppercase; color: var(--accent-2); margin: 0 0 6px; }
-.hud-title {
-  font-size: 1.7rem; font-weight: 800; margin: 0 0 8px; letter-spacing: .01em;
-  background: linear-gradient(135deg, #fff 0%, var(--accent-2) 55%, var(--violet) 120%);
-  -webkit-background-clip: text; background-clip: text; color: transparent;
+/* доступность: визуально скрытый, но доступный скринридерам текст (h1
+   страницы, см. orbit.astro — самому началу body) — стандартный
+   "clip"-паттерн (не display:none/visibility:hidden, те убирают элемент из
+   accessibility tree целиком, а не только визуально) */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
 }
+.hud-kicker { font-size: .68rem; letter-spacing: .14em; text-transform: uppercase; color: var(--accent-2); margin: 0 0 6px; }
 .hud-subtitle { margin: 0 0 14px; color: var(--muted); font-size: .8rem; line-height: 1.5; }
-/* итерация 11 (п.5): кнопка-переключатель легенды — компактная строка над
-   списком, шеврон разворачивается на 180° при открытой легенде (класс на
-   самой кнопке через aria-expanded, читает orbit.js) */
-/* .legend-toggle.reset (не просто .legend-toggle) — тот же баг специфичности
-   button.reset, что у .planet/.asteroid (см. комментарии там): элемент это
-   <button class="legend-toggle reset">, а button.reset (элемент+класс)
-   специфичнее одного класса .legend-toggle и молча съел бы padding/width. */
-.legend-toggle.reset {
-  display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  width: 100%; margin-bottom: 6px; padding: 4px 2px;
-  font-family: var(--font-mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase;
+/* итерация 12 (п.9): легенда переделана в док-панель (как боковые панели
+   инструментов в редакторах/картах) — .hud-dock всегда занимает столько
+   ширины, сколько нужно контенту (dock-toggle + dock-panel, оба flex: none
+   с фиксированной шириной), и при .is-collapsed max-width схлопывает ВЕСЬ
+   блок (вместе с фоном/рамкой/скруглением) до ширины одной иконки-кнопки —
+   overflow:hidden на .hud-dock плавно "срезает" панель, при этом сам
+   .dock-panel держит СТАБИЛЬНУЮ фиксированную ширину (не max-width!) —
+   поэтому текст внутри не переносится/не дергается во время анимации,
+   просто прогрессивно уезжает за пределы видимой области схлопывающегося
+   контейнера (чистый "слайд", а не "сплющивание" с переносом строк текста). */
+/* width (не max-width!) - .hud-dock это display:flex с детьми flex:none
+   (dock-toggle/dock-panel НЕ должны сжиматься сами, см. ниже), а у
+   flex-контейнера с нешринкающимися детьми "auto"-ширина считается по
+   сумме их естественных размеров ДАЖЕ при заданном max-width меньше этой
+   суммы (проверено эмпирически: max-width:40px на .is-collapsed НЕ сжимал
+   реальный layout-бокс ниже 320px - getBoundingClientRect показывал 320px
+   в обоих состояниях, хотя сам класс/селектор применялся верно). Явный
+   width авторитетен независимо от content-based auto-sizing алгоритма -
+   переопределяет размер бокса напрямую, overflow:hidden корректно клипует
+   детей за пределами уменьшенного бокса. */
+.hud-dock {
+  pointer-events: auto;
+  display: flex; align-items: flex-start;
+  background: rgba(10,11,18,.62); border: 1px solid var(--border); border-radius: var(--radius);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  overflow: hidden;
+  width: 320px;
+  transition: width .35s cubic-bezier(.3,.9,.4,1);
+}
+.hud-dock.is-collapsed { width: 40px; }
+.dock-toggle.reset {
+  flex: none; width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
   color: var(--muted); transition: color .15s ease;
 }
-.legend-toggle:hover, .legend-toggle:focus-visible { color: var(--text); outline: none; }
-.legend-toggle-chevron { font-size: .9rem; line-height: 1; transition: transform .3s ease; }
-.legend-toggle[aria-expanded="false"] .legend-toggle-chevron { transform: rotate(-90deg); }
+.dock-toggle:hover, .dock-toggle:focus-visible { color: var(--accent-2); outline: none; }
+.hud-dock.is-collapsed .dock-toggle { color: var(--text); }
+.dock-toggle-icon { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; flex: none; }
+.dock-panel {
+  flex: none; width: 280px;
+  padding: 12px 18px 16px 4px;
+}
 .hud-legend {
   display: flex; flex-direction: column; gap: 4px;
-  max-height: 400px; overflow: hidden;
-  transition: max-height .35s ease, opacity .3s ease;
 }
-.hud-legend.is-collapsed { max-height: 0; opacity: 0; }
 .legend-item {
   display: flex; align-items: baseline; gap: 8px;
   padding: 6px 8px; border-radius: 8px; cursor: pointer;
@@ -576,12 +636,33 @@ button.reset {
   transition: opacity .2s ease, transform .25s cubic-bezier(.3,1.4,.4,1);
 }
 .hover-card.is-visible .hover-card-dot { opacity: 1; transform: scale(1); }
+/* итерация 12 (п.5b): подложка под текст — раньше текст лежал прямо на
+   сцене (никакого фона) и местами плохо читался поверх пестрых обложек
+   планет. Линейный градиент от полупрозрачного surface-тона у линии-выноски
+   (там текст "заякорен") к прозрачному на дальнем крае — читаемость есть,
+   но нет глухой плашки-панели, дух минималистичного sci-fi callout (п.12b
+   прошлой итерации) сохранен. --hover-fade-dir переключает направление
+   градиента (и сторону акцентной границы) между обычным положением
+   (текст справа от линии, акцент слева) и .hover-card-box--flip (текст
+   слева от линии, акцент справа — см. positionHoverCard()/dirX в orbit.js). */
 .hover-card-box {
   position: fixed; max-width: 220px;
-  padding: 6px 0 6px 10px; border-left: 1.5px solid var(--hc-color, var(--accent-2));
+  padding: 7px 12px 7px 14px;
+  border-left: 1.5px solid var(--hc-color, var(--accent-2));
+  background: linear-gradient(to right, color-mix(in srgb, var(--surface) 82%, transparent) 0%, transparent 100%);
+  -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
   opacity: 0; transform: translateX(-4px);
   transition: opacity .3s ease .16s, transform .3s ease .16s;
 }
+.hover-card-box.hover-card-box--flip {
+  padding: 7px 14px 7px 12px;
+  border-left: none; border-right: 1.5px solid var(--hc-color, var(--accent-2));
+  background: linear-gradient(to left, color-mix(in srgb, var(--surface) 82%, transparent) 0%, transparent 100%);
+  transform: translateX(4px);
+}
+/* специфичность (0,3,0) выше .hover-card-box.hover-card-box--flip (0,2,0) —
+   при появлении карточки translateX(0) выигрывает у флип-варианта
+   независимо от порядка правил в файле */
 .hover-card.is-visible .hover-card-box { opacity: 1; transform: translateX(0); }
 .hover-card-role {
   display: block;
@@ -825,11 +906,17 @@ button.reset {
 
 /* --- responsive ------------------------------------------------------------- */
 @media (max-width: 720px) {
-  .hud-topleft { max-width: calc(100vw - 40px); }
-  .hud-panel--top { max-width: 100%; padding: 13px 15px; }
-  .hud-title { font-size: 1.35rem; }
+  /* итерация 12 (п.9): док-панель на мобиле - ширина считается от вьюпорта
+     (100vw - оба боковых отступа .hud-topleft(20px) - ширина dock-toggle),
+     а не фиксированные 280px из десктопной раскладки - на узких экранах те
+     не влезли бы. .hud-dock (развернутое состояние) следует той же формуле
+     без вычета toggle - это предел для ВСЕГО блока целиком; .is-collapsed
+     (см. базовое правило выше, 2 класса - специфичнее) остается на 40px
+     независимо от брейкпоинта. */
+  .hud-dock { width: calc(100vw - 40px); }
+  .dock-panel { width: calc(100vw - 80px); padding: 12px 14px 14px 4px; }
   .hud-subtitle { display: none; }
-  .hud-legend { flex-direction: row; flex-wrap: wrap; gap: 6px; max-height: 300px; }
+  .hud-legend { flex-direction: row; flex-wrap: wrap; gap: 6px; }
   .legend-item { padding: 9px 10px; min-height: 40px; }
   .legend-range { display: none; }
   .hud-era-detail.is-open { max-height: 160px; }
@@ -840,8 +927,8 @@ button.reset {
 }
 @media (max-width: 420px) {
   .hud-topleft { top: 12px; left: 12px; }
-  .hud-panel--top { padding: 11px 13px; }
-  .hud-title { font-size: 1.2rem; }
+  .hud-dock { width: calc(100vw - 24px); }
+  .dock-panel { width: calc(100vw - 64px); }
   .hud-footer { display: none; }
   .hud-zoom { right: 12px; bottom: 12px; }
 }
