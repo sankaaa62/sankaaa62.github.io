@@ -346,12 +346,30 @@ export function attachViewer(root, opts = {}) {
     }
   };
 
+  // Итерация 11 (п.2 AA): scrollIntoView({block:'nearest'}) на скрытой
+  // по вертикали миниатюре может уехать всей СТРАНИЦЕЙ к вьюверу (баг:
+  // автослайдшоу раз в 3с перематывало сайт, если пользователь был вверху
+  // страницы) - block затрагивает и вертикальную ось документа, если сам
+  // элемент вне вьюпорта. Вместо scrollIntoView скроллим только саму ленту
+  // .mv-strip по горизонтали вручную - вертикаль страницы не трогается никогда.
+  const scrollThumbIntoView = () => {
+    if (!strip) return;
+    const stripRect = strip.getBoundingClientRect();
+    const thumbRect = thumbs[active].getBoundingClientRect();
+    if (thumbRect.left < stripRect.left) {
+      strip.scrollTo({ left: strip.scrollLeft - (stripRect.left - thumbRect.left), behavior: 'smooth' });
+    } else if (thumbRect.right > stripRect.right) {
+      strip.scrollTo({ left: strip.scrollLeft + (thumbRect.right - stripRect.right), behavior: 'smooth' });
+    }
+    // иначе миниатюра уже целиком видна в ленте - scrollLeft не трогаем
+  };
+
   const setActive = (index, autoplay, mutedAuto) => {
     index = Math.max(0, Math.min(thumbs.length - 1, index));
     thumbs[active]?.classList.remove('is-active');
     active = index;
     thumbs[active].classList.add('is-active');
-    thumbs[active].scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' });
+    scrollThumbIntoView();
     renderStage(readItem(thumbs[active]), autoplay, mutedAuto);
     // и ручной выбор, и авто-переход одинаково перезапускают таймер слайдшоу
     scheduleSlide();
