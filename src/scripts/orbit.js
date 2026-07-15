@@ -161,10 +161,19 @@ import { buildViewer, attachViewer } from '../scripts/media-viewer.js';
   // фоне (orbit-stars.js слушает __orbitWarpPulse). Используется при
   // открытии окон проектов/прототипов — обычный клик-фокус (focusEra/
   // focusStar/legend) варпом не считается, там уместнее плавность.
+  // итерация 12 (п.10): focalX/focalY — ЭКРАННЫЕ координаты точки, куда
+  // (визуально) устремляются звездные штрихи (см. orbit-stars.js) — раньше
+  // всегда был центр экрана независимо от того, к какой планете/астероиду
+  // шел варп, из-за чего эффект "прыжка К ЦЕЛИ" не читался, если цель была
+  // не в центре. Необязательные — вызывающая сторона передает их, когда
+  // известна конкретная точка (клик по планете/астероиду); без них
+  // __orbitWarpPulse сама подставит центр вьюпорта (см. дефолт там же) —
+  // используется для обратного варпа на закрытии окна (п.10 задания прямо
+  // разрешило центр экрана для этого случая, "по вкусу").
   const WARP_DURATION = 380;
-  function warpToWorldPoint(wx, wy, zoom) {
+  function warpToWorldPoint(wx, wy, zoom, focalX, focalY) {
     stopCameraAnim();
-    window.__orbitWarpPulse?.(WARP_DURATION);
+    window.__orbitWarpPulse?.(WARP_DURATION, focalX, focalY);
     const from = { x: camera.x, y: camera.y, zoom: camera.zoom };
     const to = { x: -wx * zoom, y: -wy * zoom, zoom: clamp(zoom, MIN_ZOOM, MAX_ZOOM) };
     const start = performance.now();
@@ -398,8 +407,22 @@ import { buildViewer, attachViewer } from '../scripts/media-viewer.js';
     const warped = dialog.classList.contains('was-warped');
     dialog.classList.add('is-closing');
     if (warped) {
-      window.__orbitWarpPulse?.(WARP_CLOSE_DELAY);
+      // итерация 12 (п.10, попутно найдено): warpToWorldPoint() САМА зовет
+      // __orbitWarpPulse(WARP_DURATION, ...) внутри себя — вызов ниже ДО нее
+      // (как было раньше) немедленно перезаписывался бы этим внутренним
+      // вызовом (WARP_DURATION=380мс вместо желаемых WARP_CLOSE_DELAY=320мс,
+      // синхронизированных с CSS modal-warp-out). Порядок исправлен: сперва
+      // warpToWorldPoint (со своим 380мс дефолтом), ЗАТЕМ явный вызов с
+      // WARP_CLOSE_DELAY поверх — он и остается финальным, длительность
+      // штрихов синхронизирована с CSS-анимацией схлопывания окна. Фокальная
+      // точка не передается (undefined) — обратный варп на закрытии
+      // намеренно идет из ЦЕНТРА экрана (см. warpFocalX/Y дефолт в
+      // orbit-stars.js), а не из точки последнего клика: п.10 задания прямо
+      // разрешил центр для этого случая ("по вкусу, главное согласованно") -
+      // камера и так возвращается К ОБЗОРУ ВСЕЙ СИСТЕМЫ (world 0,0 = центр
+      // сцены), центр экрана здесь физически совпадает со смыслом действия.
       warpToWorldPoint(0, 0, fitZoomForRadius(data.maxOrbitRadius + 140, 0.44));
+      window.__orbitWarpPulse?.(WARP_CLOSE_DELAY);
       setActiveEra(OVERVIEW_ID);
     }
     const delay = warped ? WARP_CLOSE_DELAY : SIMPLE_CLOSE_DELAY;
@@ -478,8 +501,10 @@ import { buildViewer, attachViewer } from '../scripts/media-viewer.js';
     // движется по орбите анимацией) — читаем bounding rect в момент клика,
     // а не пытаемся вычислить фазу CSS-анимации вручную
     const rect = btn.getBoundingClientRect();
-    const world = screenToWorld(rect.left + rect.width / 2, rect.top + rect.height / 2);
-    warpToWorldPoint(world.x, world.y, clamp(Math.max(camera.zoom, 0.85), MIN_ZOOM, MAX_ZOOM));
+    const focalX = rect.left + rect.width / 2;
+    const focalY = rect.top + rect.height / 2;
+    const world = screenToWorld(focalX, focalY);
+    warpToWorldPoint(world.x, world.y, clamp(Math.max(camera.zoom, 0.85), MIN_ZOOM, MAX_ZOOM), focalX, focalY);
     openModalWarped(projectModal);
     dismissHint();
   }

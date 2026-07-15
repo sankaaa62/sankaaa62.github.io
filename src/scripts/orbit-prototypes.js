@@ -50,11 +50,17 @@ import { buildViewer, attachViewer } from '../scripts/media-viewer.js';
 
     // итерация 10 (п.6d): варп-прыжок к астероиду + появление окна —
     // общий движок камеры/модалки, экспортирован orbit.js на window
-    // (порядок скриптов: orbit.js гарантированно загружен раньше)
+    // (порядок скриптов: orbit.js гарантированно загружен раньше).
+    // итерация 12 (п.10): передаем экранные координаты клика (центр
+    // астероида) третьим/четвертым аргументом — __orbitWarpFocus теперь
+    // прокидывает их в __orbitWarpPulse, звездные штрихи расходятся ОТ
+    // ЭТОЙ точки, а не от центра экрана (см. orbit.js/orbit-stars.js).
     const rect = el.getBoundingClientRect();
     if (window.__orbitScreenToWorld && window.__orbitWarpFocus && window.__orbitCamera) {
-      const world = window.__orbitScreenToWorld(rect.left + rect.width / 2, rect.top + rect.height / 2);
-      window.__orbitWarpFocus(world.x, world.y, Math.max(window.__orbitCamera.zoom, 1.05));
+      const focalX = rect.left + rect.width / 2;
+      const focalY = rect.top + rect.height / 2;
+      const world = window.__orbitScreenToWorld(focalX, focalY);
+      window.__orbitWarpFocus(world.x, world.y, Math.max(window.__orbitCamera.zoom, 1.05), focalX, focalY);
     }
     if (window.__orbitOpenModalWarped) {
       window.__orbitOpenModalWarped(modal);
