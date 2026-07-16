@@ -974,6 +974,9 @@ const protos = [...sortedByYear.slice(0, pinIndex), ...pinned, ...sortedByYear.s
           // renderFirst: первый слайд (обычно клип) рисуется сразу с
           // autoplay+mutedAuto — так же, как раньше играл pm-video при открытии
           viewerHandle = attachViewer(root, { slideshowMs: 3000, renderFirst: true });
+        }).catch(() => {
+          // сеть/офлайн: чанк вьювера не загрузился — модалка остается с
+          // шапкой/метой без медиа (тихая деградация вместо unhandled rejection)
         });
       }
     };
