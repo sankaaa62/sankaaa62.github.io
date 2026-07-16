@@ -179,6 +179,23 @@ export function attachViewer(root, opts = {}) {
   // один вьювер, но проверка дешевая и снимает риск на будущее)
   let currentYoutubeFrame = null;
 
+  // iter13 (задача CA, п.6): вне вьюпорта слайды не должны продвигаться
+  // (см. viewerVisible в проверке advanceAuto ниже - тот же паттерн, что уже
+  // есть для document.hidden/открытого лайтбокса). true по умолчанию - до
+  // первого колбэка IO (приходит почти сразу) считаем видимым, чтобы не
+  // блокировать самый первый тик на SSR-разметке страниц проектов, где
+  // вьювер обычно и так уже в кадре. Модалку не ломает: пока dialog открыт,
+  // его содержимое геометрически внутри вьюпорта - IO считает это intersecting.
+  let viewerVisible = true;
+  let viewerIo = null;
+  if (opts.slideshowMs && 'IntersectionObserver' in window) {
+    viewerIo = new IntersectionObserver((entries) => {
+      const entry = entries[0];
+      if (entry) viewerVisible = entry.isIntersecting;
+    }, { threshold: 0 });
+    viewerIo.observe(root);
+  }
+
   const readItem = (btn) => ({
     kind: btn.dataset.kind ?? 'image',
     src: btn.dataset.src ?? '',
@@ -231,12 +248,12 @@ export function attachViewer(root, opts = {}) {
   };
   const advanceAuto = () => {
     if (destroyed || !opts.slideshowMs) return;
-    // Пауза: скрытая вкладка или открытый лайтбокс — стейдж не должен
-    // уехать у пользователя из-под увеличенной картинки. Ретрай — тем же
-    // интервалом, БЕЗУСЛОВНЫМ setTimeout (не через scheduleSlide — та
-    // планирует таймер только для картинок, а сюда можно попасть и от
-    // video 'ended'/youtube-события на видео-слайде).
-    if (document.hidden || (lightbox && lightbox.open)) {
+    // Пауза: скрытая вкладка, открытый лайтбокс — стейдж не должен уехать у
+    // пользователя из-под увеличенной картинки — или (iter13 п.6) вьювер вне
+    // вьюпорта. Ретрай — тем же интервалом, БЕЗУСЛОВНЫМ setTimeout (не через
+    // scheduleSlide — та планирует таймер только для картинок, а сюда можно
+    // попасть и от video 'ended'/youtube-события на видео-слайде).
+    if (document.hidden || !viewerVisible || (lightbox && lightbox.open)) {
       stopSlide();
       slideTimer = setTimeout(() => advanceAuto(), opts.slideshowMs);
       return;
@@ -444,6 +461,7 @@ export function attachViewer(root, opts = {}) {
     stopSlide();
     window.removeEventListener('resize', updateArrows);
     window.removeEventListener('message', onYoutubeMessage);
+    viewerIo?.disconnect();
   };
 
   return { destroy };
