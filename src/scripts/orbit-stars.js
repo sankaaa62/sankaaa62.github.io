@@ -233,16 +233,57 @@ if (canvas) {
     // паутина связей между близкими звездами — во время варпа отключена
     // (штрихи уже создают направленное движение, точечные связи только
     // замусоривали бы картинку "гиперпрыжка")
+    //
+    // итерация 13 (п.3, перф-аудит): раньше двойной цикл по ВСЕМ парам
+    // (O(n^2) - до ~11К итераций/кадр при 150 звездах), хотя связь возможна
+    // только между соседями (dd2 < 7200, т.е. dist < ~84.85px). Портирован
+    // тот же прием, что уже применен в src/scripts/stars.js основного сайта
+    // (задача CA итерации 13 основного сайта): звезды раскладываются по
+    // сетке с ячейкой 90px (>= порога связи) - математически гарантирует,
+    // что любая пара звезд ближе порога лежит либо в одной ячейке, либо в
+    // соседней (если индексы ячеек по оси различаются на >=2, расстояние по
+    // этой оси уже больше размера ячейки >= порога, связь невозможна). Для
+    // каждой звезды проверяются только своя ячейка (с дедупом j>i) + 4
+    // "форвардных" соседа (канонический half-neighborhood:
+    // [1,0],[0,1],[1,1],[-1,1]) - это дает КАЖДУЮ пару ровно один раз, как и
+    // исходный i<j цикл. Набор линий и формула альфы НЕ менялись - код ниже
+    // при снапшот-сравнении на одинаковых координатах звезд рисует ТОТ ЖЕ
+    // набор отрезков, что и старый O(n^2) вариант (см. отчет итерации 13).
+    // Градиент (createLinearGradient) в этом рисовании не используется вовсе
+    // (strokeStyle - сплошной rgba на линию) - пункт задания про возможную
+    // замену градиента на сплошной цвет тут неприменим, менять нечего.
     if (warpT < 0.15) {
+      const CELL = 90;
+      const grid = new Map();
       for (let i = 0; i < stars.length; i++) {
-        for (let j = i + 1; j < stars.length; j++) {
-          const a = stars[i], b = stars[j];
-          const dd2 = (a.sx - b.sx) ** 2 + (a.sy - b.sy) ** 2;
-          if (dd2 < 7200) {
-            const lineMul = (a.centerMul + b.centerMul) / 2;
-            ctx.strokeStyle = `rgba(154,151,163,${((1 - dd2 / 7200) * 0.18 * lineMul).toFixed(3)})`;
-            ctx.beginPath(); ctx.moveTo(a.sx, a.sy); ctx.lineTo(b.sx, b.sy); ctx.stroke();
+        const s = stars[i];
+        const key = Math.floor(s.sx / CELL) + '_' + Math.floor(s.sy / CELL);
+        let bucket = grid.get(key);
+        if (!bucket) { bucket = []; grid.set(key, bucket); }
+        bucket.push(i);
+      }
+      const drawLink = (a, b) => {
+        const dd2 = (a.sx - b.sx) ** 2 + (a.sy - b.sy) ** 2;
+        if (dd2 < 7200) {
+          const lineMul = (a.centerMul + b.centerMul) / 2;
+          ctx.strokeStyle = `rgba(154,151,163,${((1 - dd2 / 7200) * 0.18 * lineMul).toFixed(3)})`;
+          ctx.beginPath(); ctx.moveTo(a.sx, a.sy); ctx.lineTo(b.sx, b.sy); ctx.stroke();
+        }
+      };
+      const NEIGHBOR_OFFSETS = [[1, 0], [0, 1], [1, 1], [-1, 1]];
+      for (let i = 0; i < stars.length; i++) {
+        const s = stars[i];
+        const cx = Math.floor(s.sx / CELL), cy = Math.floor(s.sy / CELL);
+        const ownBucket = grid.get(cx + '_' + cy);
+        if (ownBucket) {
+          for (const j of ownBucket) {
+            if (j > i) drawLink(s, stars[j]);
           }
+        }
+        for (const [ox, oy] of NEIGHBOR_OFFSETS) {
+          const bucket = grid.get((cx + ox) + '_' + (cy + oy));
+          if (!bucket) continue;
+          for (const j of bucket) drawLink(s, stars[j]);
         }
       }
     }

@@ -96,6 +96,10 @@ import { buildViewer, attachViewer } from '../scripts/media-viewer.js';
   const refreshViewportRect = () => {
     viewportRect = viewport.getBoundingClientRect();
     updateLabelHideZoom();
+    // итерация 13 (п.4): вьюпорт поменял размер/позицию — старое
+    // офф-скрин-решение по роторам могло устареть (см. scheduleRotorPauseCheck
+    // ниже, доступна по хойстингу function-декларации)
+    scheduleRotorPauseCheck();
   };
   window.addEventListener('resize', refreshViewportRect);
 
@@ -111,6 +115,114 @@ import { buildViewer, attachViewer } from '../scripts/media-viewer.js';
     scene.classList.toggle('labels-hidden', camera.zoom < labelHideZoom);
     // читает orbit-stars.js — легкий параллакс фона от смещения камеры
     window.__orbitCamera = camera;
+    // итерация 13 (п.4, перф-аудит): планирует пересчет паузы офф-скрин
+    // роторов на каждый реальный кадр камеры (см. scheduleRotorPauseCheck
+    // ниже, объявлена после pausableRotors) — единая точка входа для ВСЕХ
+    // путей движения камеры (wheel/pan/pinch/focus-анимации/варп), т.к. все
+    // они уже сходятся в applyCamera().
+    scheduleRotorPauseCheck();
+  }
+
+  // итерация 13 (п.2, перф-аудит): wheel/pointermove раньше синхронно звали
+  // applyCamera() НА КАЖДОЕ событие — трекпад сыплет десятки wheel-событий
+  // за кадр, каждое вызывало инлайн-transform + 2 custom properties на
+  // #orbit-scene (каскадный recalc на ~700 узлов сцены). Математика
+  // (screenToWorld/zoom-к-курсору/пан) остается ПОЛНОСТЬЮ синхронной и
+  // событийной — она читает только camera.{x,y,zoom} (in-memory) и
+  // закэшированные точки отсчета (viewportRect/panStart/pinchStart), НИКОГДА
+  // не читает DOM/getBoundingClientRect сцены, поэтому отложить именно
+  // DOM-ЗАПИСЬ (applyCamera) без изменения порядка накопления состояния —
+  // безопасно и математически идентично прежнему по-событийному применению:
+  // каждое событие по-прежнему обновляет camera.{x,y,zoom} немедленно (как
+  // и раньше), просто ФАКТИЧЕСКИЙ рендер (applyCamera -> DOM) схлопывается в
+  // один вызов на кадр через rAF. Используется ТОЛЬКО для "ручных" путей
+  // (wheel/pan/pinch) — focus-анимации (animateCamera/warpToWorldPoint) уже
+  // сами по себе rAF-циклы (одна applyCamera() на шаг анимации), их трогать
+  // не нужно (и не стоит — батчинг поверх уже-rAF цикла ничего не даст).
+  let cameraApplyScheduled = false;
+  function scheduleApplyCamera() {
+    if (cameraApplyScheduled) return;
+    cameraApplyScheduled = true;
+    requestAnimationFrame(() => {
+      cameraApplyScheduled = false;
+      applyCamera();
+    });
+  }
+
+  // итерация 13 (п.4, перф-аудит): офф-скрин роторы (--r постоянный, центр
+  // орбиты — мировая точка (0,0)) продолжают крутиться (CSS animation) даже
+  // когда их кольцевая траектория ЦЕЛИКОМ вне вьюпорта — актуально для
+  // пояса/роя астероидов (62 ротора + их .orbit-counter-rotate) при фокусе
+  // на одной эре, когда остальная карта офф-скрин. Чисто аналитическая
+  // проверка (БЕЗ getBoundingClientRect в цикле): кольцо радиуса r с
+  // центром в мировом (0,0) пересекает экранный прямоугольник (+ запас
+  // PAUSE_MARGIN_FACTOR от размера вьюпорта) тогда и только тогда, когда
+  // dMin <= r <= dMax, где dMin/dMax — мин/макс расстояние от центра кольца
+  // до прямоугольника (функция расстояния до выпуклой области непрерывна и
+  // принимает все промежуточные значения между своим мин и макс). Область
+  // применения ОГРАНИЧЕНА роторами с орбитой вокруг мирового (0,0)
+  // (planet/belt/debris) — .moon-rotor намеренно исключен: его орбита
+  // движется вместе с родительской планетой, эта формула для него
+  // неприменима без пересчета центра на каждый кадр (вне заявленного
+  // скоупа "62 ротора пояса/роя").
+  const PAUSE_MARGIN_FACTOR = 0.25;
+  const PAUSE_DEBOUNCE_MS = 200;
+  const pausableRotors = Array.from(
+    document.querySelectorAll('.orbit-rotor.belt-rotor, .orbit-rotor.debris-rotor, .orbit-rotor[data-era]')
+  )
+    .map((el) => ({ el, r: parseFloat(el.style.getPropertyValue('--r')) || 0 }))
+    .filter((item) => item.r > 0);
+
+  let rotorsPaused = false;
+  function resumeAllRotors() {
+    // идемпотентно — вызывается на КАЖДЫЙ реальный кадр камеры (см.
+    // scheduleRotorPauseCheck), должно быть O(1) в общем случае (когда
+    // роторы и так не на паузе), поэтому ранний выход по флагу
+    if (!rotorsPaused) return;
+    rotorsPaused = false;
+    for (const item of pausableRotors) item.el.classList.remove('is-paused');
+  }
+
+  function updateRotorVisibility() {
+    // мировая точка (0,0) в экранных координатах — та же формула, что и в
+    // screenToWorld, только в обратную сторону
+    const cx = viewportRect.left + viewportRect.width / 2 + camera.x;
+    const cy = viewportRect.top + viewportRect.height / 2 + camera.y;
+    const marginX = viewportRect.width * PAUSE_MARGIN_FACTOR;
+    const marginY = viewportRect.height * PAUSE_MARGIN_FACTOR;
+    const left = viewportRect.left - marginX;
+    const right = viewportRect.right + marginX;
+    const top = viewportRect.top - marginY;
+    const bottom = viewportRect.bottom + marginY;
+    let anyPaused = false;
+    for (const item of pausableRotors) {
+      const r = item.r * camera.zoom;
+      const dxMin = Math.max(left - cx, 0, cx - right);
+      const dyMin = Math.max(top - cy, 0, cy - bottom);
+      const dMin = Math.hypot(dxMin, dyMin);
+      const dxMax = Math.max(Math.abs(cx - left), Math.abs(cx - right));
+      const dyMax = Math.max(Math.abs(cy - top), Math.abs(cy - bottom));
+      const dMax = Math.hypot(dxMax, dyMax);
+      const hidden = !(dMin <= r && r <= dMax);
+      item.el.classList.toggle('is-paused', hidden);
+      if (hidden) anyPaused = true;
+    }
+    rotorsPaused = anyPaused;
+  }
+
+  // мгновенный резюм на КАЖДОМ реальном кадре камеры (см. вызов в
+  // applyCamera выше) + пересчет паузы с задержкой PAUSE_DEBOUNCE_MS после
+  // последнего кадра — так движение камеры никогда не "спотыкается" о
+  // застывший в паузе ротор, а пауза применяется только когда камера
+  // действительно остановилась
+  let rotorPauseTimer = null;
+  function scheduleRotorPauseCheck() {
+    resumeAllRotors();
+    if (rotorPauseTimer !== null) clearTimeout(rotorPauseTimer);
+    rotorPauseTimer = setTimeout(() => {
+      rotorPauseTimer = null;
+      updateRotorVisibility();
+    }, PAUSE_DEBOUNCE_MS);
   }
 
   function screenToWorld(sx, sy) {
@@ -583,7 +695,7 @@ import { buildViewer, attachViewer } from '../scripts/media-viewer.js';
     camera.zoom = newZoom;
     camera.x = e.clientX - (viewportRect.left + viewportRect.width / 2) - newZoom * world.x;
     camera.y = e.clientY - (viewportRect.top + viewportRect.height / 2) - newZoom * world.y;
-    applyCamera();
+    scheduleApplyCamera();
   }, { passive: false });
 
   // --- pan (drag) + pinch-zoom: единый Pointer Events движок -------------------
@@ -632,7 +744,7 @@ import { buildViewer, attachViewer } from '../scripts/media-viewer.js';
       }
       camera.x = panStart.camX + dx;
       camera.y = panStart.camY + dy;
-      applyCamera();
+      scheduleApplyCamera();
     } else if (dragMode === 'pinch' && pointers.size === 2 && pinchStart) {
       const pts = Array.from(pointers.values());
       const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
@@ -641,7 +753,7 @@ import { buildViewer, attachViewer } from '../scripts/media-viewer.js';
       camera.zoom = newZoom;
       camera.x = mid.x - (viewportRect.left + viewportRect.width / 2) - newZoom * pinchStart.world.x;
       camera.y = mid.y - (viewportRect.top + viewportRect.height / 2) - newZoom * pinchStart.world.y;
-      applyCamera();
+      scheduleApplyCamera();
       dragDistance = DRAG_THRESHOLD + 1;
       dismissHint();
     }

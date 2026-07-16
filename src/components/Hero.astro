@@ -62,6 +62,21 @@ const wordSpans = words.map((word) => {
 </section>
 <script src="../scripts/hero-type.js"></script>
 <script src="../scripts/hero-scroll-cue.js"></script>
+<script>
+  // iter13 (задача CA, п.4): letter-shimmer (см. .ltr в style ниже) - бесконечная
+  // анимация text-shadow+filter на 17 буквах, красится/paint'ится каждый кадр
+  // ДАЖЕ когда hero давно проскроллен за пределы экрана. IntersectionObserver
+  // ставит анимацию на паузу вне вьюпорта (класс .shimmer-paused - см. CSS,
+  // паузит ТОЛЬКО letter-shimmer, разовая ltr-in не трогается) и снимает паузу
+  // при возврате - мерцание просто продолжается с текущей фазы, не сбрасывается.
+  const heroName = document.querySelector('.hero-name');
+  if (heroName && 'IntersectionObserver' in window) {
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) heroName.classList.toggle('shimmer-paused', !e.isIntersecting);
+    }, { threshold: 0 });
+    io.observe(heroName);
+  }
+</script>
 
 <style>
   /* V.1: hero — полноэкранный слайд (высота вьюпорта минус шапка), контент
@@ -218,6 +233,12 @@ const wordSpans = words.map((word) => {
       text-shadow: 0 0 12px rgba(255,92,26,.35);
       filter: brightness(1.14);
     }
+  }
+  /* iter13 (задача CA, п.4): вне вьюпорта - пауза ТОЛЬКО у letter-shimmer
+     (второе значение в списке анимаций .ltr); ltr-in (первое) остается running,
+     ей и так играть один раз при появлении, пауза сюда бы ничего не изменила */
+  html.js .hero-name.shimmer-paused .ltr {
+    animation-play-state: running, paused;
   }
   .hero-cursor {
     color: var(--teal);

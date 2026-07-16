@@ -288,8 +288,11 @@ h1 { text-shadow: 0 0 24px rgba(255,92,26,.25); }
   right: 0;
   z-index: 50;
   background: rgba(14, 15, 19, .55);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
+  /* iter13 (задача CA, п.7): 12px -> 8px - backdrop-filter: blur дорогой
+     эффект (перерасчет каждый кадр под фиксированной шапкой), разница на
+     глаз микроскопическая, посчитана допустимой аудитом перфа */
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
   border-bottom: 1px solid rgba(42, 45, 58, .5);
   transition: transform .25s, background-color .25s, border-color .25s, box-shadow .25s;
 }

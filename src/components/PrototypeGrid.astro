@@ -35,9 +35,15 @@ const protos = [...sortedByYear.slice(0, pinIndex), ...pinned, ...sortedByYear.s
             <img src={`/media/prototypes/${p.data.id}/icon.webp`} alt={p.data.title} loading="lazy"
                  draggable="false"
                  style="width:100%;height:100%;object-fit:cover;" />
+            {/* iter13 (задача CA, п.2): poster на <video preload="none"> НЕ
+                подчиняется preload - браузер тянет постер сразу при разборе
+                разметки, независимо от preload/видимости. При 34 карточках
+                (оригинал+клоны) это 1.3МБ JPG сразу при загрузке страницы,
+                хотя большинство карточек вне экрана. poster проставляется
+                лениво в JS (см. script ниже) - при входе карточки во вьюпорт,
+                с фолбэком на pointerenter перед play(). */}
             {p.data.clip && (
               <video muted loop playsinline preload="none"
-                poster={`/media/prototypes/${p.data.id}/poster.jpg`}
                 style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .25s;">
                 <source src={`/media/prototypes/${p.data.id}/clip.webm`} type="video/webm" />
               </video>
@@ -338,7 +344,19 @@ const protos = [...sortedByYear.slice(0, pinIndex), ...pinned, ...sortedByYear.s
 <script>
   // iter9 (п.5 YE): модалка прототипа собирает вьювер на клиенте тем же
   // движком, что и Steam-стиль страниц проектов (см. MediaViewer.astro)
-  import { buildViewer, attachViewer } from '../scripts/media-viewer.js';
+  //
+  // iter13 (задача CA, п.3): раньше статический import тянул media-viewer.js
+  // (6.9КБ) на КАЖДУЮ загрузку главной, хотя модуль нужен только если
+  // пользователь реально откроет модалку прототипа. Теперь динамический
+  // import() внутри openModal() - грузится один раз при первом клике/Enter
+  // по карточке (браузер кэширует модуль, повторные открытия синхронны из кэша).
+  let mediaViewerModule: typeof import('../scripts/media-viewer.js') | null = null;
+  const loadMediaViewer = () => {
+    if (!mediaViewerModule) {
+      return import('../scripts/media-viewer.js').then((m) => { mediaViewerModule = m; return m; });
+    }
+    return Promise.resolve(mediaViewerModule);
+  };
 
   const protoWrap = document.querySelector<HTMLElement>('.proto-carousel-wrap');
   const protoTrack = document.querySelector<HTMLElement>('.proto-track');
@@ -688,6 +706,32 @@ const protos = [...sortedByYear.slice(0, pinIndex), ...pinned, ...sortedByYear.s
     }
   }
 
+  // iter13 (задача CA, п.2): poster проставляется лениво - как только карточка
+  // (оригинал ИЛИ клон - обе половины трека видны при бесшовном marquee)
+  // входит во вьюпорт. rootMargin с запасом - постер успевает подгрузиться
+  // чуть ДО того, как карточка реально доедет до края экрана, без видимой
+  // задержки первого кадра ховера. Once-паттерн, как у counters.js/reveal.js.
+  const setProtoPosterLazily = (card: HTMLElement) => {
+    const video = card.querySelector<HTMLVideoElement>('video');
+    if (!video || video.poster) return;
+    video.poster = `/media/prototypes/${card.dataset.id}/poster.jpg`;
+  };
+  if ('IntersectionObserver' in window) {
+    const posterIo = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (!e.isIntersecting) continue;
+        setProtoPosterLazily(e.target as HTMLElement);
+        posterIo.unobserve(e.target);
+      }
+    }, { rootMargin: '200px' });
+    document.querySelectorAll<HTMLElement>('.proto-card').forEach((card) => {
+      if (card.querySelector('video')) posterIo.observe(card);
+    });
+  } else {
+    // без IO (древний браузер) - грузим сразу, как было раньше, без регрессии
+    document.querySelectorAll<HTMLElement>('.proto-card').forEach(setProtoPosterLazily);
+  }
+
   // iter12 (задача BA, п.4): ховер-слайдшоу шотов для карточек прототипа без
   // клипа (clip=false, shots>0 - сейчас только Skee Ball League). Упрощенная
   // версия механики из FeaturedCard.astro (iter11 п.1): приходящий кадр всегда
@@ -785,7 +829,10 @@ const protos = [...sortedByYear.slice(0, pinIndex), ...pinned, ...sortedByYear.s
       const nextCard = protoCards[idx + 1];
       attachProtoHoverShots(el);
       el.addEventListener('pointerenter', () => {
-        if (video) { video.style.opacity = '1'; video.play().catch(() => {}); }
+        // фолбэк: если IO еще не успел проставить poster (например, очень
+        // быстрый ховер сразу после появления карточки) - подстраховываемся
+        // здесь, до play()
+        if (video) { setProtoPosterLazily(el); video.style.opacity = '1'; video.play().catch(() => {}); }
         prevCard?.classList.add('spread-left');
         nextCard?.classList.add('spread-right');
       });
@@ -830,6 +877,10 @@ const protos = [...sortedByYear.slice(0, pinIndex), ...pinned, ...sortedByYear.s
     // хендл текущего вьювера модалки — destroy() снимает таймер слайдшоу
     // и window-слушатель youtube-сообщений перед сборкой нового плейлиста
     let viewerHandle: { destroy: () => void } | null = null;
+    // iter13 (задача CA, п.3): динамический import() media-viewer.js асинхронен -
+    // openToken защищает от гонки (пользователь кликнул другую карточку или
+    // закрыл модалку, пока модуль еще грузился)
+    let openToken = 0;
 
     const buildPlaylist = (id: string, hasClip: boolean, hasClipFull: boolean, extraClips: number, shots: number) => {
       const base = `/media/prototypes/${id}`;
@@ -903,15 +954,30 @@ const protos = [...sortedByYear.slice(0, pinIndex), ...pinned, ...sortedByYear.s
 
         const extraClips = Number(card.dataset.extraClips ?? '0');
         const playlist = buildPlaylist(id, hasClip, hasClipFull, extraClips, shots);
-        const root = buildViewer(playlist, { ...viewerLabels, title });
-        // скрины прототипов бывают портретными — cover обрезал бы их,
-        // модификатор переключает .mv-stage img на object-fit: contain
-        // (см. src/styles/global.css)
-        root.classList.add('media-viewer--contain');
-        viewerEl.appendChild(root);
-        // renderFirst: первый слайд (обычно клип) рисуется сразу с
-        // autoplay+mutedAuto — так же, как раньше играл pm-video при открытии
-        viewerHandle = attachViewer(root, { slideshowMs: 3000, renderFirst: true });
+        // iter13 (задача CA, п.3): buildViewer/attachViewer грузятся динамически
+        // (см. loadMediaViewer выше) - модалка уже открыта (showModal чуть
+        // выше), плейлист собирается сразу, а сама сборка стрипа/стейджа
+        // довешивается после resolve() импорта (на первом открытии - короткая
+        // пауза перед появлением стрипа, дальше модуль в кэше браузера).
+        // myToken защищает от гонки: если пока модуль грузился пользователь
+        // кликнул другую карточку или закрыл модалку, устаревший результат
+        // не перезапишет актуальное состояние.
+        const myToken = ++openToken;
+        loadMediaViewer().then(({ buildViewer, attachViewer }) => {
+          if (myToken !== openToken || !modal!.open || !viewerEl) return;
+          const root = buildViewer(playlist, { ...viewerLabels, title });
+          // скрины прототипов бывают портретными — cover обрезал бы их,
+          // модификатор переключает .mv-stage img на object-fit: contain
+          // (см. src/styles/global.css)
+          root.classList.add('media-viewer--contain');
+          viewerEl.appendChild(root);
+          // renderFirst: первый слайд (обычно клип) рисуется сразу с
+          // autoplay+mutedAuto — так же, как раньше играл pm-video при открытии
+          viewerHandle = attachViewer(root, { slideshowMs: 3000, renderFirst: true });
+        }).catch(() => {
+          // сеть/офлайн: чанк вьювера не загрузился — модалка остается с
+          // шапкой/метой без медиа (тихая деградация вместо unhandled rejection)
+        });
       }
     };
 
